@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('companion', {
   setClickThrough: (on) => ipcRenderer.send('click-through', on),
   setMuted: (muted) => ipcRenderer.send('set-muted', muted),
   focus: () => ipcRenderer.send('focus'),
+  bootDone: () => ipcRenderer.send('boot-done'),
   openExternal: (url) => ipcRenderer.send('open-external', url),
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
   onTerminal: on('terminal'),

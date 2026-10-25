@@ -163,61 +163,58 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
         .add(() => mood('happy', 900));
     },
     lookAround() {
+      // eyes + tiny head only — no body travel
       habitTl = gsap.timeline()
-        .to(look, { x: -1.8, duration: 0.35, ease: 'power2.out' })
-        .to(head, { rotation: -6, duration: 0.35, ease: 'power2.out' }, '<')
-        .to(look, { x: 1.8, duration: 0.45, delay: 0.5, ease: 'power2.inOut' })
-        .to(head, { rotation: 8, duration: 0.45, ease: 'power2.inOut' }, '<')
-        .to(look, { x: 0, duration: 0.3, delay: 0.45, ease: 'power2.out' })
-        .to(head, { rotation: 0, duration: 0.3, ease: 'power2.out' }, '<');
+        .to(look, { x: -0.9, duration: 0.4, ease: 'power2.out' })
+        .to(head, { rotation: -3, duration: 0.4, ease: 'power2.out' }, '<')
+        .to(look, { x: 0.9, duration: 0.5, delay: 0.55, ease: 'power2.inOut' })
+        .to(head, { rotation: 3, duration: 0.5, ease: 'power2.inOut' }, '<')
+        .to(look, { x: 0, duration: 0.35, delay: 0.4, ease: 'power2.out' })
+        .to(head, { rotation: 0, duration: 0.35, ease: 'power2.out' }, '<');
     },
     headTilt() {
       pose('sit');
-      mood('happy', 1600);
+      mood('happy', 1400);
       habitTl = gsap.timeline()
-        .to(head, { rotation: 14, x: 1.2, duration: 0.45, ease: 'power2.out' })
-        .to(earF, { rotation: 10, duration: 0.35, ease: 'sine.out' }, '<0.05')
-        .to(earB, { rotation: -6, duration: 0.35, ease: 'sine.out' }, '<')
-        .to(head, { rotation: 14, duration: 0.7 }) // hold the cute tilt
-        .to(head, { rotation: 0, x: 0, duration: 0.5, ease: 'power2.inOut' })
-        .to([earF, earB], { rotation: 0, duration: 0.4, ease: 'power2.out' }, '<');
+        .to(head, { rotation: 7, x: 0.5, duration: 0.4, ease: 'power2.out' })
+        .to(earF, { rotation: 5, duration: 0.3, ease: 'sine.out' }, '<0.05')
+        .to(earB, { rotation: -3, duration: 0.3, ease: 'sine.out' }, '<')
+        .to(head, { rotation: 7, duration: 0.55 })
+        .to(head, { rotation: 0, x: 0, duration: 0.4, ease: 'power2.inOut' })
+        .to([earF, earB], { rotation: 0, duration: 0.35, ease: 'power2.out' }, '<');
     },
     wiggle() {
       pose('sit', 0.2);
-      mood('happy', 1400);
+      mood('happy', 1100);
       habitTl = gsap.timeline()
-        .to(all, { rotation: -5, duration: 0.12, ease: 'sine.inOut' })
-        .to(all, { rotation: 6, duration: 0.14, ease: 'sine.inOut' })
-        .to(all, { rotation: -4, duration: 0.12, ease: 'sine.inOut' })
-        .to(all, { rotation: 3, duration: 0.12, ease: 'sine.inOut' })
-        .to(all, { rotation: 0, duration: 0.35, ease: 'elastic.out(1, 0.55)' })
-        .to(tail, { rotation: 18, duration: 0.2 }, 0)
-        .to(tail, { rotation: 0, duration: 0.55, ease: 'power2.out' }, 0.55);
+        .to(all, { rotation: -1.5, duration: 0.14, ease: 'sine.inOut' })
+        .to(all, { rotation: 1.5, duration: 0.16, ease: 'sine.inOut' })
+        .to(all, { rotation: 0, duration: 0.28, ease: 'power2.out' })
+        .to(tail, { rotation: 8, duration: 0.2 }, 0)
+        .to(tail, { rotation: 0, duration: 0.45, ease: 'power2.out' }, 0.45);
     },
     softBounce() {
       pose('sit', 0.15);
-      mood('happy', 1200);
+      mood('happy', 1000);
       habitTl = gsap.timeline()
-        .to(all, { scaleY: 0.88, scaleX: 1.08, duration: 0.16, ease: 'power2.out' })
-        .to(all, { scaleY: 1.08, scaleX: 0.94, y: -6, duration: 0.28, ease: 'power2.out' })
-        .to(all, { scaleY: 0.94, scaleX: 1.04, y: 0, duration: 0.16, ease: 'power2.in' })
-        .to(all, { scaleY: 1, scaleX: 1, duration: 0.45, ease: 'elastic.out(1, 0.5)' });
+        .to(all, { scaleY: 0.97, scaleX: 1.02, duration: 0.14, ease: 'power2.out' })
+        .to(all, { scaleY: 1.02, scaleX: 0.99, y: -1.2, duration: 0.22, ease: 'power2.out' })
+        .to(all, { scaleY: 1, scaleX: 1, y: 0, duration: 0.28, ease: 'power2.out' });
     },
     pawTap() {
       pose('sit');
+      const y1 = gsap.getProperty(lf1, 'y') || 0;
       habitTl = gsap.timeline({ delay: 0.2 })
-        .to(lf1, { y: '-=3.5', rotation: -12, duration: 0.14, ease: 'power2.out' })
-        .to(lf1, { y: '+=3.5', rotation: 0, duration: 0.14, ease: 'power2.in' })
-        .to(lf1, { y: '-=3.5', rotation: -12, duration: 0.14, ease: 'power2.out' })
-        .to(lf1, { y: '+=3.5', rotation: 0, duration: 0.14, ease: 'power2.in' })
-        .to(lf2, { y: '-=2.5', duration: 0.12, ease: 'power2.out' })
-        .to(lf2, { y: '+=2.5', duration: 0.14, ease: 'power2.in' })
+        .to(lf1, { y: y1 - 1.2, rotation: -5, duration: 0.12, ease: 'power2.out' })
+        .to(lf1, { y: y1, rotation: 0, duration: 0.12, ease: 'power2.in' })
+        .to(lf1, { y: y1 - 1.2, rotation: -5, duration: 0.12, ease: 'power2.out' })
+        .to(lf1, { y: y1, rotation: 0, duration: 0.12, ease: 'power2.in' })
         .add(() => mood('happy', 700));
     },
   };
-  // blob leans cute; bar keeps a mix so the notch stays lively but not chaotic
+  // blob: mostly still — blink/tilt only (no lick/stretch/bounce roam)
   const HABITS = blob
-    ? ['headTilt', 'headTilt', 'slowBlink', 'slowBlink', 'wiggle', 'softBounce', 'pawTap', 'lookAround', 'lick', 'yawn', 'sit', null]
+    ? ['slowBlink', 'slowBlink', 'slowBlink', 'headTilt', 'lookAround', 'pawTap', 'sit', null, null]
     : ['sit', 'sit', 'yawn', 'lick', 'stretch', 'slowBlink', 'lookAround', 'headTilt', 'wiggle', null, null];
 
   function earTwitch() {
@@ -242,56 +239,31 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
   let sleeping = false;
   let idleBob;
   function startBlobIdle() {
-    if (!blob || still || idleBob) return;
-    // soft breathe: lift + tiny squash so she feels plush, not rigid
+    if (!blob || still || idleBob || held) return;
+    // barely-there breathe — anything bigger reads as hopping
     idleBob = gsap.timeline({ repeat: -1, yoyo: true })
-      .to(all, { y: -3.2, scaleY: 1.03, scaleX: 0.985, duration: 1.55, ease: 'sine.inOut' }, 0)
-      .to(head, { y: '-=0.6', duration: 1.55, ease: 'sine.inOut' }, 0);
+      .to(all, { y: -0.7, duration: 2.1, ease: 'sine.inOut' }, 0);
   }
   function stopBlobIdle() {
     idleBob?.kill();
     idleBob = null;
-    if (blob) {
-      gsap.to(all, { y: 0, scaleX: 1, scaleY: 1, duration: 0.28, ease: 'power2.out' });
-      gsap.to(head, { y: 0, duration: 0.28, ease: 'power2.out' });
-    }
+    if (blob) gsap.to(all, { y: 0, scaleX: 1, scaleY: 1, rotation: 0, duration: 0.2, ease: 'power2.out', overwrite: 'auto' });
   }
   function wander() {
-    if (still || sleeping || state === 'needsYou' || state === 'working' || state === 'thinking') return;
+    if (held || still || sleeping || state === 'needsYou' || state === 'working' || state === 'thinking') return;
     if (blob) {
-      // pinned (chat field): only in-place habits + bob — never leave the box
-      if (stay) {
-        startBlobIdle();
-        const habit = HABITS[Math.floor(Math.random() * HABITS.length)];
-        if (habit && state === 'idle' && Math.random() < 0.75) {
-          stopBlobIdle();
-          habits[habit]();
-          wait = gsap.delayedCall(3.2 + Math.random() * 2.8, () => {
-            if (state === 'idle' && !sleeping) startBlobIdle();
-            wander();
-          });
-        } else {
-          wait = gsap.delayedCall(2.5 + Math.random() * 3, wander);
-        }
-        return;
-      }
-      // ~70% cute habit, ~30% tiny hop — presence stays sweet
-      const rollCute = Math.random() < 0.72;
+      // home + chat: stay put — no left/right walk, rare soft habits only
+      startBlobIdle();
       const habit = HABITS[Math.floor(Math.random() * HABITS.length)];
-      if (rollCute && habit && state === 'idle') {
+      if (habit && state === 'idle' && Math.random() < 0.45) {
         stopBlobIdle();
         habits[habit]();
-        wait = gsap.delayedCall(3.2 + Math.random() * 2.8, () => {
+        wait = gsap.delayedCall(4 + Math.random() * 3, () => {
           if (state === 'idle' && !sleeping) startBlobIdle();
           wander();
         });
       } else {
-        startBlobIdle();
-        const span = maxX();
-        const target = span < 8 ? 0 : Math.random() * span;
-        moveTo(target, STROLL, () => {
-          wait = gsap.delayedCall(2 + Math.random() * 2.5, wander);
-        });
+        wait = gsap.delayedCall(3.5 + Math.random() * 3.5, wander);
       }
       return;
     }
@@ -338,44 +310,61 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
   const lookX = gsap.quickTo(look, 'x', { duration: 0.4, ease: 'power3.out' });
   const lookY = gsap.quickTo(look, 'y', { duration: 0.4, ease: 'power3.out' });
   function lookAt(px, py) {
-    if (sleeping || still) return;
+    if (held || sleeping || still) return;
     const r = sizer.getBoundingClientRect();
     const front = gsap.getProperty(face, 'scaleX') > 0 ? 0.66 : 0.34; // the face sits at the front of the body
     const dx = px - (r.left + r.width * front);
     const dy = py - (r.top + r.height * 0.48);
     const d = Math.hypot(dx, dy) || 1;
-    const reach = Math.min(1, d / 120);
-    lookX((dx / d) * 1.6 * reach * gsap.getProperty(face, 'scaleX'));
-    lookY((dy / d) * 1.2 * reach);
+    const reach = Math.min(1, d / 160);
+    // subtle eye glance only — was reading as the whole cat tracking hard
+    lookX((dx / d) * 0.7 * reach * gsap.getProperty(face, 'scaleX'));
+    lookY((dy / d) * 0.5 * reach);
   }
 
   let pokes = [];
+  let pokeTl;
   function poke() {
+    if (held) return;
     wake();
     stopBlobIdle();
+    habitTl?.kill();
+    pokeTl?.kill();
+    gsap.set(all, { scaleX: 1, scaleY: 1, y: 0, rotation: 0 });
+    gsap.set([earB, earF], { rotation: 0 });
+    window.nikkiMeow?.();
     const now = performance.now();
     pokes = pokes.filter((t) => now - t < 1200);
     pokes.push(now);
     if (still) return mood(pokes.length >= 3 ? 'dizzy' : 'happy', 900);
     if (pokes.length >= 3) {
       pokes = [];
-      mood('dizzy', 2200);
-      gsap.fromTo(all, { rotation: -8 }, { rotation: 8, duration: 0.18, repeat: 7, yoyo: true, ease: 'sine.inOut', onComplete: () => {
-        gsap.to(all, { rotation: 0, duration: 0.4, ease: 'elastic.out(1, 0.4)' });
-        if (blob && state === 'idle') startBlobIdle();
-      } });
+      mood('dizzy', 1200);
+      pokeTl = gsap
+        .timeline({
+          onComplete: () => {
+            gsap.set(all, { rotation: 0 });
+            if (blob && state === 'idle') startBlobIdle();
+          },
+        })
+        .to(all, { rotation: -2, duration: 0.08, ease: 'sine.inOut' })
+        .to(all, { rotation: 2, duration: 0.1, repeat: 3, yoyo: true, ease: 'sine.inOut' })
+        .to(all, { rotation: 0, duration: 0.2, ease: 'power2.out' });
       return;
     }
-    // first taps: startled-cute, not grumpy
     mood('happy', 900);
-    gsap.timeline()
-      .to(earB, { rotation: -22, duration: 0.07 })
-      .to(earF, { rotation: 22, duration: 0.07 }, '<')
-      .to(all, { scaleY: 0.86, scaleX: 1.1, duration: 0.08, ease: 'power2.out' }, '<')
-      .to(all, { scaleY: 1.06, scaleX: 0.96, y: -4, duration: 0.22, ease: 'power2.out' })
-      .to(all, { scaleY: 1, scaleX: 1, y: 0, duration: 0.45, ease: 'elastic.out(1, 0.45)' })
-      .to([earB, earF], { rotation: 0, duration: 0.35, ease: 'power2.out' }, '-=0.35')
-      .add(() => { if (blob && state === 'idle' && !sleeping) startBlobIdle(); });
+    pokeTl = gsap
+      .timeline({
+        onComplete: () => {
+          if (blob && state === 'idle' && !sleeping) startBlobIdle();
+        },
+      })
+      .to(earB, { rotation: -6, duration: 0.07 })
+      .to(earF, { rotation: 6, duration: 0.07 }, '<')
+      .to(all, { scaleY: 0.97, scaleX: 1.02, duration: 0.08, ease: 'power2.out' }, '<')
+      .to(all, { scaleY: 1.01, scaleX: 0.995, y: -1, duration: 0.16, ease: 'power2.out' })
+      .to(all, { scaleY: 1, scaleX: 1, y: 0, duration: 0.22, ease: 'power2.out' })
+      .to([earB, earF], { rotation: 0, duration: 0.22, ease: 'power2.out' }, '-=0.22');
   }
   walker.addEventListener('click', (e) => {
     e.stopPropagation(); // poking the cat must not toggle the island
@@ -391,6 +380,7 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
     const prev = state;
     state = next;
     if (prev === next && next !== 'done') return;
+    if (held) return; // parked for launch — don't fight playIntro
     wake();
     knead?.kill();
     meow?.kill();
@@ -424,8 +414,8 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
             .add(() => walker.classList.remove('meow'));
         else walker.classList.add('meow');
       };
-      if (stay) afterArrive();
-      else moveTo(blob ? maxX() * 0.55 : maxX(), TROT * scaleNow(), afterArrive);
+      if (blob || stay) afterArrive();
+      else moveTo(maxX(), TROT * scaleNow(), afterArrive);
       return;
     }
     tailMood(1);
@@ -434,19 +424,15 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
       walking(false);
       pose(blob ? 'sit' : 'stand', 0.15);
       if (!still) {
-        const hop = stay ? -4 : blob ? -10 : -5; // keep victory hop inside the clipped field
+        const hop = blob ? -1.5 : stay ? -2.5 : -4;
         gsap.timeline()
-          .to(all, { scaleY: 0.82, scaleX: 1.1, duration: 0.14, ease: 'power2.out' })
-          .to(all, { scaleY: 1.1, scaleX: 0.92, y: hop, duration: 0.26, ease: 'power2.out' })
-          .to(tail, { rotation: 28, duration: 0.22 }, '<')
-          .to(head, { rotation: 8, duration: 0.22 }, '<')
-          .to(all, { scaleY: 0.92, scaleX: 1.06, y: 0, duration: 0.16, ease: 'power2.in' })
-          .to(all, { scaleY: 1, scaleX: 1, duration: 0.5, ease: 'elastic.out(1, 0.45)' })
-          .to(head, { rotation: 0, duration: 0.35, ease: 'power2.out' }, '-=0.35')
-          .to(all, { rotation: -4, duration: 0.1, ease: 'sine.inOut' })
-          .to(all, { rotation: 4, duration: 0.12, ease: 'sine.inOut' })
-          .to(all, { rotation: 0, duration: 0.28, ease: 'elastic.out(1, 0.5)' })
-          .to(tail, { rotation: 0, duration: 0.55, ease: 'power2.inOut' }, '-=0.2');
+          .to(all, { scaleY: 0.96, scaleX: 1.03, duration: 0.1, ease: 'power2.out' })
+          .to(all, { scaleY: 1.02, scaleX: 0.99, y: hop, duration: 0.18, ease: 'power2.out' })
+          .to(tail, { rotation: 10, duration: 0.18 }, '<')
+          .to(head, { rotation: 4, duration: 0.18 }, '<')
+          .to(all, { scaleY: 1, scaleX: 1, y: 0, duration: 0.28, ease: 'power2.out' })
+          .to(head, { rotation: 0, duration: 0.24, ease: 'power2.out' }, '-=0.24')
+          .to(tail, { rotation: 0, duration: 0.35, ease: 'power2.out' }, '-=0.2');
       }
       wait = gsap.delayedCall(2.6, wander);
       return;
@@ -468,79 +454,101 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
   place();
   armSleep();
   gsap.delayedCall(blob ? 2.2 : 4, earTwitch);
-  if (blob) {
+  let held = !!hold;
+  if (hold) {
+    // parked until playIntro() / release() — used for launch spawn
+    gsap.set(walker, { autoAlpha: 0 });
+    gsap.set(all, { y: blob ? -56 : -38, scaleX: 0.45, scaleY: 0.1 });
+    if (blob) pose('sit', 0);
+  } else if (blob) {
     pose('sit', 0);
     startBlobIdle();
     wait = gsap.delayedCall(3.5 + Math.random() * 2, wander);
-  } else if (hold) {
-    // parked above the bar until playIntro() — Coucou-style drop-in
-    gsap.set(walker, { autoAlpha: 0 });
-    gsap.set(all, { y: -38, scaleX: 0.55, scaleY: 0.12 });
   } else wander();
 
-  /** Launch greeting: drop → bounce → side wave → settle. Bar companion only. */
-  function playIntro() {
-    if (blob || stay) return Promise.resolve();
+  function release() {
+    held = false;
+    gsap.set(walker, { autoAlpha: 1 });
+    // svgOrigin only — CSS transformOrigin on <g> can NaN the matrix and hide the cat
+    gsap.set(all, { y: 0, scaleX: 1, scaleY: 1, rotation: 0 });
+    place();
+    if (blob) {
+      pose('sit', 0);
+      startBlobIdle();
+      wait?.kill();
+      wait = gsap.delayedCall(2.5 + Math.random() * 2, wander);
+    } else wander();
+  }
+
+  let introTl;
+  /** Launch: soft center drop (no bounce hop — that felt jumpy). Bar just appears. */
+  function playIntro({ onLand } = {}) {
     wait?.kill();
     tween?.kill();
+    introTl?.kill();
     walking(false);
     habitTl?.kill();
-    if (still) {
-      gsap.set(walker, { autoAlpha: 1 });
-      gsap.set(all, { y: 0, scaleX: 1, scaleY: 1, rotation: 0 });
-      pos.x = maxX() / 2;
-      place();
-      wander();
+    stopBlobIdle();
+    if (still || !blob) {
+      release();
       return Promise.resolve();
     }
-    const mid = Math.max(0, maxX() / 2);
-    const side = Math.max(0, maxX() * 0.1);
-    pos.x = mid;
+    held = false;
+    pos.x = maxX() / 2;
     place();
     gsap.set(face, { scaleX: 1 });
     gsap.set(walker, { autoAlpha: 1 });
+    gsap.set(all, { y: -36, scaleX: 0.55, scaleY: 0.55 });
     return new Promise((resolve) => {
-      gsap
-        .timeline({
-          onComplete: () => {
-            armSleep();
-            wander();
-            resolve();
-          },
-        })
-        .fromTo(
-          all,
-          { y: -40, scaleX: 0.55, scaleY: 0.12 },
-          { y: 0, scaleX: 1, scaleY: 1, duration: 0.42, ease: 'back.out(1.6)' },
-        )
-        .to(all, { scaleY: 0.78, scaleX: 1.14, duration: 0.1, ease: 'power2.out' })
-        .to(all, { scaleY: 1.1, scaleX: 0.92, y: -5, duration: 0.18, ease: 'power2.out' })
-        .to(all, { scaleY: 1, scaleX: 1, y: 0, duration: 0.42, ease: 'elastic.out(1, 0.45)' })
-        .add(() => mood('happy', 2600))
+      introTl = gsap
+        .timeline({ onComplete: resolve })
+        .to(all, { y: 0, scaleX: 1, scaleY: 1, duration: 0.55, ease: 'power3.out' })
         .add(() => {
-          gsap.set(face, { scaleX: side < mid ? -1 : 1 });
-          walking(true);
+          onLand?.();
+          mood('happy', 2000);
+          walker.classList.add('meow');
         })
-        .to(pos, { x: side, duration: 0.55, ease: 'power2.inOut', onUpdate: place })
-        .add(() => walking(false))
-        .add(() => walker.classList.add('meow'))
-        .to(head, { rotation: -14, duration: 0.12, ease: 'power2.out' })
-        .to(head, { rotation: 10, duration: 0.14 })
-        .to(head, { rotation: -12, duration: 0.12 })
-        .to(head, { rotation: 0, duration: 0.24, ease: 'power2.out' })
+        .to(head, { rotation: -10, duration: 0.12, ease: 'power2.out' })
+        .to(head, { rotation: 6, duration: 0.14 })
+        .to(head, { rotation: 0, duration: 0.28, ease: 'power2.out' })
         .add(() => walker.classList.remove('meow'))
-        .add(() => {
-          gsap.set(face, { scaleX: 1 });
-          walking(true);
-        }, '+=0.12')
-        .to(pos, { x: mid, duration: 0.55, ease: 'power2.inOut', onUpdate: place })
-        .add(() => walking(false))
-        .to(tail, { rotation: 22, duration: 0.2, ease: 'power2.out' })
-        .to(tail, { rotation: 0, duration: 0.45, ease: 'power2.inOut' });
+        .to(tail, { rotation: 18, duration: 0.2, ease: 'power2.out' }, '-=0.3')
+        .to(tail, { rotation: 0, duration: 0.4, ease: 'power2.inOut' });
     });
   }
 
-  return { setState, lookAt, pose, habits, mode, pinned: stay, playIntro };
+  /** After center spawn: sit in the home slot (no trot — walking read as frantic). */
+  function walkToHome() {
+    if (!blob) return Promise.resolve();
+    held = false;
+    tween?.kill();
+    introTl?.kill();
+    walking(false);
+    habitTl?.kill();
+    stopBlobIdle();
+    walker.classList.remove('meow');
+    gsap.set(walker, { autoAlpha: 1 });
+    // also clears a mid-intro squash if boot raced a frozen GSAP ticker
+    gsap.set(all, { y: 0, scaleX: 1, scaleY: 1, rotation: 0 });
+    pos.x = Math.min(4, maxX());
+    place();
+    pose('sit', still ? 0 : 0.25);
+    return Promise.resolve();
+  }
+
+  function settleIdle() {
+    held = false;
+    gsap.set(walker, { autoAlpha: 1 });
+    gsap.set(all, { y: 0, scaleX: 1, scaleY: 1, rotation: 0 });
+    armSleep();
+    if (blob) {
+      startBlobIdle();
+      wait?.kill();
+      wait = gsap.delayedCall(2.5 + Math.random() * 2, wander);
+    } else wander();
+  }
+
+  return { setState, lookAt, pose, habits, mode, pinned: stay, playIntro, walkToHome, settleIdle, release };
 };
 
 /** Clone bar Nikki SVG into a blob stage walker (Home / Chat). */

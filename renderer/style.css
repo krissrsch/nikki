@@ -64,27 +64,77 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
     translate 0.34s var(--ease-out);
 }
 #island.open { width: 720px; border-radius: 0 0 26px 26px; }
-/* Launch greeting (Coucou-shaped beat: notch → wide → settle) — once per start */
+/* Launch: fade in already-open, spawn Nikki + particles, then reveal Home menu */
 #island.boot {
-  width: 128px;
   opacity: 0;
-  translate: -50% -14px;
+  translate: -50% -18px;
 }
-#island.greeting {
-  width: 560px;
-  opacity: 1;
-  translate: -50% 0;
+#spawnFx { display: none; } /* was canvas particles — stalled the mouse on boot */
+/* cheap CSS flash instead of per-frame canvas on a transparent always-on-top window */
+#island.spawning::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(ellipse 55% 42% at 50% 46%, rgb(255 255 255 / 0.4), transparent 72%);
+  animation: spawnFlash 0.7s var(--ease-out) forwards;
 }
-#island.boot #pill,
-#island.boot #branch,
-#island.boot #sessionPills,
-#island.boot #barActions,
-#island.greeting #pill,
-#island.greeting #branch,
-#island.greeting #sessionPills,
-#island.greeting #barActions {
+@keyframes spawnFlash {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; }
+}
+#island.spawning #nav,
+#island.spawning #pill,
+#island.spawning #branch,
+#island.spawning #sessionPills,
+#island.spawning #barActions,
+#island.spawning .homeCopy,
+#island.spawning .homeAgents,
+#island.settling #nav,
+#island.settling #pill,
+#island.settling #branch,
+#island.settling #sessionPills,
+#island.settling #barActions,
+#island.settling .homeCopy,
+#island.settling .homeAgents {
   opacity: 0;
   pointer-events: none;
+}
+/* Cards stay invisible until the menu reveal — only Nikki + particles during spawn */
+#island.spawning .card,
+#island.settling .card {
+  background: transparent;
+  box-shadow: none;
+}
+#island.spawning #viewHome {
+  grid-template-columns: 1fr;
+}
+#island.spawning .homeAgents { visibility: hidden; height: 0; overflow: hidden; padding: 0; margin: 0; }
+#island.spawning .homeStatus {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  align-items: center;
+  /* same vertical band as final Home row — avoids a big FLIP jump */
+  min-height: 0;
+  height: auto;
+  padding: 18px 10px;
+}
+#island.spawning .homeStatus .nikkiStage {
+  width: 140px;
+  height: 120px;
+}
+#island.spawning .homeStatus .nikkiStage .walker {
+  width: 112px;
+  height: 98px;
+}
+.card {
+  transition: background-color 0.45s var(--ease-out);
+}
+.homeCopy,
+.homeAgents {
+  transition: opacity 0.45s var(--ease-out);
 }
 .instant,
 .instant * { transition: none !important; }
@@ -1124,8 +1174,8 @@ body[data-view='home'] #newBtn { display: none; }
   #island,
   #panel { transition-duration: 0.01s !important; }
   #island.boot {
-    width: 420px;
     opacity: 1;
     translate: -50% 0;
   }
+  #spawnFx { display: none; }
 }

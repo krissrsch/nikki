@@ -230,25 +230,96 @@ function renderState() {
   syncHome();
 }
 
-// ---- sounds: two short synthesized notes (no sound files): rising = done, falling = needs you
+// ---- sounds: synthesized in-app (no files, no Windows system sounds)
 let audio;
-function chime(kind) {
-  if (muted) return;
+function ensureAudio() {
   audio ??= new AudioContext();
   audio.resume();
+  return audio;
+}
+function chime(kind) {
+  if (muted) return;
+  const ctx = ensureAudio();
   (kind === 'needsYou' ? [880, 660] : [660, 990]).forEach((freq, i) => {
-    const t = audio.currentTime + i * 0.12;
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
+    const t = ctx.currentTime + i * 0.12;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0.0001, t);
     gain.gain.exponentialRampToValueAtTime(0.18, t + 0.015);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-    osc.connect(gain).connect(audio.destination);
+    osc.connect(gain).connect(ctx.destination);
     osc.start(t);
     osc.stop(t + 0.4);
   });
 }
+/** Soft cat meow (Web Audio — no files). Used for spawn + poke. */
+function meow() {
+  if (muted) return;
+  const ctx = ensureAudio();
+  const t = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.0001, t);
+  master.gain.exponentialRampToValueAtTime(0.22, t + 0.04);
+  master.gain.exponentialRampToValueAtTime(0.12, t + 0.18);
+  master.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+  master.connect(ctx.destination);
+
+  const filt = ctx.createBiquadFilter();
+  filt.type = 'bandpass';
+  filt.Q.value = 2.2;
+  filt.frequency.setValueAtTime(900, t);
+  filt.frequency.exponentialRampToValueAtTime(1600, t + 0.08);
+  filt.frequency.exponentialRampToValueAtTime(520, t + 0.48);
+  filt.connect(master);
+
+  // body tone: “mrr” → “yew”
+  const body = ctx.createOscillator();
+  body.type = 'triangle';
+  body.frequency.setValueAtTime(620, t);
+  body.frequency.exponentialRampToValueAtTime(1100, t + 0.09);
+  body.frequency.exponentialRampToValueAtTime(380, t + 0.5);
+  const bodyG = ctx.createGain();
+  bodyG.gain.value = 0.7;
+  body.connect(bodyG).connect(filt);
+
+  // soft upper partial (less buzz than sawtooth)
+  const air = ctx.createOscillator();
+  air.type = 'sine';
+  air.frequency.setValueAtTime(1240, t);
+  air.frequency.exponentialRampToValueAtTime(1980, t + 0.09);
+  air.frequency.exponentialRampToValueAtTime(700, t + 0.5);
+  const airG = ctx.createGain();
+  airG.gain.value = 0.22;
+  air.connect(airG).connect(filt);
+
+  // tiny noise rasp so it reads as a mouth, not a beep
+  const nLen = Math.max(1, Math.floor(ctx.sampleRate * 0.55));
+  const nBuf = ctx.createBuffer(1, nLen, ctx.sampleRate);
+  const nData = nBuf.getChannelData(0);
+  for (let i = 0; i < nLen; i++) nData[i] = (Math.random() * 2 - 1) * (1 - i / nLen);
+  const noise = ctx.createBufferSource();
+  noise.buffer = nBuf;
+  const nFilt = ctx.createBiquadFilter();
+  nFilt.type = 'bandpass';
+  nFilt.frequency.value = 1400;
+  nFilt.Q.value = 1.2;
+  const nG = ctx.createGain();
+  nG.gain.setValueAtTime(0.0001, t);
+  nG.gain.exponentialRampToValueAtTime(0.08, t + 0.05);
+  nG.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+  noise.connect(nFilt).connect(nG).connect(master);
+
+  body.start(t);
+  air.start(t);
+  noise.start(t);
+  body.stop(t + 0.55);
+  air.stop(t + 0.55);
+  noise.stop(t + 0.55);
+}
+window.nikkiMeow = meow;
+// Electron still gates AudioContext until a gesture — unlock so spawn/poke meows can play
+document.addEventListener('pointerdown', () => ensureAudio(), { once: true });
 
 function show(s) {
   if (s.state !== lastStatus.state && (s.state === 'needsYou' || s.state === 'done')) chime(s.state);
@@ -1390,6 +1461,11 @@ api.onSession?.(({ id }) => {
   if (chatId) persistChat();
 });
 api.onCursor(({ x, y }) => {
+  // boot: click-through ON — capturing the top strip made the mouse feel stuck
+  if (island.classList.contains('spawning') || island.classList.contains('settling')) {
+    setThrough(true);
+    return;
+  }
   buddyEmit('lookAt', x, y);
   // also during a drag from Explorer, where no mousemove arrives: catch the drop only over the island
   setThrough(!document.elementFromPoint(x, y)?.closest('.hit'));
@@ -1422,32 +1498,69 @@ api.onPermissionCancel((id) => {
 
 const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Coucou-shaped launch: notch → wide island → Nikki drops, waves, settles. Once per start. */
-async function runBootIntro(bar) {
-  if (reduceMotion) {
-    island.classList.remove('boot', 'greeting');
-    await bar.playIntro?.();
-    return;
+/** Slide Nikki's stage from center → home slot (horizontal only — vertical FLIP felt jumpy). */
+function settleStageHome(stageEl, home) {
+  if (reduceMotion || !stageEl) {
+    gsap.set(stageEl, { clearProps: 'transform' });
+    return home.walkToHome?.() ?? Promise.resolve();
   }
+  const start = stageEl.getBoundingClientRect();
+  island.classList.remove('spawning');
+  island.classList.add('settling');
+  void island.offsetWidth;
+  const end = stageEl.getBoundingClientRect();
+  const dx = start.left - end.left;
+  gsap.set(stageEl, { x: dx, y: 0, transformOrigin: '50% 100%' });
+  home.walkToHome?.();
+  return new Promise((resolve) => {
+    gsap.to(stageEl, {
+      x: 0,
+      duration: 0.45,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        gsap.set(stageEl, { clearProps: 'transform' });
+        resolve();
+      },
+    });
+  });
+}
+
+/** Launch: open → CSS flash + drop + meow → home slot. Canvas particles removed (stalled the mouse). */
+async function runBootIntro(home) {
+  island.classList.add('spawning');
+  setThrough(true); // never steal the cursor during boot
+  setOpen(true, { instant: true });
   island.classList.remove('boot');
-  island.classList.add('greeting');
-  await waitMs(360);
-  await bar.playIntro?.();
-  island.classList.remove('greeting');
-  await waitMs(320);
+  const finish = async () => {
+    if (reduceMotion) {
+      await home.playIntro?.({ onLand: meow });
+      island.classList.remove('spawning');
+      island.classList.add('settling');
+      await home.walkToHome?.();
+      return;
+    }
+    await waitMs(180);
+    await home.playIntro?.({ onLand: meow });
+    await settleStageHome($('homeStage'), home);
+  };
+  // GSAP/rAF freeze while the window is hidden (fullscreen game) — don't hang in spawning forever
+  await Promise.race([finish(), waitMs(2200)]);
+  home.walkToHome?.();
+  home.settleIdle?.();
 }
 
 (async () => {
   const bar = createCompanion({ walker: $('walker'), stage: $('stage'), island, mode: 'bar', hold: true });
   mountNikkiBlob($('homeWalker'));
   mountNikkiBlob($('chatWalker'));
-  const home = createCompanion({ walker: $('homeWalker'), stage: $('homeStage'), island, mode: 'blob' });
-  const chat = createCompanion({ walker: $('chatWalker'), stage: $('chatStage'), island, mode: 'blob', pinned: true });
+  const home = createCompanion({ walker: $('homeWalker'), stage: $('homeStage'), island, mode: 'blob', hold: true });
+  // hold chat too — idle GSAP on a hidden walker stole frames during boot
+  const chat = createCompanion({ walker: $('chatWalker'), stage: $('chatStage'), island, mode: 'blob', pinned: true, hold: true });
   buddies = [bar, home, chat];
 
-  await runBootIntro(bar);
-
+  setView('home');
   const state = await api.getState();
+  setMuted(state.muted); // before intro meow so mute is respected
   projects = state.projects;
   models = state.models ?? {};
   backends = state.backends ?? {};
@@ -1462,12 +1575,9 @@ async function runBootIntro(bar) {
   cursorFound = state.cursorFound;
   geminiFound = !!state.geminiFound;
   applyCursorModels(state.cursorModels);
-  setMuted(state.muted);
-  setView('home');
   renderAgentGrid();
   selectProject(projects[0] ?? null);
   renderTerminal();
-  // restore last conversation into Chat (stay on Home until user opens it)
   try {
     chatsCache = (await api.chatsList?.()) || [];
     const last = chatsCache.find((c) => c.id === lastChatId) || chatsCache[0];
@@ -1476,7 +1586,14 @@ async function runBootIntro(bar) {
   } catch {
     syncChatsBtn();
   }
-  // refresh model list in the background (CLI can be slow the first time)
+
+  await runBootIntro(home);
+  island.classList.remove('spawning', 'settling'); // cards + copy fade in via CSS transition
+  await waitMs(reduceMotion ? 0 : 480);
+  bar.release?.();
+  chat.release?.();
+  api.bootDone?.(); // allow fullscreen-hide again — boot stayed visible on purpose
+
   if (cursorFound) api.cursorModels?.().then(applyCursorModels).catch(() => {});
   if (!claudeFound && !cursorFound) {
     show({ state: 'error', text: 'Nikki braucht einen Agenten.' });

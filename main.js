@@ -78,11 +78,20 @@ function setSession(cwd, backend, id) {
 }
 
 let win;
-const send = (channel, data) => win?.webContents.send(channel, data);
+let quitting = false;
+const alive = () => !!win && !win.isDestroyed() && !quitting;
+const send = (channel, data) => {
+  try {
+    if (!alive() || win.webContents.isDestroyed()) return;
+    win.webContents.send(channel, data);
+  } catch {
+    // window/webContents torn down mid-send (quit race)
+  }
+};
 
 // --- toast while the island can't be seen (hidden via tray or behind a fullscreen app); the renderer plays the sound
 function notify(body) {
-  if (win.isVisible() || !Notification.isSupported()) return;
+  if (!alive() || win.isVisible() || !Notification.isSupported()) return;
   const n = new Notification({ title: 'Nikki', body, silent: true });
   n.on('click', showNow);
   n.show();
@@ -155,8 +164,11 @@ const anyBusy = () => agents.claude.busy() || agents.cursor.busy() || agents.gem
 
 // --- the island sits at the top-center of one display: the primary one at start, the cursor's one when opened
 function place(display) {
+  if (!alive()) return;
   const { bounds } = display;
-  win.setBounds({ x: bounds.x + Math.round((bounds.width - WIDTH) / 2), y: bounds.y, width: WIDTH, height: HEIGHT });
+  try {
+    win.setBounds({ x: bounds.x + Math.round((bounds.width - WIDTH) / 2), y: bounds.y, width: WIDTH, height: HEIGHT });
+  } catch {}
 }
 
 function createWindow() {
@@ -174,6 +186,12 @@ function createWindow() {
     // sounds must play without a click: the chime is the point when the island is hidden
     webPreferences: { preload: path.join(dir, 'preload.cjs'), autoplayPolicy: 'no-user-gesture-required' },
   });
+  // clear timers before will-quit — destroy races the 50ms cursor tick otherwise
+  win.on('closed', () => {
+    clearInterval(cursorTimer);
+    cursorTimer = null;
+    win = null;
+  });
   place(screen.getPrimaryDisplay());
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setIgnoreMouseEvents(true, { forward: true });
@@ -186,17 +204,32 @@ function createWindow() {
 // --- visibility: hidden by the user (tray) or while a fullscreen app (game, video) is in front
 let userHidden = false;
 let fullscreen = false;
+// first launch: stay visible through the intro even over a fullscreen game (otherwise GSAP freezes + menu appears late)
+let bootHold = true;
 function applyVisibility() {
-  const show = !userHidden && !fullscreen;
-  if (show && !win.isVisible()) win.showInactive();
-  if (!show && win.isVisible()) win.hide();
+  if (!alive()) return;
+  try {
+    const show = !userHidden && (bootHold || !fullscreen);
+    if (show && !win.isVisible()) win.showInactive();
+    if (!show && win.isVisible()) win.hide();
+  } catch {}
+}
+function endBootHold() {
+  if (!bootHold) return;
+  bootHold = false;
+  applyVisibility();
 }
 function showNow() {
-  userHidden = false;
-  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  if (display.id !== screen.getDisplayMatching(win.getBounds()).id) place(display);
-  win.show();
-  win.focus();
+  if (!alive()) return;
+  try {
+    userHidden = false;
+    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    if (display.id !== screen.getDisplayMatching(win.getBounds()).id) place(display);
+    win.show();
+    win.focus();
+  } catch {
+    return;
+  }
   // Always expand — toggle would collapse an already-open island (tray / hotkey / toast)
   send('show');
 }
@@ -209,6 +242,7 @@ let fullscreenWatcher;
 function watchFullscreen() {
   fullscreenWatcher = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', FULLSCREEN_PS], { windowsHide: true });
   fullscreenWatcher.stdout.on('data', (d) => {
+    if (quitting) return;
     const busy = ['2', '3', '4'].includes(d.toString().trim().split(/\s+/).pop());
     if (busy === fullscreen) return;
     fullscreen = busy;
@@ -218,16 +252,22 @@ function watchFullscreen() {
 
 // --- cursor position (window-relative) for the companion's eyes; only while visible and only on change
 let lastCursor = '';
+let cursorTimer;
 function feedCursor() {
-  setInterval(() => {
-    if (!win?.isVisible()) return;
-    const p = screen.getCursorScreenPoint();
-    const b = win.getBounds();
-    const key = `${p.x - b.x},${p.y - b.y}`;
-    if (key === lastCursor) return;
-    lastCursor = key;
-    send('cursor', { x: p.x - b.x, y: p.y - b.y });
-  }, 50);
+  // 50ms was chatty for eye-tracking + click-through hit tests; 100ms is plenty
+  cursorTimer = setInterval(() => {
+    try {
+      if (!alive() || !win.isVisible()) return;
+      const p = screen.getCursorScreenPoint();
+      const b = win.getBounds();
+      const key = `${p.x - b.x},${p.y - b.y}`;
+      if (key === lastCursor) return;
+      lastCursor = key;
+      send('cursor', { x: p.x - b.x, y: p.y - b.y });
+    } catch {
+      // destroyed between alive() and getBounds()
+    }
+  }, 100);
 }
 
 // --- local git glance (no GitHub OAuth): branch, dirty count, ahead/behind, browsable remote URL
@@ -304,8 +344,9 @@ ipcMain.handle('open-aistudio', async (_e, { text } = {}) => {
   return { ok: true, copied };
 });
 
-ipcMain.on('click-through', (_e, on) => win.setIgnoreMouseEvents(on, { forward: true }));
-ipcMain.on('focus', () => win.focus());
+ipcMain.on('click-through', (_e, on) => alive() && win.setIgnoreMouseEvents(on, { forward: true }));
+ipcMain.on('focus', () => alive() && win.focus());
+ipcMain.on('boot-done', () => endBootHold());
 ipcMain.on('set-muted', (_e, muted) => {
   store.muted = !!muted;
   save();
@@ -440,8 +481,10 @@ function onHook(e) {
   if (changed === 'needsYou') notify(`${path.basename(e.cwd)}: ${s.text}`);
   if (changed === 'done') notify(`Session in ${path.basename(e.cwd)} ist fertig.`);
 }
+let hookServer;
 function startHookServer() {
-  const server = http.createServer((req, res) => {
+  hookServer = http.createServer((req, res) => {
+    if (quitting) return res.writeHead(503).end();
     if (req.method !== 'POST' || req.headers['x-token'] !== hookToken) return res.writeHead(403).end();
     let body = '';
     req.on('data', (d) => {
@@ -450,12 +493,13 @@ function startHookServer() {
     });
     req.on('end', () => {
       res.end();
+      if (quitting) return;
       try {
         onHook(JSON.parse(body));
       } catch {}
     });
   });
-  server.listen(0, '127.0.0.1', () => fs.writeFileSync(hookCfgFile, JSON.stringify({ port: server.address().port, token: hookToken })));
+  hookServer.listen(0, '127.0.0.1', () => fs.writeFileSync(hookCfgFile, JSON.stringify({ port: hookServer.address().port, token: hookToken })));
 }
 
 // --- hooks in the user's global Claude Code / Cursor settings: only on request, with a backup, removed cleanly when switched off
@@ -535,7 +579,7 @@ async function setCursorHooks(on) {
 const quitRequest = process.argv.includes('--quit');
 const firstInstance = app.requestSingleInstanceLock();
 if (!firstInstance || quitRequest) app.quit();
-app.on('second-instance', (_e, argv) => (argv.includes('--quit') ? app.quit() : win && showNow()));
+app.on('second-instance', (_e, argv) => (argv.includes('--quit') ? app.quit() : alive() && showNow()));
 
 let tray; // module-level so it isn't garbage-collected
 let hotkey;
@@ -549,6 +593,7 @@ function createTray() {
       {
         label: 'Ein-/Ausblenden',
         click: () => {
+          if (!alive()) return;
           userHidden = win.isVisible();
           applyVisibility();
         },
@@ -593,10 +638,12 @@ app.whenReady().then(() => {
   watchFullscreen();
   feedCursor();
   startHookServer();
+  // safety: if the renderer never signals, still allow fullscreen-hide after the intro window
+  setTimeout(endBootHold, 5000);
   if (store.hooks) writeHooks(true); // refresh the hook path, e.g. after an update moved the app
   if (store.cursorHooks) writeCursorHooks(true);
   // a display that went away or changed: put the island back on the display it overlaps most (or the nearest)
-  const replace = () => place(screen.getDisplayMatching(win.getBounds()));
+  const replace = () => alive() && place(screen.getDisplayMatching(win.getBounds()));
   screen.on('display-removed', replace);
   screen.on('display-metrics-changed', replace);
   // explicit user action: shows the island even over a fullscreen app
@@ -604,11 +651,30 @@ app.whenReady().then(() => {
   hotkey = ['Control+Alt+Space', 'Control+Alt+K'].find((k) => globalShortcut.register(k, showNow)) ?? null;
   tray.setToolTip(hotkey ? `Nikki (${hotkey.replace('Control', 'Strg').replace('Space', 'Leertaste')})` : 'Nikki');
 });
+app.on('before-quit', () => {
+  quitting = true;
+  clearInterval(cursorTimer);
+  cursorTimer = null;
+});
 app.on('will-quit', () => {
+  quitting = true;
+  clearInterval(cursorTimer);
+  cursorTimer = null;
   agents.claude.stop();
   agents.cursor.stop();
   agents.cursor.dispose?.();
   agents.gemini.stop();
-  fullscreenWatcher?.kill();
+  try {
+    fullscreenWatcher?.stdout?.removeAllListeners('data');
+    fullscreenWatcher?.kill();
+  } catch {}
+  try {
+    hookServer?.close();
+  } catch {}
   globalShortcut.unregisterAll();
+});
+// last resort: swallow the known destroy race on exit (dialog would outlive the app)
+process.on('uncaughtException', (err) => {
+  if (quitting && /has been destroyed/i.test(String(err?.message ?? err))) return;
+  console.error(err);
 });
