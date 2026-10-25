@@ -1420,13 +1420,32 @@ api.onPermissionCancel((id) => {
   if (!perms.length && lastStatus.state === 'needsYou') show({ state: 'working', text: 'Nikki macht weiter…' });
 });
 
+const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Coucou-shaped launch: notch → wide island → Nikki drops, waves, settles. Once per start. */
+async function runBootIntro(bar) {
+  if (reduceMotion) {
+    island.classList.remove('boot', 'greeting');
+    await bar.playIntro?.();
+    return;
+  }
+  island.classList.remove('boot');
+  island.classList.add('greeting');
+  await waitMs(360);
+  await bar.playIntro?.();
+  island.classList.remove('greeting');
+  await waitMs(320);
+}
+
 (async () => {
-  const bar = createCompanion({ walker: $('walker'), stage: $('stage'), island, mode: 'bar' });
+  const bar = createCompanion({ walker: $('walker'), stage: $('stage'), island, mode: 'bar', hold: true });
   mountNikkiBlob($('homeWalker'));
   mountNikkiBlob($('chatWalker'));
   const home = createCompanion({ walker: $('homeWalker'), stage: $('homeStage'), island, mode: 'blob' });
   const chat = createCompanion({ walker: $('chatWalker'), stage: $('chatStage'), island, mode: 'blob', pinned: true });
   buddies = [bar, home, chat];
+
+  await runBootIntro(bar);
 
   const state = await api.getState();
   projects = state.projects;

@@ -2,7 +2,7 @@
 // Body in profile (flipped to face the walking direction), face turned to the viewer.
 // GSAP drives everything that reacts (walk cycle, poses, idle habits, state behaviour);
 // CSS drives what is predetermined (blinking, zzz). Every SVG pivot is in viewBox units (64 x 56); the cat is drawn chibi-style so it reads at 40px in the bar and ~53px when the island is open.
-window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned = false }) {
+window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned = false, hold = false }) {
   const blob = mode === 'blob';
   const stay = pinned || mode === 'pinned'; // stay centered; no horizontal roam (chat side field)
   const sizer = walker.querySelector('.sizer') || walker.querySelector('#sizer');
@@ -472,8 +472,75 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
     pose('sit', 0);
     startBlobIdle();
     wait = gsap.delayedCall(3.5 + Math.random() * 2, wander);
+  } else if (hold) {
+    // parked above the bar until playIntro() — Coucou-style drop-in
+    gsap.set(walker, { autoAlpha: 0 });
+    gsap.set(all, { y: -38, scaleX: 0.55, scaleY: 0.12 });
   } else wander();
-  return { setState, lookAt, pose, habits, mode, pinned: stay };
+
+  /** Launch greeting: drop → bounce → side wave → settle. Bar companion only. */
+  function playIntro() {
+    if (blob || stay) return Promise.resolve();
+    wait?.kill();
+    tween?.kill();
+    walking(false);
+    habitTl?.kill();
+    if (still) {
+      gsap.set(walker, { autoAlpha: 1 });
+      gsap.set(all, { y: 0, scaleX: 1, scaleY: 1, rotation: 0 });
+      pos.x = maxX() / 2;
+      place();
+      wander();
+      return Promise.resolve();
+    }
+    const mid = Math.max(0, maxX() / 2);
+    const side = Math.max(0, maxX() * 0.1);
+    pos.x = mid;
+    place();
+    gsap.set(face, { scaleX: 1 });
+    gsap.set(walker, { autoAlpha: 1 });
+    return new Promise((resolve) => {
+      gsap
+        .timeline({
+          onComplete: () => {
+            armSleep();
+            wander();
+            resolve();
+          },
+        })
+        .fromTo(
+          all,
+          { y: -40, scaleX: 0.55, scaleY: 0.12 },
+          { y: 0, scaleX: 1, scaleY: 1, duration: 0.42, ease: 'back.out(1.6)' },
+        )
+        .to(all, { scaleY: 0.78, scaleX: 1.14, duration: 0.1, ease: 'power2.out' })
+        .to(all, { scaleY: 1.1, scaleX: 0.92, y: -5, duration: 0.18, ease: 'power2.out' })
+        .to(all, { scaleY: 1, scaleX: 1, y: 0, duration: 0.42, ease: 'elastic.out(1, 0.45)' })
+        .add(() => mood('happy', 2600))
+        .add(() => {
+          gsap.set(face, { scaleX: side < mid ? -1 : 1 });
+          walking(true);
+        })
+        .to(pos, { x: side, duration: 0.55, ease: 'power2.inOut', onUpdate: place })
+        .add(() => walking(false))
+        .add(() => walker.classList.add('meow'))
+        .to(head, { rotation: -14, duration: 0.12, ease: 'power2.out' })
+        .to(head, { rotation: 10, duration: 0.14 })
+        .to(head, { rotation: -12, duration: 0.12 })
+        .to(head, { rotation: 0, duration: 0.24, ease: 'power2.out' })
+        .add(() => walker.classList.remove('meow'))
+        .add(() => {
+          gsap.set(face, { scaleX: 1 });
+          walking(true);
+        }, '+=0.12')
+        .to(pos, { x: mid, duration: 0.55, ease: 'power2.inOut', onUpdate: place })
+        .add(() => walking(false))
+        .to(tail, { rotation: 22, duration: 0.2, ease: 'power2.out' })
+        .to(tail, { rotation: 0, duration: 0.45, ease: 'power2.inOut' });
+    });
+  }
+
+  return { setState, lookAt, pose, habits, mode, pinned: stay, playIntro };
 };
 
 /** Clone bar Nikki SVG into a blob stage walker (Home / Chat). */
