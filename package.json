@@ -1,0 +1,57 @@
+{
+  "name": "desktopcompanion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Notch companion that runs tasks through logged-in Claude Code or Cursor CLI (no API key)",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "electron-builder --win",
+    "pack": "electron-builder --win --dir"
+  },
+  "build": {
+    "appId": "local.nikki",
+    "productName": "Nikki",
+    "asar": false,
+    "directories": {
+      "output": "."
+    },
+    "files": [
+      "**/*",
+      "!**/*.test.js",
+      "!dist/**",
+      "!win-unpacked/**",
+      "!graphify-out/**",
+      "!updater/**",
+      "!*.exe",
+      "!*.blockmap",
+      "!builder-*.yml",
+      "!latest.yml",
+      "!node_modules/@anthropic-ai/claude-agent-sdk-win32-x64/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "artifactName": "Nikki-Setup.${ext}",
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "shortcutName": "Nikki",
+      "runAfterFinish": true
+    }
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.308",
+    "dompurify": "^3.4.17",
+    "gsap": "^3.15.0",
+    "marked": "^18.1.1"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3"
+  }
+}

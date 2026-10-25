@@ -1,0 +1,12 @@
+node_modules/
+dist/
+win-unpacked/
+graphify-out/
+*.exe
+!Updater.exe
+*.blockmap
+builder-*.yml
+latest.yml
+*.log
+.DS_Store
+Thumbs.db
