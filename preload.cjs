@@ -18,17 +18,18 @@ contextBridge.exposeInMainWorld('companion', {
   // answer: { answer: 'allow' | 'always' | 'deny', picks?: string[][], message?: string, interrupt?: boolean }
   answerPermission: (id, answer) => ipcRenderer.send('permission-answer', { id, ...answer }),
   setClickThrough: (on) => ipcRenderer.send('click-through', on),
-  setMuted: (muted) => ipcRenderer.send('set-muted', muted),
+  settingsGet: () => ipcRenderer.invoke('settings-get'),
+  // returns all settings again, plus error: 'taken' | 'invalid' when a hotkey did not take
+  settingsSet: (key, value) => ipcRenderer.invoke('settings-set', key, value),
   focus: () => ipcRenderer.send('focus'),
   openExternal: (url) => ipcRenderer.send('open-external', url),
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
   onTerminal: on('terminal'),
-  onMuted: on('muted'),
   onStatus: on('status'),
   onSession: on('session'),
   onPermissionRequest: on('permission-request'),
   onPermissionCancel: on('permission-cancel'),
   onToggle: on('toggle'),
-  onShow: on('show'),
+  onShow: on('show'), // data: the page to open on, or undefined
   onPointer: on('pointer'), // mouse position for the eyes and click-through, { x, y } window-relative
 });

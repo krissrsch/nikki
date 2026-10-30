@@ -43,8 +43,8 @@ function findClaude(again = false) {
       );
   return claudeLookup;
 }
-const WIDTH = 760; // expanded island width; height stays compact
-const HEIGHT = 320; // fixed open island (panel 228px + bar + shadow)
+const WIDTH = 760; // open island (720) + room for its shadow
+const HEIGHT = 600; // the open island grows with its page up to ~550; the rest of the window lets clicks through
 
 // Usage must run on the user's own subscription, never on an API key or another endpoint that happens to be set (N10).
 delete process.env.ANTHROPIC_API_KEY;
@@ -61,6 +61,9 @@ let store = {
   lastChatId: null,
   muted: false,
   hooks: false,
+  hotkey: null, // null: the first free default
+  sleepMin: 5, // minutes without activity until Nikki falls asleep in the notch
+  showBranch: true,
 };
 let storeNotice = null; // shown once the app is ready
 let storeWritable = true; // never overwrite a state.json we could not read: that is how chats got lost (H2)
@@ -235,7 +238,8 @@ function applyVisibility() {
     if (!show && win.isVisible()) win.hide();
   } catch {}
 }
-function showNow() {
+// view: the page the island opens on (tray "Einstellungen"), else it keeps the last one
+function showNow(view) {
   if (!alive()) return;
   try {
     userHidden = false;
@@ -247,7 +251,7 @@ function showNow() {
     return;
   }
   // Always expand — toggle would collapse an already-open island (tray / hotkey / toast)
-  send('show');
+  send('show', view);
 }
 
 // Asks Windows itself whether a fullscreen app runs (SHQueryUserNotificationState), once a second.
@@ -316,11 +320,28 @@ ipcMain.handle('branch', (_e, cwd) =>
 ipcMain.on('click-through', (_e, on) => alive() && win.setIgnoreMouseEvents(on, { forward: true }));
 // never steal focus from a fullscreen app or while hidden (B9)
 ipcMain.on('focus', () => alive() && win.isVisible() && fullscreen === false && win.focus());
-ipcMain.on('set-muted', (_e, muted) => {
-  store.muted = !!muted;
+// --- settings page in the island; every setter returns the whole set again (+ error for a hotkey that did not take)
+const settings = async () => ({
+  autostart: app.getLoginItemSettings().openAtLogin,
+  autostartAvailable: app.isPackaged, // in dev this would register electron.exe
+  hotkey,
+  muted: !!store.muted,
+  sleepMin: store.sleepMin,
+  hooks: !!store.hooks,
+  claudePath: await findClaude(),
+  showBranch: store.showBranch !== false,
+});
+ipcMain.handle('settings-get', settings);
+ipcMain.handle('settings-set', async (_e, key, value) => {
+  let error = null;
+  if (key === 'autostart' && app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!value });
+  else if (key === 'hotkey') error = setHotkey(String(value));
+  else if (key === 'muted') store.muted = !!value;
+  else if (key === 'sleepMin') store.sleepMin = Math.min(120, Math.max(1, Math.round(Number(value)) || 5));
+  else if (key === 'hooks') await setHooks(!!value);
+  else if (key === 'showBranch') store.showBranch = !!value;
   save();
-  send('muted', store.muted);
-  createTray();
+  return { ...(await settings()), error };
 });
 ipcMain.handle('get-state', async () => ({
   ...store,
@@ -484,7 +505,7 @@ async function refreshHooks() {
   if (!present) {
     store.hooks = false;
     save();
-    return createTray();
+    return;
   }
   const node = await findNode();
   if (node) writeHooks((s) => withHooks(s, hookCommand(node)));
@@ -502,7 +523,6 @@ async function setHooks(on) {
     terminal = new Map();
     send('terminal', { sessions: [] });
   }
-  createTray();
 }
 
 // `Nikki.exe --remove-hooks` (run by the uninstaller, installer.nsh): take our hooks out of the user's settings and exit,
@@ -529,12 +549,29 @@ if (!firstInstance || quitRequest) app.quit();
 app.on('second-instance', (_e, argv) => (argv.includes('--quit') ? app.quit() : alive() && showNow()));
 
 let tray; // module-level so it isn't garbage-collected
-let hotkey;
-function createTray() {
-  if (!tray) {
-    tray = new Tray(nativeImage.createFromPath(path.join(dir, 'assets', 'icon.png')).resize({ width: 16, height: 16 }));
-    tray.on('click', showNow);
+let hotkey = null;
+const hotkeyTip = () => tray?.setToolTip(hotkey ? `Nikki (${hotkey.replace('Control', 'Strg').replace('Space', 'Leertaste')})` : 'Nikki');
+// register() is false when another app holds the combo, and throws for one Electron cannot parse
+function register(acc) {
+  try {
+    return globalShortcut.register(acc, () => showNow());
+  } catch {
+    return null;
   }
+}
+// The new combo is taken first; only then the old one is let go, so a conflict never leaves Nikki without a hotkey.
+function setHotkey(acc) {
+  if (acc === hotkey) return null;
+  const ok = register(acc);
+  if (!ok) return ok === null ? 'invalid' : 'taken';
+  if (hotkey) globalShortcut.unregister(hotkey);
+  hotkey = store.hotkey = acc;
+  hotkeyTip();
+  return null;
+}
+function createTray() {
+  tray = new Tray(nativeImage.createFromPath(path.join(dir, 'assets', 'icon.png')).resize({ width: 16, height: 16 }));
+  tray.on('click', () => showNow());
   tray.setContextMenu(
     Menu.buildFromTemplate([
       {
@@ -547,25 +584,7 @@ function createTray() {
           if (!userHidden && !win.isVisible()) showNow();
         },
       },
-      { type: 'separator' },
-      {
-        label: 'Töne',
-        type: 'checkbox',
-        checked: !store.muted,
-        click: (item) => {
-          store.muted = !item.checked;
-          save();
-          send('muted', store.muted);
-        },
-      },
-      {
-        label: 'Mit Windows starten',
-        type: 'checkbox',
-        enabled: app.isPackaged, // in dev this would register electron.exe
-        checked: app.getLoginItemSettings().openAtLogin,
-        click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked }),
-      },
-      { label: 'Claude Terminal-Sessions', type: 'checkbox', checked: store.hooks, click: (item) => setHooks(item.checked) },
+      { label: 'Einstellungen', click: () => showNow('settings') },
       { type: 'separator' },
       { label: 'Beenden', click: () => app.quit() },
     ]),
@@ -589,9 +608,9 @@ app.whenReady().then(() => {
   screen.on('display-removed', replace);
   screen.on('display-metrics-changed', replace);
   // explicit user action: shows the island even over a fullscreen app
-  // Ctrl+Alt+Space is often taken (e.g. by Claude Desktop): fall back to Ctrl+Alt+K.
-  hotkey = ['Control+Alt+Space', 'Control+Alt+K'].find((k) => globalShortcut.register(k, showNow)) ?? null;
-  tray.setToolTip(hotkey ? `Nikki (${hotkey.replace('Control', 'Strg').replace('Space', 'Leertaste')})` : 'Nikki');
+  // the user's own combo first; Ctrl+Alt+Space is often taken (Claude Desktop, Developer Island): fall back to Ctrl+Alt+K
+  hotkey = [store.hotkey, 'Control+Alt+Space', 'Control+Alt+K'].find((k) => k && register(k)) ?? null;
+  hotkeyTip();
   if (storeNotice) dialog.showMessageBox({ type: 'warning', title: 'Nikki', message: storeNotice }).catch(() => {});
   // settings files last: a locked one must not cost the hotkey (M8)
   if (store.hooks) refreshHooks();

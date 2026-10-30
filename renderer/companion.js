@@ -1,4 +1,4 @@
-// The companion: a white cat with black spots living in the island's #stage.
+// The companion: a white cat with black spots, sitting next to the greeting on Home (a placeholder until phase 4).
 // Body in profile (flipped to face the walking direction), face turned to the viewer.
 // GSAP drives everything that reacts (walk cycle, poses, idle habits, state behaviour);
 // CSS drives what is predetermined (blinking, zzz). Every SVG pivot is in viewBox units (64 x 56); the cat is drawn chibi-style so it reads at 40px in the bar and ~53px when the island is open.
@@ -551,14 +551,3 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
   return { setState, lookAt, pose, habits, mode, pinned: stay, playIntro, walkToHome, settleIdle, release };
 };
 
-/** Clone bar Nikki SVG into a blob stage walker (Home / Chat). */
-window.mountNikkiBlob = function (walkerEl) {
-  const src = document.querySelector('#walker #sizer');
-  if (!src || !walkerEl) return null;
-  const sizer = src.cloneNode(true);
-  sizer.classList.add('sizer');
-  sizer.removeAttribute('id');
-  sizer.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
-  walkerEl.replaceChildren(sizer);
-  return walkerEl;
-};

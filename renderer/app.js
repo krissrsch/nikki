@@ -29,9 +29,15 @@ function modelOf(cwd) {
 const modelLabel = (v = model) => MODELS.find(([id]) => id === v)?.[1] ?? (v || 'Standard');
 let claudeFound = true;
 let muted = false;
+let sleepMin = 5; // settings: minutes until Nikki falls asleep in the notch
+let showBranch = true;
+let settings = {};
 let terminal = []; // Claude Code sessions started in a terminal, reported by hooks
 let focusSession = null; // observed session id pinned by tapping a session pill
-let buddies = []; // bar + Home/Chat Nikki blobs; state syncs to all
+let unseen = null; // 'done' | 'error' of our own task, until the chat was looked at
+let lastActivity = Date.now();
+let hover = false; // pointer over the island: Nikki wakes up
+let buddies = []; // Home Nikki; state syncs to it
 const buddyEmit = (fn, ...args) => buddies.forEach((b) => b[fn]?.(...args));
 const modelMenu = $('modelMenu');
 const chatsMenu = $('chatsMenu');
@@ -48,38 +54,65 @@ async function rememberLastChat(id) {
   await api.setLastChat?.(lastChatId);
 }
 let view = 'home';
+const VIEWS = { home: 'viewHome', chat: 'viewChat', settings: 'viewSettings' };
 
 function setView(name) {
-  // Permission card lives in Chat — never leave Home while a prompt is waiting
-  view = perms.length || name === 'chat' ? 'chat' : 'home';
+  // Permission card lives in Chat — never leave it while a prompt is waiting
+  view = perms.length ? 'chat' : VIEWS[name] ? name : 'home';
   document.body.dataset.view = view;
-  $('viewHome').hidden = view !== 'home';
-  $('viewChat').hidden = view !== 'chat';
-  for (const btn of document.querySelectorAll('#nav .navBtn')) {
+  for (const [v, id] of Object.entries(VIEWS)) $(id).hidden = v !== view;
+  for (const btn of document.querySelectorAll('#tabs .tab')) {
     btn.setAttribute('aria-pressed', String(btn.dataset.view === view));
   }
   if (view === 'chat' && open) promptEl.focus();
+  if (view === 'settings') api.settingsGet().then(applySettings); // autostart or the Claude path may have changed outside
+  renderState();
 }
 
-function setMuted(v) {
-  muted = !!v;
-  $('muteBtn').setAttribute('aria-pressed', String(muted));
-  $('muteBtn').title = muted ? 'Töne an' : 'Töne aus';
-  $('muteBtn').setAttribute('aria-label', muted ? 'Töne an' : 'Töne aus');
+const STATE_LABEL = { needsYou: 'braucht dich', working: 'arbeitet', thinking: 'denkt', done: 'fertig', error: 'Fehler', idle: 'wartet' };
+// a finished or failed task counts until the chat was looked at; then our own session just waits
+const ownState = () => (['done', 'error'].includes(lastStatus.state) && !unseen ? 'idle' : lastStatus.state);
+function sessionDot(state) {
+  const d = document.createElement('span');
+  d.className = 'sDot';
+  d.dataset.state = state;
+  return d;
 }
 
-function syncHome() {
-  const s = shown();
-  let title = 'Claude';
-  if (s.observed) {
-    const pinned = focusSession && terminal.find((t) => t.id === focusSession);
-    const urgent = terminal.filter((t) => RANK[t.state]).sort((a, b) => RANK[b.state] - RANK[a.state])[0];
-    const t = pinned || urgent;
-    if (t) title = folderName(t.cwd) || title;
+// Home "Heute": greeting + the Claude tile (status only; the chat lives in its own tab)
+function renderHome() {
+  const now = new Date();
+  const h = now.getHours();
+  $('greet').textContent = h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
+  $('today').textContent = now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const rows = [
+    ...(current ? [{ name: folderName(current), state: ownState(), title: current }] : []),
+    ...[...terminal]
+      .sort((a, b) => (RANK[b.state] || 0) - (RANK[a.state] || 0) || b.at - a.at)
+      .map((t) => ({ name: `${folderName(t.cwd)} · Terminal`, state: t.state || 'idle', title: t.cwd })),
+  ];
+  $('claudeMeta').textContent = rows.length === 1 ? '1 Session' : `${rows.length} Sessions`;
+  const nodes = rows.slice(0, 3).map((r) => {
+    const row = document.createElement('div');
+    row.className = 'sRow';
+    row.title = r.title;
+    const name = document.createElement('span');
+    name.className = 'sName';
+    name.textContent = r.name;
+    const state = document.createElement('span');
+    state.className = 'sState';
+    state.dataset.state = r.state;
+    state.textContent = STATE_LABEL[r.state] ?? r.state;
+    row.append(sessionDot(r.state), name, state);
+    return row;
+  });
+  if (!nodes.length) {
+    const empty = document.createElement('p');
+    empty.className = 'tileHint';
+    empty.textContent = 'Noch kein Projekt. Im Chat wählst du eins.';
+    nodes.push(empty);
   }
-  $('homeTitleText').textContent = title;
-  const ready = !busy && !perms.length && !s.observed && (s.state === 'idle' || !s.state || s.state === 'done');
-  $('homeSub').textContent = ready ? s.text || 'Nikki wartet…' : s.text || 'Nikki arbeitet…';
+  $('claudeSessions').replaceChildren(...nodes);
 }
 
 const folderName = (p) => {
@@ -111,22 +144,82 @@ function shown() {
   // folder lives on the session pill — don't repeat it in the status text
   if (focusSession) {
     const pinned = terminal.find((x) => x.id === focusSession);
-    if (pinned) return { state: pinned.state, text: pinned.text, observed: true };
+    if (pinned) return { state: pinned.state, text: pinned.text, cwd: pinned.cwd, observed: true };
   }
   const t = terminal.filter((x) => RANK[x.state]).sort((a, b) => RANK[b.state] - RANK[a.state])[0];
-  return t ? { state: t.state, text: t.text, observed: true } : lastStatus;
+  return t ? { state: t.state, text: t.text, cwd: t.cwd, observed: true } : lastStatus;
 }
 let shownState;
 function renderState() {
   const s = shown();
   document.body.dataset.state = s.state;
-  let text = s.text;
-  if (s === lastStatus && s.state === 'done' && !open) text = 'Nikki fertig – tippen.';
-  else if (!busy && !perms.length && !s.observed && (s.state === 'idle' || !s.state)) text = s.text || 'Nikki wartet…';
-  $('statusText').textContent = text;
   if (s.state !== shownState) buddyEmit('setState', s.state);
   shownState = s.state;
-  syncHome();
+  if (open && view === 'chat') unseen = null; // looked at
+  renderHome();
+  renderGlance();
+  renderChatDot();
+  renderSessionPills();
+}
+
+// ---- closed notch: glance() (glance.js) ranks what shows; this only paints it
+const MOOD_LABEL = { sleep: 'Nikki schläft', awake: 'Nikki ist wach', work: 'Nikki schaut zu', need: 'Nikki braucht dich', done: 'Nikki ist zufrieden', music: 'Nikki tanzt zur Musik' };
+const GLANCE_ICON = {
+  check: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>',
+  calendar: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>',
+  volume: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></svg>',
+  file: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z" /><path d="M14 3v4h4" /></svg>',
+};
+function glanceSide(el, info) {
+  el.className = `side${info?.tone ? ` ${info.tone}` : ''}`;
+  el.title = info?.text ?? '';
+  el.replaceChildren();
+  if (!info) return;
+  const part = (cls) => el.appendChild(Object.assign(document.createElement('span'), { className: cls }));
+  if (info.icon === 'dot' || info.icon === 'spin') part(`g-${info.icon}`);
+  if (info.icon === 'cover' || info.icon === 'music') {
+    const c = part('g-cover');
+    if (info.cover) c.style.backgroundImage = `url("${info.cover}")`;
+  }
+  if (GLANCE_ICON[info.icon]) el.insertAdjacentHTML('beforeend', GLANCE_ICON[info.icon]);
+  if (info.icon === 'viz' || info.icon === 'music') for (let i = 0; i < (info.icon === 'viz' ? 4 : 3); i++) part('g-bar');
+  if (info.icon === 'level') part('g-level').appendChild(document.createElement('span')).style.width = `${Math.round((info.level ?? 0) * 100)}%`;
+  if (info.text) part('g-text').textContent = info.text;
+}
+let glanceKey = '';
+function renderGlance() {
+  const s = shown();
+  const cmd = perms[0]?.input?.command; // own approval: the command says more than "Nikki will OK!"
+  const cwd = s.observed ? s.cwd : current;
+  const g = glance({
+    status: s.observed ? s.state : ownState(),
+    text: cmd ? `${String(cmd).split('\n')[0]}?` : s.text,
+    project: cwd ? folderName(cwd) : '',
+    lastActivity,
+    hover,
+    sleepMin,
+  });
+  const key = JSON.stringify(g);
+  if (key === glanceKey) return;
+  glanceKey = key;
+  island.dataset.mood = g.mood;
+  island.classList.toggle('wide', g.wide);
+  glanceSide($('glanceL'), g.left);
+  glanceSide($('glanceR'), g.right);
+  $('notch').setAttribute('aria-label', [MOOD_LABEL[g.mood], g.left?.text, g.right?.text].filter(Boolean).join(', '));
+}
+setInterval(renderGlance, 10 * 1000); // falling asleep needs no event
+const touch = () => (lastActivity = Date.now());
+
+// ---- chat tab dot: yellow needs you, red error, green done / new answer
+const DOT_LABEL = { warn: 'Claude braucht dich', bad: 'Fehler', accent: 'neue Antwort' };
+function renderChatDot() {
+  const needsYou = !!perms.length || lastStatus.state === 'needsYou' || terminal.some((t) => t.state === 'needsYou');
+  const tone = chatDot({ needsYou, unseen, terminalDone: terminal.some((t) => t.state === 'done') });
+  const dot = $('chatDot');
+  dot.hidden = !tone;
+  dot.dataset.tone = tone ?? '';
+  dot.parentElement.setAttribute('aria-label', tone ? `Chat, ${DOT_LABEL[tone]}` : 'Chat');
 }
 
 // ---- sounds: synthesized in-app (no files, no Windows system sounds)
@@ -223,6 +316,9 @@ document.addEventListener('pointerdown', () => ensureAudio(), { once: true });
 function show(s) {
   if (s.state !== lastStatus.state && (s.state === 'needsYou' || s.state === 'done')) chime(s.state);
   lastStatus = s;
+  touch();
+  if (s.state === 'done' || s.state === 'error') unseen = s.state;
+  else if (s.state !== 'idle') unseen = null; // a new turn: the old result is no news anymore
   if (s.state === 'thinking') setStepLine(s.text || 'Nikki denkt…');
   else if (s.state === 'working') setStepLine(s.text || 'Nikki arbeitet…');
   else if (s.state === 'needsYou') setStepLine(s.text || 'Nikki braucht dich!');
@@ -259,11 +355,10 @@ function show(s) {
 
 function setStepLine(text) {
   const el = $('stepLine');
-  if (!el) return;
   const next = (text && String(text).trim()) || STEP_IDLE;
   el.textContent = next;
   el.title = next;
-  el.dataset.empty = String(next === STEP_IDLE);
+  el.dataset.empty = String(next === STEP_IDLE); // hidden while Nikki just waits
 }
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -614,7 +709,9 @@ function setOpen(v, { instant = false } = {}) {
     requestAnimationFrame(() => requestAnimationFrame(() => island.classList.remove('instant')));
   }
   island.classList.toggle('open', v);
-  $('pill').setAttribute('aria-expanded', String(v));
+  $('notch').setAttribute('aria-expanded', String(v));
+  fitIsland();
+  touch();
   renderState();
   if (!v) {
     closeMenu();
@@ -627,13 +724,20 @@ function setOpen(v, { instant = false } = {}) {
   }
 }
 
+// The open island has an explicit height so it can glide (CSS) to whatever the page needs; closed it is the notch.
+const panelBox = $('panelBox');
+function fitIsland() {
+  island.style.height = open ? `${panelBox.offsetHeight}px` : '';
+}
+new ResizeObserver(fitIsland).observe(panelBox);
+
 // ---- branch of the selected project: on project switch and turn end only, no polling (M12)
 async function refreshBranch() {
   const cwd = current;
-  const name = cwd ? await api.branch(cwd).catch(() => null) : null;
+  const name = cwd && showBranch ? await api.branch(cwd).catch(() => null) : null;
   if (cwd !== current) return; // the project changed while git ran
-  $('branch').hidden = $('cardBranch').hidden = !name;
-  $('branchName').textContent = $('cardBranchName').textContent = name || '';
+  $('branch').hidden = !name;
+  $('branchName').textContent = name || '';
   $('branch').title = name ? `Branch: ${name}` : '';
 }
 
@@ -649,6 +753,7 @@ function selectProject(p) {
   setModel(MODELS.some(([v]) => v === saved) ? saved : null);
   if (!answer.textContent.trim() || answer.classList.contains('empty')) setEmptyAnswer();
   refreshBranch();
+  renderHome();
 }
 function renderMenu() {
   const items = projects.map((p) => {
@@ -686,11 +791,13 @@ function closeMenu() {
   menu.hidden = true;
   $('projectBtn').setAttribute('aria-expanded', 'false');
 }
-// ---- observed session pills
+// ---- session chips
 
+// chat header: our own project chip first (active unless a terminal session is pinned), then the observed sessions
 function renderSessionPills() {
+  $('ownDot').dataset.state = ownState();
+  $('projectBtn').setAttribute('aria-pressed', String(!focusSession));
   const box = $('sessionPills');
-  if (!box) return;
   const ranked = [...terminal]
     .filter((t) => t.state && t.state !== 'idle')
     .sort((a, b) => (RANK[b.state] || 0) - (RANK[a.state] || 0) || b.at - a.at)
@@ -705,21 +812,16 @@ function renderSessionPills() {
     ...ranked.map((t) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'sessionPill';
-      b.dataset.state = t.state;
+      b.className = 'chip';
       b.setAttribute('aria-pressed', String(t.id === focusSession));
       b.title = `beobachtet: ${t.cwd}\n${t.text}`;
-      b.innerHTML = '<span class="spDot"></span><span class="spLabel"></span>';
-      b.lastChild.textContent = folderName(t.cwd);
+      const label = document.createElement('span');
+      label.textContent = `${folderName(t.cwd)} · Terminal`;
+      b.append(sessionDot(t.state), label);
       b.addEventListener('click', (e) => {
         e.stopPropagation();
         focusSession = focusSession === t.id ? null : t.id;
-        renderSessionPills();
         renderState();
-        if (focusSession) {
-          setView('chat');
-          setOpen(true);
-        }
       });
       return b;
     }),
@@ -873,7 +975,7 @@ function renderPerm() {
     return;
   }
   if (wasHidden) reveal($('permission'), { transform: 'translateY(4px)' });
-  $('output').scrollTop = 0;
+  requestAnimationFrame(scrollChatToEnd); // the card sits inline, after the conversation
   if (r.toolName === 'AskUserQuestion') return renderQuestion(r);
   body.classList.remove('choiceRow');
   if (r.toolName === 'ExitPlanMode') return renderPlan(r);
@@ -882,11 +984,10 @@ function renderPerm() {
   code.className = 'detail';
   code.textContent = detail(r.input);
   body.replaceChildren(code);
-  // Coucou order: Deny · Allow (white) · Always
   $('permActions').replaceChildren(
-    button('Ablehnen', 'ghost', () => answerPerm({ answer: 'deny' })),
     button('Erlauben', 'primary', () => answerPerm({ answer: 'allow' })),
     button('Immer', 'soft', () => answerPerm({ answer: 'always' })),
+    button('Ablehnen', 'danger', () => answerPerm({ answer: 'deny' })),
   );
 }
 
@@ -949,7 +1050,8 @@ function renderPlan(r) {
   $('permTitle').textContent = 'Plan prüfen';
   $('permBody').replaceChildren(text, why);
   $('permActions').replaceChildren(
-    button('Ablehnen', 'ghost', () => {
+    button('Annehmen', 'primary', () => answerPerm({ answer: 'allow' })),
+    button('Ablehnen', 'danger', () => {
       const wish = why.value.trim();
       if (!wish) return answerPerm({ answer: 'deny', message: 'Plan abgelehnt, bitte überarbeiten.' });
       // a deny message reads like a tool error to the agent; the same words follow as a real user prompt
@@ -960,7 +1062,6 @@ function renderPlan(r) {
         message: `Plan abgelehnt. Der Nutzer möchte: „${wish}“. Er schickt dir das gleich als eigene Nachricht. Beende deinen Zug jetzt ohne weitere Schritte.`,
       });
     }),
-    button('Annehmen', 'primary', () => answerPerm({ answer: 'allow' })),
   );
 }
 
@@ -972,10 +1073,9 @@ function answerPerm(a) {
   if (!perms.length) show({ state: 'working', text: 'Nikki macht weiter…' });
 }
 
-// ---- terminal sessions: bar pills only (no Beobachtet list in chat)
+// ---- terminal sessions: chips in the chat header, rows on the Home tile
 function renderTerminal() {
   if (focusSession && !terminal.some((t) => t.id === focusSession)) focusSession = null;
-  renderSessionPills();
   renderState();
 }
 
@@ -999,24 +1099,95 @@ document.addEventListener('drop', (e) => {
 });
 
 // ---- wiring
-$('bar').addEventListener('click', (e) => {
-  if (e.target.closest('.iconBtn, .navBtn, .sessionPill, #nav, #sessionPills, #barActions')) return;
-  setOpen(!open);
+$('notch').addEventListener('click', () => setOpen(true));
+$('tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab');
+  if (btn) setView(btn.dataset.view);
+  else setOpen(false); // the empty strip closes the island, like the old bar did
 });
-$('nav').addEventListener('click', (e) => {
-  const btn = e.target.closest('.navBtn');
-  if (!btn) return;
-  e.stopPropagation();
-  setView(btn.dataset.view);
-  if (!open) setOpen(true);
-});
-$('muteBtn').addEventListener('click', (e) => {
-  e.stopPropagation();
-  api.setMuted(!muted);
-});
+$('toChat').addEventListener('click', () => setView('chat'));
 $('newBtn').addEventListener('click', () => setNewSession(!newSession));
 $('planBtn').addEventListener('click', () => setPlan(!plan));
-$('projectBtn').addEventListener('click', () => (menu.hidden ? openMenu() : closeMenu()));
+$('projectBtn').addEventListener('click', () => {
+  if (focusSession) {
+    focusSession = null; // back to our own session first
+    return renderState();
+  }
+  menu.hidden ? openMenu() : closeMenu();
+});
+
+// ---- settings page: main owns the values; every change comes back as the whole set
+function applySettings(s) {
+  settings = s;
+  muted = s.muted;
+  sleepMin = s.sleepMin;
+  if (showBranch !== s.showBranch) {
+    showBranch = s.showBranch;
+    refreshBranch();
+  }
+  $('setAutostart').checked = s.autostart;
+  $('setAutostart').disabled = !s.autostartAvailable;
+  $('autostartHint').hidden = s.autostartAvailable;
+  if (!capturing) $('setHotkey').textContent = hotkeyLabel(s.hotkey);
+  $('setSound').checked = !s.muted;
+  $('setSleep').value = s.sleepMin;
+  $('setHooks').checked = s.hooks;
+  $('setClaudePath').textContent = s.claudePath || 'nicht gefunden';
+  $('setClaudePath').title = s.claudePath || '';
+  $('setClaudePath').classList.toggle('bad', !s.claudePath);
+  $('setBranch').checked = s.showBranch;
+  renderGlance();
+}
+const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
+$('setAutostart').addEventListener('change', (e) => setSetting('autostart', e.target.checked));
+$('setSound').addEventListener('change', (e) => setSetting('muted', !e.target.checked));
+$('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.target.value)));
+$('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));
+$('setBranch').addEventListener('change', (e) => setSetting('showBranch', e.target.checked));
+
+// hotkey: click, then press the new combo; main keeps the old one when the new one is taken
+let capturing = false;
+const hotkeyBtn = $('setHotkey');
+const hotkeyMsg = (text, bad = false) => {
+  $('hotkeyMsg').textContent = text;
+  $('hotkeyMsg').classList.toggle('bad', bad);
+};
+function stopCapture() {
+  if (!capturing) return;
+  capturing = false;
+  removeEventListener('keydown', onHotkeyKey, true);
+  hotkeyBtn.setAttribute('aria-pressed', 'false');
+  hotkeyBtn.textContent = hotkeyLabel(settings.hotkey);
+}
+async function onHotkeyKey(e) {
+  e.preventDefault();
+  e.stopPropagation(); // Escape cancels here, it must not close the island
+  if (e.key === 'Escape') {
+    stopCapture();
+    return hotkeyMsg('');
+  }
+  const acc = acceleratorFor(e);
+  if (!acc) return; // modifiers alone so far, or a key that cannot be a hotkey
+  stopCapture();
+  const s = await api.settingsSet('hotkey', acc);
+  applySettings(s);
+  if (s.error === 'taken') hotkeyMsg(`${hotkeyLabel(acc)} ist schon belegt. Nikki bleibt bei ${hotkeyLabel(s.hotkey)}.`, true);
+  else if (s.error) hotkeyMsg(`${hotkeyLabel(acc)} kann Windows nicht belegen.`, true);
+  else hotkeyMsg(`Nikki hört jetzt auf ${hotkeyLabel(s.hotkey)}.`);
+}
+hotkeyBtn.addEventListener('click', () => {
+  if (capturing) return stopCapture();
+  capturing = true;
+  hotkeyBtn.setAttribute('aria-pressed', 'true');
+  hotkeyBtn.textContent = 'Drück die Tasten…';
+  hotkeyMsg('Esc bricht ab.');
+  addEventListener('keydown', onHotkeyKey, true);
+});
+hotkeyBtn.addEventListener('blur', () => {
+  if (!capturing) return;
+  stopCapture();
+  hotkeyMsg('');
+});
 $('chatsBtn')?.addEventListener('click', (e) => {
   e.stopPropagation();
   if (chatsMenu && !chatsMenu.hidden) closeChatsMenu();
@@ -1060,7 +1231,10 @@ addEventListener('keydown', (e) => {
 });
 
 api.onToggle(() => setOpen(!open, { instant: true }));
-api.onShow?.(() => setOpen(true, { instant: true }));
+api.onShow?.((page) => {
+  if (page) setView(page);
+  setOpen(true, { instant: true });
+});
 api.onStatus(show);
 api.onSession?.(({ id }) => {
   if (!id) return;
@@ -1068,18 +1242,21 @@ api.onSession?.(({ id }) => {
   if (chatId) persistChat();
 });
 api.onPointer(({ x, y }) => {
-  // boot: click-through ON — capturing the top strip made the mouse feel stuck
-  if (island.classList.contains('spawning') || island.classList.contains('settling')) {
-    setThrough(true);
-    return;
-  }
   buddyEmit('lookAt', x, y);
+  const over = document.elementFromPoint(x, y);
+  // the pointer over the notch wakes Nikki; while it rests there she stays awake
+  const nowOver = !!over?.closest('#island');
+  if (nowOver) touch();
+  if (nowOver !== hover) {
+    hover = nowOver;
+    renderGlance();
+  }
   // also during a drag from Explorer, where no mousemove arrives: catch the drop only over the island
-  setThrough(!document.elementFromPoint(x, y)?.closest('.hit'));
+  setThrough(!over?.closest('.hit'));
 });
-api.onMuted(setMuted);
 api.onTerminal(({ sessions, changed }) => {
   terminal = sessions;
+  if (changed) touch();
   renderTerminal();
   if (changed === 'needsYou' || changed === 'done') chime(changed);
 });
@@ -1103,71 +1280,12 @@ api.onPermissionCancel((id) => {
   if (!perms.length && lastStatus.state === 'needsYou') show({ state: 'working', text: 'Nikki macht weiter…' });
 });
 
-const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
-
-/** Slide Nikki's stage from center → home slot (horizontal only — vertical FLIP felt jumpy). */
-function settleStageHome(stageEl, home) {
-  if (reduceMotion || !stageEl) {
-    gsap.set(stageEl, { clearProps: 'transform' });
-    return home.walkToHome?.() ?? Promise.resolve();
-  }
-  const start = stageEl.getBoundingClientRect();
-  island.classList.remove('spawning');
-  island.classList.add('settling');
-  void island.offsetWidth;
-  const end = stageEl.getBoundingClientRect();
-  const dx = start.left - end.left;
-  gsap.set(stageEl, { x: dx, y: 0, transformOrigin: '50% 100%' });
-  home.walkToHome?.();
-  return new Promise((resolve) => {
-    gsap.to(stageEl, {
-      x: 0,
-      duration: 0.45,
-      ease: 'power2.inOut',
-      onComplete: () => {
-        gsap.set(stageEl, { clearProps: 'transform' });
-        resolve();
-      },
-    });
-  });
-}
-
-/** Launch: open → CSS flash + drop + meow → home slot. Canvas particles removed (stalled the mouse). */
-async function runBootIntro(home) {
-  island.classList.add('spawning');
-  setThrough(true); // never steal the mouse during boot
-  setOpen(true, { instant: true });
-  island.classList.remove('boot');
-  const finish = async () => {
-    if (reduceMotion) {
-      await home.playIntro?.({ onLand: meow });
-      island.classList.remove('spawning');
-      island.classList.add('settling');
-      await home.walkToHome?.();
-      return;
-    }
-    await waitMs(180);
-    await home.playIntro?.({ onLand: meow });
-    await settleStageHome($('homeStage'), home);
-  };
-  // GSAP/rAF freeze while the window is hidden (fullscreen game) — don't hang in spawning forever
-  await Promise.race([finish(), waitMs(2200)]);
-  home.walkToHome?.();
-  home.settleIdle?.();
-}
-
 (async () => {
-  const bar = createCompanion({ walker: $('walker'), stage: $('stage'), island, mode: 'bar', hold: true });
-  mountNikkiBlob($('homeWalker'));
-  mountNikkiBlob($('chatWalker'));
-  const home = createCompanion({ walker: $('homeWalker'), stage: $('homeStage'), island, mode: 'blob', hold: true });
-  // hold chat too — idle GSAP on a hidden walker stole frames during boot
-  const chat = createCompanion({ walker: $('chatWalker'), stage: $('chatStage'), island, mode: 'blob', pinned: true, hold: true });
-  buddies = [bar, home, chat];
+  buddies = [createCompanion({ walker: $('homeWalker'), stage: $('homeStage'), island, mode: 'blob', pinned: true })];
 
   setView('home');
   const state = await api.getState();
-  setMuted(state.muted); // before intro meow so mute is respected
+  applySettings(await api.settingsGet()); // before the hello meow so mute is respected
   projects = state.projects;
   models = state.models ?? {};
   terminal = state.terminal;
@@ -1184,13 +1302,11 @@ async function runBootIntro(home) {
     syncChatsBtn();
   }
 
-  // main keeps the window hidden while a fullscreen app runs: play the intro once it can be seen
+  // main keeps the window hidden while a fullscreen app runs: say hello once it can be seen
   while (document.visibilityState !== 'visible') await new Promise((r) => document.addEventListener('visibilitychange', r, { once: true }));
-  await runBootIntro(home);
-  island.classList.remove('spawning', 'settling'); // cards + copy fade in via CSS transition
-  await waitMs(reduceMotion ? 0 : 480);
-  bar.release?.();
-  chat.release?.();
+  island.classList.remove('boot'); // fades in from above, then opens on Home
+  setOpen(true);
+  meow();
 
   if (!claudeFound) {
     show({ state: 'error', text: 'Nikki findet Claude nicht.' });
