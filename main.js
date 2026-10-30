@@ -1129,7 +1129,7 @@ function setHotkey(acc) {
   return null;
 }
 function createTray() {
-  tray = new Tray(nativeImage.createFromPath(path.join(dir, 'assets', 'icon.png')).resize({ width: 16, height: 16 }));
+  tray = new Tray(nativeImage.createFromPath(path.join(dir, 'assets', 'tray.png')).resize({ width: 16, height: 16 }));
   tray.on('click', () => showNow());
   tray.setContextMenu(
     Menu.buildFromTemplate([

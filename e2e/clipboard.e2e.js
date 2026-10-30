@@ -35,9 +35,10 @@ describe('Zwischenablage', () => {
     // on the clipboard as Nikki is switched on: a copy a password manager marked as not for monitors
     setClipboardText(SECRET, { exclude: true });
     await s.click('#mod-clipboard');
-    await page.waitForSelector('#moduleTabs .tab[data-view="clipboard"]');
+    await page.waitForSelector('#moduleTabs .tab[data-view="clipboard"]', { state: 'attached' });
     await page.waitForTimeout(1500); // one look at the marked copy
     setClipboardText(FIRST);
+    await page.click('#notch');
     await page.click('#tabs .tab[data-view="clipboard"]');
     await page.waitForSelector(`.clipText:text-is("${FIRST}")`);
     setClipboardText(SECOND);
