@@ -1,5 +1,5 @@
 // Kalender (plan 3.3), local only: month with "+" next to its name, the chosen day's appointments below each other,
-// glance "Termin in < 15 min" and one toast + chime 15 min before. Data: { events: [{ id, title, at, dur (min), reminded? }] }
+// one toast + chime 15 min before. Data: { events: [{ id, title, at, dur (min), reminded? }] }
 const CAL_REMIND_MS = 15 * 60 * 1000;
 
 // ---- pure, tested in modules.test.js
@@ -15,7 +15,7 @@ function calMonth(year, month) {
   return [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
 }
 const calOnDay = (events, key) => events.filter((e) => calDayKey(e.at) === key).sort((a, b) => a.at - b.at);
-// what comes next (already started ones are over for the glance), soonest first
+// what comes next (already started ones are over), soonest first
 const calUpcoming = (events, now) => events.filter((e) => e.at >= now).sort((a, b) => a.at - b.at);
 // due for the one reminder: starts within 15 min and was not announced yet
 const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now && e.at - now <= CAL_REMIND_MS);
@@ -168,7 +168,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
       ctx.chime('needsYou');
       ctx.save(data);
     }
-    ctx.changed(); // "in 12 min" on the tile and in the notch
+    ctx.changed(); // "in 12 min" on the tile
   }
 
   registerModule({
@@ -205,6 +205,5 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
         h('span', { className: 'tileSub' }, after ? `Danach ${calDayKey(after.at) === calDayKey(next.at) ? '' : `${dayWord(after.at, now)} `}${time(after.at)} ${after.title}` : 'Danach ist frei.'),
       );
     },
-    glance: () => ({ event: calUpcoming(data.events, Date.now())[0] ?? null }),
   });
 })();

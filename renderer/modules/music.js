@@ -1,6 +1,6 @@
 // Musik (plan 3.2): what Windows plays (SMTC through helper/NikkiHelper.exe, which main runs while this module is on).
 // Page: cover, title, artist · app, progress, back/play/next, volume. Tile: cover, title, progress, play.
-// Closed notch: while something plays, cover + visualizer and Nikki's eyes dance; a volume change from outside shows for 2 s.
+// Closed notch: while something plays, Nikki's eyes dance and the glow shows its music edge.
 // No data of its own: main sends media and volume as they change (null: nothing plays, or no helper).
 
 // ---- pure, tested in modules.test.js
@@ -35,9 +35,7 @@ function musicApp(id) {
   const ICON_MUTED = '<svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="m16 9 5 5M21 9l-5 5" /></svg>';
   let media = null;
   let vol = null;
-  let peek = null; // { icon, text, right, until } for the closed notch, after a volume change from outside
-  let peekEnd;
-  let ownVolAt = 0; // our own slider: no peek, and incoming levels do not fight the drag
+  let ownVolAt = 0; // our own slider: incoming levels do not fight the drag
   let ctx;
   let root;
   let tick;
@@ -133,11 +131,6 @@ function musicApp(id) {
     if (!ctx) return;
     if (!before || !v) return render(); // the slider comes or goes
     paintVolume();
-    if ((before.level === v.level && before.muted === v.muted) || Date.now() - ownVolAt < 1500) return;
-    peek = { icon: 'volume', text: v.muted ? 'stumm' : `${v.level} %`, right: { icon: 'level', level: v.muted ? 0 : v.level / 100 }, until: Date.now() + 2000 };
-    ctx.notch();
-    clearTimeout(peekEnd);
-    peekEnd = setTimeout(() => ctx?.notch(), 2050);
   });
 
   registerModule({
@@ -151,8 +144,7 @@ function musicApp(id) {
     },
     stop() {
       clearInterval(tick);
-      clearTimeout(peekEnd);
-      ctx = root = peek = null;
+      ctx = root = null;
     },
     page(el) {
       root = el;
@@ -170,9 +162,6 @@ function musicApp(id) {
       );
       paint();
     },
-    glance: () => ({
-      ...(media && { music: { title: media.title, cover: media.cover || null, playing: playing() } }),
-      ...(peek && { peek }),
-    }),
+    glance: () => ({ music: { playing: playing() } }),
   });
 })();

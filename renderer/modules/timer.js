@@ -1,5 +1,5 @@
-// Timer (plan 3.7): Pomodoro 5/15/25 min. Runs on while the island is closed, the closed notch shows the countdown;
-// chime and toast at the end. Data: { preset (min), endsAt: ts while it runs | null, left: ms while paused | null }
+// Timer (plan 3.7): Pomodoro 5/15/25 min. Runs on while the island is closed; chime and toast at the end.
+// Data: { preset (min), endsAt: ts while it runs | null, left: ms while paused | null }
 
 // ---- pure, tested in modules.test.js
 function timerLeft(t, now) {
@@ -37,9 +37,9 @@ function timerText(ms) {
     save();
     render();
   }
-  // every second while it runs: the numbers on page and tile, the ring, the notch; at zero chime and toast
+  // every second while it runs: the numbers on page and tile, the ring; at zero chime and toast
   function step() {
-    if (timerLeft(t, Date.now()) > 0) return paint(), ctx.notch();
+    if (timerLeft(t, Date.now()) > 0) return paint();
     const focus = label() === 'Fokus';
     reset();
     ctx.chime('done');
@@ -103,6 +103,5 @@ function timerText(ms) {
         h('button', { type: 'button', className: 'btn go', onclick: toggle }, goLabel()),
       );
     },
-    glance: () => (t.endsAt ? { timer: { label: label(), text: timerText(timerLeft(t, Date.now())) } } : {}),
   });
 })();
