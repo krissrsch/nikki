@@ -2,7 +2,7 @@
 
 Notch-App für Windows mit Claude-Code-Begleiter: die kleine Katze oben am Bildschirmrand. Sie startet und begleitet Claude-Code-Aufgaben in deinem Projektordner über deine lokal eingeloggte **Claude Code**-CLI, **ohne API-Key**, und bringt dazu Notch-Module wie Kalender, To-do, Notizen und Timer mit.
 
-Die Insel sitzt oben mittig. Zugeklappt zeigen Nikkis Augen, was los ist, und links und rechts steht das Wichtigste. Aufgeklappt gibt es Home („Heute“ mit Kacheln), den Chat und die Module.
+Die Insel sitzt oben mittig. Zugeklappt zeigt sie nur Nikkis Augen; was los ist, zeigt eine schmale Lichtkante um die Notch (gelb: braucht dich, grün: arbeitet oder fertig, rot: Fehler, blau: Musik), bei Musik wächst ein Spektrum aus echten Frequenzen unter der Notch. Aufgeklappt gibt es Home („Heute“: Claude, Musik, Wetter, Kalender), den Chat und die Module.
 
 ## Was sie kann
 
@@ -15,7 +15,8 @@ Die Insel sitzt oben mittig. Zugeklappt zeigen Nikkis Augen, was los ist, und li
   - **To-do:** mit „An Chat“
   - **Notizen:** Abreißblock
   - **Timer:** Pomodoro
-- Hotkey frei belegbar, Autostart, Töne. Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
+- Wetter auf Home von Open-Meteo (ohne Konto), Stadt in den Einstellungen
+- Hotkey frei belegbar, Autostart, Töne, Leuchten an/aus und Stärke. Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
 
 ## Voraussetzung
 
