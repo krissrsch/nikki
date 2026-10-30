@@ -1116,3 +1116,6 @@ kbd.key {
 #introStage canvas { position: absolute; top: 0; left: calc(50% - 320px); width: 640px; height: 150px; }
 .introCat { position: absolute; top: 50px; left: calc(50% - 46.5px); width: 93px; height: 82px; opacity: 0; }
 .introCat .c-body { animation: none !important; } /* only the choreography moves her here */
+/* her corners on these pages: long titles and long days stop short of her */
+.musicHead { padding-right: 96px; }
+.calSide { padding-bottom: 84px; }

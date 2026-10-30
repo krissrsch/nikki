@@ -16,6 +16,8 @@ Die Insel sitzt oben mittig. Zugeklappt zeigt sie nur Nikkis Augen; was los ist,
   - **Notizen:** Abreißblock
   - **Timer:** Pomodoro
 - Wetter auf Home von Open-Meteo (ohne Konto), Stadt in den Einstellungen
+- Nikki, die weiß getigerte Katze: lebt in der Insel, hat 19 Ausdrücke, reagiert auf Claude und Musik, springt beim Tabwechsel mit und lässt sich an jeden Platz ziehen
+- Eigenes Einstellungsfenster mit Seitenleiste (Zahnrad in der Insel oder Tray)
 - Hotkey frei belegbar, Autostart, Töne, Leuchten an/aus und Stärke. Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
 
 ## Voraussetzung
@@ -28,7 +30,7 @@ Die Insel sitzt oben mittig. Zugeklappt zeigt sie nur Nikkis Augen; was los ist,
 
 Installer von den [Releases](https://github.com/krissrsch/nikki/releases) laden: **Nikki-Setup.exe**.
 
-Hotkey (Standard): `Ctrl+Alt+Space` (Fallback `Ctrl+Alt+K`), änderbar in den Einstellungen (Zahnrad in der Insel).
+Hotkey (Standard): `Ctrl+Alt+Space` (Fallback `Ctrl+Alt+K`), änderbar in den Einstellungen unter Tastenkürzel.
 
 ## Entwickeln
 
