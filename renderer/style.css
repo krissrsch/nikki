@@ -1097,3 +1097,4 @@ kbd.key {
 .catFly .catIn { pointer-events: none; }
 .catDefs { position: absolute; }
 .tile[data-tile='claude'] #toChat { align-self: flex-start; width: 58%; } /* the right corner is Nikki's */
+.sState[data-state='idle'] { color: var(--faint); }

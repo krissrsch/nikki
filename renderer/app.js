@@ -77,7 +77,7 @@ function goView(name) {
   else setView(target);
 }
 
-const STATE_LABEL = { needsYou: 'braucht dich', working: 'arbeitet', thinking: 'denkt', done: 'fertig', error: 'Fehler', idle: 'wartet' };
+const STATE_LABEL = { needsYou: 'braucht dich', working: 'arbeitet', thinking: 'denkt', done: 'fertig', error: 'Fehler', idle: 'bereit' };
 // a finished or failed task counts until the chat was looked at; then our own session just waits
 const ownState = () => (['done', 'error'].includes(lastStatus.state) && !unseen ? 'idle' : lastStatus.state);
 function sessionDot(state) {

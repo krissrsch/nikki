@@ -74,3 +74,21 @@ test('ihr Platz: Home sitzt unten rechts in der Claude-Kachel, Chat lugt über d
   // no page content yet: below the tab bar
   assert.equal(cat.catSpot('timer', { ...ctx, pageOf: () => null }).edge, 62);
 });
+
+test('jeder Reiter hat seinen eigenen Platz, nicht nur oben mittig', () => {
+  const page = (map) => ({ firstElementChild: el(16, 62, 688, 200), querySelector: (s) => map[s] ?? null });
+  const withParent = (e) => Object.assign(e, { offsetParent: box });
+  const at = (view, map) => JSON.parse(JSON.stringify(cat.catSpot(view, { box, pageOf: () => page(map) })));
+  const music = at('music', { '.musicPage, .musicEmpty': withParent(el(16, 62, 688, 90)) });
+  assert.deepEqual(music, { type: 'sit', left: 16 + 688 - 93 - 10, top: 70 });
+  const cal = at('calendar', {});
+  assert.equal(cal.type, 'peek', 'without the page element it falls back to the generic edge');
+  assert.equal(at('timer', { '.timerRing': withParent(el(200, 70, 140, 140)) }).left, 200 - 93 - 14);
+  assert.equal(at('shelf', { '.shelfGrid, .shelfEmpty': withParent(el(16, 108, 688, 300)) }).edge, 108);
+  assert.equal(at('todo', { '.todoList': withParent(el(16, 108, 688, 100)) }).edge, 108);
+  assert.equal(at('notes', { '.padBar': withParent(el(16, 300, 688, 30)) }).edge, 300);
+  assert.equal(at('notes', { '.padEmpty': withParent(el(16, 62, 688, 140)) }).type, 'sit', 'empty pad: she sits in it');
+  // the places differ from tab to tab
+  const spots = ['music', 'shelf', 'todo', 'timer'].map((v) => JSON.stringify(at(v, { '.musicPage, .musicEmpty': withParent(el(16, 62, 688, 90)), '.shelfGrid, .shelfEmpty': withParent(el(16, 108, 688, 300)), '.todoList': withParent(el(16, 108, 688, 100)), '.timerRing': withParent(el(200, 70, 140, 140)) })));
+  assert.equal(new Set(spots).size, spots.length);
+});
