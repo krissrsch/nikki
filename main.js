@@ -43,7 +43,6 @@ let store = {
   lastChatId: null,
   muted: false,
   hooks: false,
-  cursorHooks: false,
 };
 try {
   store = { ...store, ...JSON.parse(fs.readFileSync(storeFile, 'utf8')) };
@@ -641,7 +640,11 @@ app.whenReady().then(() => {
   // safety: if the renderer never signals, still allow fullscreen-hide after the intro window
   setTimeout(endBootHold, 5000);
   if (store.hooks) writeHooks(true); // refresh the hook path, e.g. after an update moved the app
-  if (store.cursorHooks) writeCursorHooks(true);
+  // Cursor support is gone: take our hooks out of ~/.cursor/hooks.json once, then drop the flag
+  if (store.cursorHooks && (!fs.existsSync(cursorHooksFile) || writeCursorHooks(false))) {
+    delete store.cursorHooks;
+    save();
+  }
   // a display that went away or changed: put the island back on the display it overlaps most (or the nearest)
   const replace = () => alive() && place(screen.getDisplayMatching(win.getBounds()));
   screen.on('display-removed', replace);
