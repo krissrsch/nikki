@@ -184,7 +184,7 @@ Vorschlag: Das Playwright-Electron-Skript des Laufzeit-Testers wird als `npm run
 
 | Risiko | Wahrscheinlichkeit | Gegenmaßnahme |
 |---|---|---|
-| SMTC/WinRT aus C# ohne NuGet ist zickig | mittel | Spike in 3.1 vor dem Musik-Modul. Ausweg ist das .NET-8-SDK als Build-Voraussetzung |
+| SMTC/WinRT aus C# ohne NuGet ist zickig | **erledigt** (2026-10-30) | Spike `helper/NikkiHelper.cs` + `helper/build.cmd` läuft mit dem Windows-eigenen `csc` (C# 5): WinRT kommt aus `System32\WinMetadata\*.winmd`, auf asynchrone Aufrufe wird direkt gewartet (Status-Polling, weil die `await`-Brücke nicht bindet). `NikkiHelper.exe --once` liefert Titel, Interpret, Status, Position und Länge. Offen sind Lautstärke (Core-Audio-COM) und ob das Cover bei Spotify ankommt |
 | `app.js` mit 1600 Zeilen aufzuteilen erzeugt Regressionen | hoch | Phase 0 vor Phase 1, Logik in `lib/` mit Tests, nach jedem Schritt der Laufzeit-Test |
 | Ein synchroner PermissionRequest-Hook blockiert Claude-Sessions oder `-p`-Läufe | mittel | Fail-open, timeout 120 s, `-p`-Erkennung, Bug #15433 selbst auflösen |
 | Der Channel ist ein Research Preview, das Protokoll kann sich ändern | mittel | Nur als Opt-in, hinter einem Settings-Schalter, klar beschriftet |
