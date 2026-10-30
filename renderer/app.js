@@ -54,7 +54,7 @@ async function rememberLastChat(id) {
   await api.setLastChat?.(lastChatId);
 }
 let view = 'home';
-const VIEWS = { home: 'viewHome', chat: 'viewChat', settings: 'viewSettings' };
+const VIEWS = { home: 'viewHome', chat: 'viewChat', settings: 'viewSettings' }; // + one per module switched on
 
 function setView(name) {
   // Permission card lives in Chat — never leave it while a prompt is waiting
@@ -66,6 +66,8 @@ function setView(name) {
   }
   if (view === 'chat' && open) promptEl.focus();
   if (view === 'settings') api.settingsGet().then(applySettings); // autostart or the Claude path may have changed outside
+  if (view === 'home') for (const id of live.keys()) renderTile(id); // "in 12 min" and co. are as old as the last look
+  if (live.has(view)) NikkiModules.get(view).page($(VIEWS[view]), live.get(view));
   renderState();
 }
 
@@ -171,6 +173,7 @@ const GLANCE_ICON = {
   calendar: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>',
   volume: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></svg>',
   file: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z" /><path d="M14 3v4h4" /></svg>',
+  timer: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2M9 2h6" /></svg>',
 };
 function glanceSide(el, info) {
   el.className = `side${info?.tone ? ` ${info.tone}` : ''}`;
@@ -193,7 +196,10 @@ function renderGlance() {
   const s = shown();
   const cmd = perms[0]?.input?.command; // own approval: the command says more than "Nikki will OK!"
   const cwd = s.observed ? s.cwd : current;
+  const fromModules = {}; // { event } from the calendar, { timer } from the timer
+  for (const [id, ctx] of live) Object.assign(fromModules, NikkiModules.get(id).glance?.(ctx));
   const g = glance({
+    ...fromModules,
     status: s.observed ? s.state : ownState(),
     text: cmd ? `${String(cmd).split('\n')[0]}?` : s.text,
     project: cwd ? folderName(cwd) : '',
@@ -1158,6 +1164,7 @@ function applySettings(s) {
   $('setClaudePath').title = s.claudePath || '';
   $('setClaudePath').classList.toggle('bad', !s.claudePath);
   $('setBranch').checked = s.showBranch;
+  applyModules(s.modules);
   renderGlance();
 }
 const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
@@ -1167,6 +1174,139 @@ $('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.
 $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));
 $('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
 $('setBranch').addEventListener('change', (e) => setSetting('showBranch', e.target.checked));
+
+// ---- modules (modules.js): tab, page and Home tile for each one switched on; switching works without a restart
+let modList = []; // [{ id, on }] in tab order, the switched off ones too (settings page)
+const live = new Map(); // id -> ctx of each module switched on
+const tileOf = new Map(); // id -> its Home tile
+function moduleCtx(mod) {
+  const ctx = {
+    reduceMotion,
+    load: () => api.moduleGet(mod.id),
+    save: (data) => api.moduleSet(mod.id, data),
+    changed: () => (renderTile(mod.id), renderGlance()), // data changed: its tile and the closed notch follow
+    notch: () => renderGlance(), // a countdown ticks: only the closed notch
+    open: () => (setView(mod.id), setOpen(true)),
+    shown: () => open && view === mod.id,
+    project: () => current,
+    folderName,
+    chime,
+    toast: (text) => api.toast(text),
+    // into the composer, not sent: the user reads and sends it; a to-do of another project switches to it
+    toChat: (text, cwd) => {
+      if (cwd && cwd !== current) selectProject(cwd);
+      setView('chat');
+      setOpen(true);
+      promptEl.value = [promptEl.value.trim(), text].filter(Boolean).join('\n\n');
+      promptEl.focus();
+    },
+    // the module's name opens its page (keyboard path; a click anywhere on the tile does the same), meta on the right
+    head: (meta = '', tone = '') => {
+      const b = button(mod.title, 'tileHead', ctx.open);
+      const m = b.appendChild(document.createElement('span'));
+      m.textContent = meta;
+      if (tone) m.className = tone;
+      return b;
+    },
+  };
+  return ctx;
+}
+function renderTile(id) {
+  const el = tileOf.get(id);
+  if (!el) return;
+  el.replaceChildren();
+  NikkiModules.get(id).tile(el, live.get(id));
+}
+function moduleTab(mod) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'tab';
+  b.dataset.view = mod.id;
+  b.setAttribute('aria-pressed', String(view === mod.id));
+  b.setAttribute('aria-label', mod.title);
+  b.title = mod.title;
+  b.innerHTML = mod.icon; // fixed markup from the module's own code
+  return b;
+}
+function applyModules(saved) {
+  const next = moduleList(saved, [...NikkiModules.keys()]);
+  if (JSON.stringify(next) === JSON.stringify(modList)) return;
+  modList = next;
+  const on = modList.filter((m) => m.on).map((m) => m.id);
+  for (const id of [...live.keys()]) {
+    if (on.includes(id)) continue;
+    NikkiModules.get(id).stop?.();
+    live.delete(id);
+    tileOf.get(id)?.remove();
+    tileOf.delete(id);
+    $(VIEWS[id])?.remove();
+    delete VIEWS[id];
+  }
+  for (const id of on) {
+    if (live.has(id)) continue;
+    const mod = NikkiModules.get(id);
+    const ctx = moduleCtx(mod);
+    live.set(id, ctx);
+    const page = Object.assign(document.createElement('section'), { id: `view-${id}`, className: `view modView mod-${id}`, hidden: true });
+    page.setAttribute('aria-label', mod.title);
+    panelBox.append(page);
+    VIEWS[id] = page.id;
+    if (mod.tile) {
+      const tile = Object.assign(document.createElement('div'), { className: 'tile modTile' });
+      tile.addEventListener('click', (e) => !e.target.closest('button, input, label, a, textarea, select') && ctx.open());
+      tileOf.set(id, tile);
+    }
+    // loads its data; until then tile and page show the module's empty state
+    Promise.resolve()
+      .then(() => mod.start?.(ctx))
+      .catch((e) => console.error(`module ${id}:`, e))
+      .then(() => {
+        if (live.get(id) !== ctx) return; // switched off meanwhile
+        ctx.changed();
+        if (view === id) mod.page(page, ctx);
+      });
+  }
+  // tabs and tiles follow the order of the list; append moves an existing tile into place
+  $('moduleTabs').replaceChildren(...on.map((id) => moduleTab(NikkiModules.get(id))));
+  $('homeTiles').append(...on.filter((id) => tileOf.has(id)).map((id) => tileOf.get(id)));
+  for (const id of on) renderTile(id);
+  renderModuleSettings();
+  if (!VIEWS[view]) setView('home');
+}
+function renderModuleSettings() {
+  const box = $('setModuleList');
+  const had = document.activeElement?.closest?.('#setModuleList [data-key]')?.dataset.key; // keep the focus across the re-render
+  const control = (el, key) => ((el.dataset.key = key), el);
+  box.replaceChildren(
+    ...modList.map((m, i) => {
+      const mod = NikkiModules.get(m.id);
+      const name = Object.assign(document.createElement('label'), { className: 'modName', htmlFor: `mod-${m.id}` });
+      name.innerHTML = mod.icon;
+      name.append(mod.title);
+      const move = (d, label, path) => {
+        const b = control(button('', 'iconBtn', () => moveModule(i, d)), `${m.id}:${d}`);
+        b.innerHTML = svg(path);
+        b.title = label;
+        b.setAttribute('aria-label', `${mod.title} ${label}`);
+        b.disabled = !modList[i + d];
+        return b;
+      };
+      const sw = control(Object.assign(document.createElement('input'), { type: 'checkbox', className: 'switch', id: `mod-${m.id}`, checked: m.on }), `${m.id}:on`);
+      sw.setAttribute('role', 'switch');
+      sw.addEventListener('change', () => setSetting('modules', modList.map((x) => (x.id === m.id ? { ...x, on: sw.checked } : x))));
+      const row = Object.assign(document.createElement('div'), { className: 'setRow modRow' });
+      row.append(name, move(-1, 'nach oben', 'M4.5 9.5 8 6l3.5 3.5'), move(1, 'nach unten', 'M4.5 6.5 8 10l3.5-3.5'), sw);
+      return row;
+    }),
+  );
+  const again = had && box.querySelector(`[data-key="${had}"]`);
+  (again && !again.disabled ? again : again?.parentElement.querySelector('.switch'))?.focus();
+}
+function moveModule(i, d) {
+  const list = [...modList];
+  [list[i], list[i + d]] = [list[i + d], list[i]];
+  setSetting('modules', list);
+}
 
 // hotkey: click, then press the new combo; main keeps the old one when the new one is taken
 let capturing = false;

@@ -24,6 +24,10 @@ contextBridge.exposeInMainWorld('companion', {
   // returns all settings again, plus error: 'taken' | 'invalid' when a hotkey did not take
   settingsSet: (key, value) => ipcRenderer.invoke('settings-set', key, value),
   focus: () => ipcRenderer.send('focus'),
+  // module data: userData/modules/<id>.json (null when there is none yet); set resolves false when it was not saved
+  moduleGet: (id) => ipcRenderer.invoke('module-get', id),
+  moduleSet: (id, data) => ipcRenderer.invoke('module-set', id, data),
+  toast: (text) => ipcRenderer.send('toast', text), // Windows toast even while the island can be seen
   openExternal: (url) => ipcRenderer.send('open-external', url),
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
   onTerminal: on('terminal'),
