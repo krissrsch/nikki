@@ -113,14 +113,19 @@ async function playIntro({ island, glow, clip, cat, say, open }) {
   const dy = to.top - from.top;
   body.getAnimations().forEach((a) => a.cancel());
   body.style.opacity = 1;
-  const flight = body.animate(
+  // one unbroken glide for the way, the hop on top of it: a stop at the apex would read as a stutter
+  body.animate([{ transform: 'translate(0, 0)' }, { transform: `translate(${dx}px, ${dy}px)` }], { duration: 540, easing: BOTH, fill: 'both' });
+  const hop = face.animate(
     [
-      { transform: 'translate(0, 0)', easing: OUT },
-      { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 22}px)`, offset: 0.5, easing: IN },
-      { transform: `translate(${dx}px, ${dy}px)` },
+      { transform: 'translateY(0) scale(1, 1)', easing: OUT },
+      { transform: 'translateY(2px) scale(1.06, 0.92)', offset: 0.1, easing: OUT },
+      { transform: 'translateY(-34px) scale(0.95, 1.07)', offset: 0.46, easing: IN },
+      { transform: 'translateY(0) scale(1.1, 0.88)', offset: 0.8, easing: OUT },
+      { transform: 'translateY(0) scale(1, 1)' },
     ],
-    { duration: 520, fill: 'both' },
+    { duration: 680 },
   );
-  await flight.finished.catch(() => {});
+  setTimeout(() => (face.dataset.mood = cat.mood()), 540); // she lands wearing the face she keeps
+  await hop.finished.catch(() => {});
   finish();
 }
