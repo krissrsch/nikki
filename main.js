@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, protocol, screen, shell, Tray } from 'electron';
-import { execFile, execFileSync, spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -8,7 +8,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createClaudeAgent } from './backends/claude.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
-import { withHooks, withoutHooks } from './lib/hooks.js';
+import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
+import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
 import { hookToStatus } from './lib/status.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -39,13 +40,31 @@ let store = {
   muted: false,
   hooks: false,
 };
+let storeNotice = null; // shown once the app is ready
+let storeWritable = true; // never overwrite a state.json we could not read: that is how chats got lost (H2)
 try {
-  store = { ...store, ...JSON.parse(fs.readFileSync(storeFile, 'utf8')) };
+  const saved = readJson(storeFile, (moved) => (storeNotice = `Nikkis Daten waren beschädigt und wurden nach\n${moved}\nverschoben. Nikki startet mit leerem Stand.`));
+  if (saved && typeof saved === 'object') store = { ...store, ...saved };
+  store.projects = Array.isArray(store.projects) ? store.projects : [];
   store.favorites = { claude: store.favorites?.claude ?? [] };
   store.chats = Array.isArray(store.chats) ? store.chats : [];
   store.lastChatId = store.lastChatId ?? null;
-} catch {}
-const save = () => fs.writeFileSync(storeFile, JSON.stringify(store, null, 2));
+} catch (e) {
+  storeWritable = false;
+  storeNotice = `Nikki kann ${storeFile} nicht lesen (${e.code ?? e.message}). Bis zum Neustart speichert Nikki nichts.`;
+}
+let saveFailed = false;
+function save() {
+  if (!storeWritable) return;
+  try {
+    writeJsonAtomic(storeFile, store);
+    saveFailed = false;
+  } catch (e) {
+    console.error('state.json:', e);
+    if (!saveFailed && app.isReady()) dialog.showMessageBox({ type: 'warning', title: 'Nikki', message: `Nikki kann nicht speichern: ${e.code ?? e.message}` }).catch(() => {});
+    saveFailed = true; // one message per run of failures, not one per save
+  }
+}
 const MAX_CHATS = 40;
 const addProject = (p) => {
   store.projects = [p, ...store.projects.filter((x) => x !== p)].slice(0, 8);
@@ -385,52 +404,70 @@ function startHookServer() {
       } catch {}
     });
   });
-  hookServer.listen(0, '127.0.0.1', () => fs.writeFileSync(hookCfgFile, JSON.stringify({ port: hookServer.address().port, token: hookToken })));
+  hookServer.listen(0, '127.0.0.1', () => {
+    try {
+      writeJsonAtomic(hookCfgFile, { port: hookServer.address().port, token: hookToken }); // hooks never read half a file
+    } catch (e) {
+      console.error('hook.json:', e);
+    }
+  });
 }
 
 // --- hooks in the user's global Claude Code settings: only on request, with a backup, removed cleanly when switched off
 const settingsFile = path.join(os.homedir(), '.claude', 'settings.json');
 const cursorHooksFile = path.join(os.homedir(), '.cursor', 'hooks.json'); // only for the 1.0 → 1.1 migration
 const slash = (p) => p.replaceAll('\\', '/'); // the same command works in Git Bash and PowerShell
-function findNodeBin() {
-  const candidates = [];
-  try {
-    const out = execFileSync(process.platform === 'win32' ? 'where.exe' : 'which', ['node'], {
-      windowsHide: true,
-      encoding: 'utf8',
-      timeout: 3000,
-    });
-    candidates.push(...out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean));
-  } catch {}
-  // Prefer system Node over a node bundled with some CLI (that path breaks on CLI updates).
-  return candidates.find((p) => /nodejs|program files/i.test(p)) || candidates[0] || 'node';
-}
+// Path of the system Node (null without one), looked up without blocking the main thread.
+const findNode = () =>
+  new Promise((resolve) =>
+    execFile('where.exe', ['node'], { windowsHide: true, timeout: 3000 }, (err, out) => {
+      const found = err ? [] : String(out).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      // Prefer system Node over a node bundled with some CLI (that path breaks on CLI updates).
+      resolve(found.find((p) => /nodejs|program files/i.test(p)) || found[0] || null);
+    }),
+  );
 // Absolute node path: a hook's PATH may lack `node`, and then a bare `node` silently never runs.
-const hookCommand = () => `"${slash(findNodeBin())}" "${slash(path.join(dir, 'hook.cjs'))}" "${slash(hookCfgFile)}"`;
+const hookCommand = (node) => `"${slash(node)}" "${slash(path.join(dir, 'hook.cjs'))}" "${slash(hookCfgFile)}"`;
 
-function writeJsonSettings(file, mutate) {
-  let settings = {};
+// A locked or broken file gives a message and false; it never breaks the app start (M8).
+function writeJsonSettings(file, mutate, opts) {
   try {
-    if (fs.existsSync(file)) settings = JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    dialog.showErrorBox('Nikki', `${file} ist kein gültiges JSON. Ich ändere daran nichts.`);
+    editJson(file, mutate, opts);
+    return true;
+  } catch (e) {
+    dialog.showErrorBox(
+      'Nikki',
+      e instanceof SyntaxError ? `${file} ist kein gültiges JSON. Ich ändere daran nichts.` : `Nikki kann ${file} nicht ändern (${e.code ?? e.message}).`,
+    );
     return false;
   }
-  if (fs.existsSync(file)) fs.copyFileSync(file, `${file}.desktopcompanion-backup`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(mutate(settings), null, 2));
-  return true;
 }
-function writeHooks(on) {
-  return writeJsonSettings(settingsFile, (s) => (on ? withHooks(s, hookCommand()) : withoutHooks(s)));
+// the backup holds the file as it was before Nikki ever touched it
+const writeHooks = (mutate) =>
+  writeJsonSettings(settingsFile, mutate, { backup: `${settingsFile}.nikki-backup`, pristine: (s) => hookCommandIn(s) === null });
+
+// App start: refresh the command (an update may have moved the app), but only while our hooks are still in there.
+// Whoever removed them by hand (/hooks) does not get them back (M6).
+async function refreshHooks() {
+  let present = true; // a broken file: writeHooks below says so
+  try {
+    present = hookCommandIn(readJson(settingsFile)) !== null;
+  } catch {}
+  if (!present) {
+    store.hooks = false;
+    save();
+    return createTray();
+  }
+  const node = await findNode();
+  if (node) writeHooks((s) => withHooks(s, hookCommand(node)));
 }
 
-const hasNode = () => new Promise((resolve) => execFile('node', ['-v'], { windowsHide: true, timeout: 5000 }, (err) => resolve(!err)));
 async function setHooks(on) {
-  if (on && !(await hasNode())) {
+  const node = on ? await findNode() : null;
+  if (on && !node) {
     dialog.showErrorBox('Nikki', 'Für Terminal-Sessions braucht es Node.js (der Befehl „node“ wurde nicht gefunden).');
     on = false;
-  } else if (!writeHooks(on)) on = store.hooks;
+  } else if (!writeHooks((s) => (on ? withHooks(s, hookCommand(node)) : withoutHooks(s)))) on = store.hooks;
   store.hooks = on;
   save();
   if (!on) {
@@ -500,12 +537,6 @@ app.whenReady().then(() => {
   startHookServer();
   // safety: if the renderer never signals, still allow fullscreen-hide after the intro window
   setTimeout(endBootHold, 5000);
-  if (store.hooks) writeHooks(true); // refresh the hook path, e.g. after an update moved the app
-  // Cursor support is gone: take our hooks out of ~/.cursor/hooks.json once, then drop the flag
-  if (store.cursorHooks && (!fs.existsSync(cursorHooksFile) || writeJsonSettings(cursorHooksFile, withoutCursorHooks))) {
-    delete store.cursorHooks;
-    save();
-  }
   // a display that went away or changed: put the island back on the display it overlaps most (or the nearest)
   const replace = () => alive() && place(screen.getDisplayMatching(win.getBounds()));
   screen.on('display-removed', replace);
@@ -514,6 +545,14 @@ app.whenReady().then(() => {
   // Ctrl+Alt+Space is often taken (e.g. by Claude Desktop): fall back to Ctrl+Alt+K.
   hotkey = ['Control+Alt+Space', 'Control+Alt+K'].find((k) => globalShortcut.register(k, showNow)) ?? null;
   tray.setToolTip(hotkey ? `Nikki (${hotkey.replace('Control', 'Strg').replace('Space', 'Leertaste')})` : 'Nikki');
+  if (storeNotice) dialog.showMessageBox({ type: 'warning', title: 'Nikki', message: storeNotice }).catch(() => {});
+  // settings files last: a locked one must not cost the hotkey (M8)
+  if (store.hooks) refreshHooks();
+  // Cursor support is gone: take our hooks out of ~/.cursor/hooks.json once, then drop the flag
+  if (store.cursorHooks && writeJsonSettings(cursorHooksFile, withoutCursorHooks)) {
+    delete store.cursorHooks;
+    save();
+  }
 });
 app.on('before-quit', () => {
   quitting = true;
