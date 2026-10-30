@@ -33,8 +33,12 @@ export function createClaudeAgent({ claudePath, onStatus, onSession, askPermissi
           permissionMode: plan ? 'plan' : 'acceptEdits',
           env: { ...process.env, DESKTOPCOMPANION_AGENT: '1' }, // hook.cjs skips our own sessions: they report through the SDK
           canUseTool: async (toolName, input, { signal, suggestions, title }) => {
-            const { answer, picks, message } = await askPermission({ toolName, input, title }, signal);
-            if (answer === 'deny') return { behavior: 'deny', message: message || 'Vom Nutzer im Companion abgelehnt.' };
+            const { answer, picks, message, interrupt } = await askPermission({ toolName, input, title }, signal);
+            if (answer === 'deny') {
+              // interrupt: the user's reason comes next as their own prompt (B7), so this turn ends as stopped, not as an error
+              if (interrupt) r.stopped = true;
+              return { behavior: 'deny', message: message || 'Vom Nutzer im Companion abgelehnt.', ...(interrupt && { interrupt: true }) };
+            }
             if (toolName === 'AskUserQuestion') return { behavior: 'allow', updatedInput: { ...input, answers: toAnswers(input.questions, picks) } };
             // an approved plan is carried out like any other task: edits allowed, the rest asks
             if (toolName === 'ExitPlanMode') return { behavior: 'allow', updatedInput: input, updatedPermissions: [{ type: 'setMode', mode: 'acceptEdits', destination: 'session' }] };
