@@ -248,7 +248,7 @@ function createWindow() {
   // a crashed renderer (GPU): load it again, and nothing waits for an answer it can no longer give (N11)
   win.webContents.on('render-process-gone', (_e, details) => {
     for (const finish of [...pending.values()]) finish({ answer: 'deny' });
-    islandOpen = false;
+    islandOpen = notchDragging = false;
     syncCloseKey();
     if (!quitting && details.reason !== 'clean-exit') win.webContents.reload();
   });
@@ -290,6 +290,7 @@ function showNow(view) {
     if (display.id !== screen.getDisplayMatching(win.getBounds()).id) place(display);
     win.show();
     win.focus();
+    syncCloseKey();
   } catch {
     return;
   }

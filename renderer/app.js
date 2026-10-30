@@ -661,11 +661,16 @@ function setBusy(b) {
 
 // Animated when clicked; instant when opened from the keyboard or tray (opened many times a day).
 // focus: false when nobody asked for the island (a card arrived): it must not take the keyboard from the terminal the user types in
+// the close key is free for other apps while a card waits: it would do nothing here
+const tellOpen = () => api.islandOpen(open && !perms.length);
 function setOpen(v, { instant = false, focus = true } = {}) {
   if (v === open) return;
-  if (v) endDrag(); // a card arrived mid-drag
+  if (v) {
+    endDrag(); // a card arrived mid-drag
+    delete document.documentElement.dataset.drag; // the spring rule holds only translate: the opening keeps its own glide
+  }
   open = v;
-  api.islandOpen(v);
+  tellOpen();
   if (instant) {
     island.classList.add('instant');
     requestAnimationFrame(() => requestAnimationFrame(() => island.classList.remove('instant')));
@@ -980,6 +985,7 @@ function field(tag, placeholder) {
 let cardId = null;
 let cardAt = 0; // when the card on screen appeared: its hotkeys wait a moment, so keys typed for something else never answer it
 function renderPerm() {
+  tellOpen();
   const r = perms[0];
   const wasHidden = $('permission').hidden;
   if (r && r.id !== cardId) cardAt = Date.now();
@@ -1349,8 +1355,7 @@ promptEl.addEventListener('keydown', (e) => {
     start(); // no-op while busy: Enter never stops a task
   }
 });
-addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
+function escape() {
   if (!menu.hidden) {
     closeMenu();
     $('projectBtn').focus();
@@ -1359,7 +1364,8 @@ addEventListener('keydown', (e) => {
   } else if (chatsMenu && !chatsMenu.hidden) {
     closeChatsMenu();
   } else if (!perms.length) setOpen(false); // a waiting card keeps the island open: Esc does nothing then
-});
+}
+addEventListener('keydown', (e) => e.key === 'Escape' && escape());
 // Card hotkeys while the island has the focus: A or Enter allows (accepts a plan), I always, D denies (skips a question),
 // 1-9 pick an option. Never while a text field has the focus (composer, own answer, plan feedback); a focused button keeps its own Enter.
 addEventListener('keydown', (e) => {
@@ -1384,7 +1390,7 @@ api.onShow?.((page) => {
 });
 api.onStatus(show);
 api.onSpectrum((bands) => spectrum.set(bands));
-api.onCloseKey(() => !perms.length && setOpen(false)); // like Esc: a waiting card keeps the island open
+api.onCloseKey(escape); // the same steps as Esc: a global Esc never reaches keydown
 api.onSession?.(({ id }) => {
   if (!id) return;
   chatSessionId = id;

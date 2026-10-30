@@ -120,6 +120,10 @@ describe('Notch und Glow', () => {
     assert.equal(await held('Escape'), false, 'zu: Esc bleibt bei den anderen Programmen');
     await page.click('#notch');
     await until(() => held('Escape'), 'offen: belegt');
+    await nikki.permission({ id: 9002, toolName: 'Bash', input: { command: 'echo hi' } });
+    await until(async () => !(await held('Escape')), 'eine wartende Karte gibt die Taste frei');
+    await fromMain('permission-cancel', 9002);
+    await until(() => held('Escape'), 'Karte weg: wieder belegt');
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop()).webContents.send('close-key'));
     await until(async () => (await page.getAttribute('#notch', 'aria-expanded')) === 'false', 'geschlossen');
     await until(async () => !(await held('Escape')), 'wieder frei');
