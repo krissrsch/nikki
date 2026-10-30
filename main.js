@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, protocol, screen, shell, Tray } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, protocol, screen, shell, Tray } from 'electron';
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -6,12 +6,9 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createBackend } from './lib/agent.js';
-import { findCursorAgent } from './lib/cursor-path.js';
-import { listCursorModels, peekCursorModels } from './lib/cursor-models.js';
-import { findGemini } from './lib/gemini-path.js';
+import { createClaudeAgent } from './backends/claude.js';
+import { withoutCursorHooks } from './lib/cursor-migration.js';
 import { withHooks, withoutHooks } from './lib/hooks.js';
-import { withCursorHooks, withoutCursorHooks } from './lib/hooks-cursor.js';
 import { hookToStatus } from './lib/status.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -29,7 +26,6 @@ const HEIGHT = 320; // fixed open island (panel 228px + bar + shadow)
 
 // Usage must run on the user's own subscription, never on an API key that happens to be set.
 delete process.env.ANTHROPIC_API_KEY;
-delete process.env.CURSOR_API_KEY;
 
 // --- tiny JSON store: recent projects + last session per project/backend
 const storeFile = path.join(app.getPath('userData'), 'state.json');
@@ -37,8 +33,7 @@ let store = {
   projects: [],
   sessions: {},
   models: {},
-  backends: {},
-  favorites: { claude: [], cursor: [], gemini: [] },
+  favorites: { claude: [] },
   chats: [],
   lastChatId: null,
   muted: false,
@@ -46,17 +41,12 @@ let store = {
 };
 try {
   store = { ...store, ...JSON.parse(fs.readFileSync(storeFile, 'utf8')) };
-  store.favorites = {
-    claude: store.favorites?.claude ?? [],
-    cursor: store.favorites?.cursor ?? [],
-    gemini: store.favorites?.gemini ?? [],
-  };
+  store.favorites = { claude: store.favorites?.claude ?? [] };
   store.chats = Array.isArray(store.chats) ? store.chats : [];
   store.lastChatId = store.lastChatId ?? null;
 } catch {}
 const save = () => fs.writeFileSync(storeFile, JSON.stringify(store, null, 2));
 const MAX_CHATS = 40;
-const favBackend = (id) => (id === 'cursor' ? 'cursor' : id === 'gemini' || id === 'aistudio' ? 'gemini' : 'claude');
 const addProject = (p) => {
   store.projects = [p, ...store.projects.filter((x) => x !== p)].slice(0, 8);
   save();
@@ -135,33 +125,23 @@ function askPermission(req, signal) {
 }
 
 let activeCwd = null;
-let activeBackend = 'claude';
 
-function makeAgent(id) {
-  return createBackend(id, {
-    claudePath,
-    askPermission,
-    onStatus: (s) => {
-      send('status', s);
-      const where = activeCwd ? path.basename(activeCwd) : 'Projekt';
-      if (s.state === 'done') notify(`Fertig in ${where}.`);
-      if (s.state === 'error') notify(`Fehler in ${where}.`);
-    },
-    onSession: (sid) => {
-      setSession(activeCwd, id, sid);
-      send('session', { id: sid, cwd: activeCwd, backend: id });
-    },
-  });
-}
+const agent = createClaudeAgent({
+  claudePath,
+  askPermission,
+  onStatus: (s) => {
+    send('status', s);
+    const where = activeCwd ? path.basename(activeCwd) : 'Projekt';
+    if (s.state === 'done') notify(`Fertig in ${where}.`);
+    if (s.state === 'error') notify(`Fehler in ${where}.`);
+  },
+  onSession: (sid) => {
+    setSession(activeCwd, 'claude', sid);
+    send('session', { id: sid, cwd: activeCwd });
+  },
+});
 
-const agents = {
-  claude: makeAgent('claude'),
-  cursor: makeAgent('cursor'),
-  gemini: makeAgent('gemini'),
-};
-const anyBusy = () => agents.claude.busy() || agents.cursor.busy() || agents.gemini.busy();
-
-// --- the island sits at the top-center of one display: the primary one at start, the cursor's one when opened
+// --- the island sits at the top-center of one display: the primary one at start, the mouse pointer's one when opened
 function place(display) {
   if (!alive()) return;
   const { bounds } = display;
@@ -185,10 +165,10 @@ function createWindow() {
     // sounds must play without a click: the chime is the point when the island is hidden
     webPreferences: { preload: path.join(dir, 'preload.cjs'), autoplayPolicy: 'no-user-gesture-required' },
   });
-  // clear timers before will-quit — destroy races the 50ms cursor tick otherwise
+  // clear timers before will-quit — destroy races the pointer tick otherwise
   win.on('closed', () => {
-    clearInterval(cursorTimer);
-    cursorTimer = null;
+    clearInterval(pointerTimer);
+    pointerTimer = null;
     win = null;
   });
   place(screen.getPrimaryDisplay());
@@ -249,99 +229,36 @@ function watchFullscreen() {
   });
 }
 
-// --- cursor position (window-relative) for the companion's eyes; only while visible and only on change
-let lastCursor = '';
-let cursorTimer;
-function feedCursor() {
+// --- mouse pointer position (window-relative) for the companion's eyes; only while visible and only on change
+let lastPointer = '';
+let pointerTimer;
+function feedPointer() {
   // 50ms was chatty for eye-tracking + click-through hit tests; 100ms is plenty
-  cursorTimer = setInterval(() => {
+  pointerTimer = setInterval(() => {
     try {
       if (!alive() || !win.isVisible()) return;
       const p = screen.getCursorScreenPoint();
       const b = win.getBounds();
       const key = `${p.x - b.x},${p.y - b.y}`;
-      if (key === lastCursor) return;
-      lastCursor = key;
-      send('cursor', { x: p.x - b.x, y: p.y - b.y });
+      if (key === lastPointer) return;
+      lastPointer = key;
+      send('pointer', { x: p.x - b.x, y: p.y - b.y });
     } catch {
       // destroyed between alive() and getBounds()
     }
   }, 100);
 }
 
-// --- local git glance (no GitHub OAuth): branch, dirty count, ahead/behind, browsable remote URL
-const git = (cwd, args) =>
-  new Promise((resolve) =>
-    execFile('git', ['-C', cwd, ...args], { windowsHide: true, timeout: 4000 }, (err, out) => resolve(err ? null : String(out).trim())),
-  );
-
-function remoteToHttps(url) {
-  if (!url) return null;
-  let u = url.replace(/\.git$/i, '');
-  const ssh = u.match(/^git@([^:]+):(.+)$/);
-  if (ssh) return `https://${ssh[1]}/${ssh[2]}`;
-  const sshProto = u.match(/^ssh:\/\/git@([^/]+)\/(.+)$/);
-  if (sshProto) return `https://${sshProto[1]}/${sshProto[2]}`;
-  if (/^https?:\/\//i.test(u)) return u;
-  return null;
-}
-
-async function gitGlance(cwd) {
-  if (!cwd || !fs.existsSync(cwd)) return null;
-  const inside = await git(cwd, ['rev-parse', '--is-inside-work-tree']);
-  if (inside !== 'true') return null;
-  let branch = await git(cwd, ['branch', '--show-current']);
-  if (!branch) {
-    const sha = await git(cwd, ['rev-parse', '--short', 'HEAD']);
-    branch = sha ? `(${sha})` : 'detached';
-  }
-  const porcelain = await git(cwd, ['status', '--porcelain']);
-  const dirty = porcelain ? porcelain.split(/\r?\n/).filter(Boolean).length : 0;
-  let ahead = 0;
-  let behind = 0;
-  const ab = await git(cwd, ['rev-list', '--left-right', '--count', '@{upstream}...HEAD']);
-  if (ab) {
-    const [left, right] = ab.split(/\s+/).map((n) => parseInt(n, 10) || 0);
-    behind = left;
-    ahead = right;
-  }
-  const remoteRaw = await git(cwd, ['config', '--get', 'remote.origin.url']);
-  const remoteUrl = remoteToHttps(remoteRaw);
-  let prs = null;
-  if (remoteUrl?.includes('github.com')) {
-    const prOut = await new Promise((resolve) =>
-      execFile('gh', ['pr', 'list', '--state', 'open', '--limit', '20', '--json', 'number'], { windowsHide: true, timeout: 5000, cwd }, (err, out) =>
-        resolve(err ? null : String(out).trim()),
+// --- branch label in the chat: one git call, asked for on project change and turn end (no polling)
+ipcMain.handle('branch', (_e, cwd) =>
+  !cwd || !fs.existsSync(cwd)
+    ? null
+    : new Promise((resolve) =>
+        execFile('git', ['-C', cwd, 'branch', '--show-current'], { windowsHide: true, timeout: 4000 }, (err, out) =>
+          resolve((!err && String(out).trim()) || null),
+        ),
       ),
-    );
-    if (prOut) {
-      try {
-        prs = JSON.parse(prOut).length;
-      } catch {
-        prs = null;
-      }
-    }
-  }
-  return { branch, dirty, ahead, behind, remoteUrl, remoteRaw: remoteRaw || null, prs };
-}
-
-ipcMain.handle('branch', async (_e, cwd) => {
-  const g = await gitGlance(cwd);
-  return g?.branch ?? null;
-});
-ipcMain.handle('git-status', async (_e, cwd) => gitGlance(cwd));
-ipcMain.handle('git-open-remote', async (_e, cwd) => {
-  const g = await gitGlance(cwd);
-  if (!g?.remoteUrl) return { ok: false, reason: 'no-remote' };
-  await shell.openExternal(g.remoteUrl);
-  return { ok: true, url: g.remoteUrl };
-});
-ipcMain.handle('open-aistudio', async (_e, { text } = {}) => {
-  const copied = !!(text && String(text).trim());
-  if (copied) clipboard.writeText(String(text).trim());
-  await shell.openExternal('https://aistudio.google.com/prompts/new_chat');
-  return { ok: true, copied };
-});
+);
 
 ipcMain.on('click-through', (_e, on) => alive() && win.setIgnoreMouseEvents(on, { forward: true }));
 ipcMain.on('focus', () => alive() && win.focus());
@@ -355,34 +272,20 @@ ipcMain.on('set-muted', (_e, muted) => {
 ipcMain.handle('get-state', () => ({
   ...store,
   claudeFound: fs.existsSync(claudePath),
-  cursorFound: !!findCursorAgent(),
-  cursorModels: peekCursorModels(),
-  geminiFound: !!findGemini(),
   terminal: [...terminal.values()],
 }));
-ipcMain.handle('cursor-models', () => listCursorModels({ force: true }));
-ipcMain.handle('toggle-favorite', (_e, { backend, modelId }) => {
-  const key = favBackend(backend);
+ipcMain.handle('toggle-favorite', (_e, { modelId }) => {
   const id = modelId == null || modelId === '' ? '__auto__' : String(modelId);
-  const list = [...(store.favorites[key] || [])];
-  const i = list.indexOf(id);
-  if (i >= 0) list.splice(i, 1);
-  else list.push(id);
-  store.favorites[key] = list;
+  const list = store.favorites.claude;
+  store.favorites.claude = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
   save();
   return store.favorites;
 });
-ipcMain.handle('set-model', (_e, { cwd, backend, model }) => {
+// per project { claude: model }: the shape the renderer already reads
+const setModel = (cwd, model) => (store.models[cwd] = { claude: model ?? null });
+ipcMain.handle('set-model', (_e, { cwd, model }) => {
   if (!cwd) return store.models;
-  const key = favBackend(backend);
-  const prev = store.models[cwd];
-  const obj =
-    prev && typeof prev === 'object' && !Array.isArray(prev)
-      ? { ...prev }
-      : { claude: typeof prev === 'string' || prev === null || prev === undefined ? prev ?? null : null };
-  obj[key] = model ?? null;
-  store.models[cwd] = obj;
-  store.backends[cwd] = store.backends[cwd] ?? key;
+  setModel(cwd, model);
   save();
   return store.models;
 });
@@ -394,7 +297,6 @@ ipcMain.handle('chats-save', (_e, chat) => {
   const next = {
     id: String(chat.id),
     cwd: chat.cwd || '',
-    backend: favBackend(chat.backend),
     title: String(chat.title || 'Chat').slice(0, 80),
     sessionId: chat.sessionId ? String(chat.sessionId) : null,
     messages: Array.isArray(chat.messages)
@@ -426,44 +328,29 @@ ipcMain.handle('pick-folder', async () => {
   addProject(r.filePaths[0]);
   return r.filePaths[0];
 });
-ipcMain.handle('start', (_e, { prompt, cwd, newSession, plan, model, backend, sessionId }) => {
-  const id = backend === 'cursor' ? 'cursor' : backend === 'gemini' || backend === 'aistudio' ? 'gemini' : 'claude';
-  if (anyBusy() || !prompt.trim() || !cwd || !fs.existsSync(cwd)) return false;
-  if (id === 'claude' && !fs.existsSync(claudePath)) return false;
-  if (id === 'cursor' && !findCursorAgent()) return false;
-  if (id === 'gemini' && !findGemini()) return false;
+ipcMain.handle('start', (_e, { prompt, cwd, newSession, plan, model, sessionId }) => {
+  if (agent.busy() || !prompt.trim() || !cwd || !fs.existsSync(cwd) || !fs.existsSync(claudePath)) return false;
   activeCwd = cwd;
-  activeBackend = id;
   addProject(cwd);
-  {
-    const prev = store.models[cwd];
-    const obj =
-      prev && typeof prev === 'object' && !Array.isArray(prev)
-        ? { ...prev }
-        : { claude: typeof prev === 'string' || prev === null || prev === undefined ? prev ?? null : null };
-    obj[id] = model ?? null;
-    store.models[cwd] = obj;
-  }
-  store.backends[cwd] = id;
+  setModel(cwd, model);
   save();
-  const resume = newSession ? undefined : sessionId || getSession(cwd, id);
-  agents[id].start(prompt, cwd, resume, { plan, model: model ?? undefined });
+  const resume = newSession ? undefined : sessionId || getSession(cwd, 'claude');
+  agent.start(prompt, cwd, resume, { plan, model: model ?? undefined });
   return true;
 });
 ipcMain.on('open-external', (_e, url) => /^https?:\/\//i.test(url) && shell.openExternal(url));
-ipcMain.on('stop', () => agents[activeBackend]?.stop());
+ipcMain.on('stop', () => agent.stop());
 ipcMain.on('permission-answer', (_e, { id, ...answer }) => {
   pending.get(id)?.(answer);
 });
 
-// --- terminal / IDE sessions: Claude + Cursor hooks POST their events to this local server
-const terminal = new Map(); // session_id -> { id, cwd, state, text, at, source? }
+// --- terminal sessions: Claude Code hooks POST their events to this local server
+const terminal = new Map(); // session_id -> { id, cwd, state, text, at }
 const STALE_MS = 30 * 60 * 1000; // no event for 30 min: the terminal was probably closed without SessionEnd
 const hookCfgFile = path.join(app.getPath('userData'), 'hook.json');
 const hookToken = crypto.randomBytes(16).toString('hex');
 function onHook(e) {
-  // Cursor always sends conversation_id; Claude sends session_id — accept either (as string).
-  const sid = e?.session_id != null ? String(e.session_id) : e?.conversation_id != null ? String(e.conversation_id) : '';
+  const sid = e?.session_id != null ? String(e.session_id) : '';
   if (!sid) return;
   e.session_id = sid;
   const prev = terminal.get(e.session_id);
@@ -472,7 +359,7 @@ function onHook(e) {
   else {
     s = hookToStatus(e, prev);
     if (!s) return;
-    terminal.set(e.session_id, { id: e.session_id, cwd: String(e.cwd ?? ''), source: e.source, ...s, at: Date.now() });
+    terminal.set(e.session_id, { id: e.session_id, cwd: String(e.cwd ?? ''), ...s, at: Date.now() });
   }
   for (const [id, t] of terminal) if (Date.now() - t.at > STALE_MS) terminal.delete(id);
   const changed = s && s.state !== prev?.state ? s.state : undefined; // one chime/toast per prompt, not per event
@@ -501,9 +388,9 @@ function startHookServer() {
   hookServer.listen(0, '127.0.0.1', () => fs.writeFileSync(hookCfgFile, JSON.stringify({ port: hookServer.address().port, token: hookToken })));
 }
 
-// --- hooks in the user's global Claude Code / Cursor settings: only on request, with a backup, removed cleanly when switched off
+// --- hooks in the user's global Claude Code settings: only on request, with a backup, removed cleanly when switched off
 const settingsFile = path.join(os.homedir(), '.claude', 'settings.json');
-const cursorHooksFile = path.join(os.homedir(), '.cursor', 'hooks.json');
+const cursorHooksFile = path.join(os.homedir(), '.cursor', 'hooks.json'); // only for the 1.0 → 1.1 migration
 const slash = (p) => p.replaceAll('\\', '/'); // the same command works in Git Bash and PowerShell
 function findNodeBin() {
   const candidates = [];
@@ -515,14 +402,10 @@ function findNodeBin() {
     });
     candidates.push(...out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean));
   } catch {}
-  // Prefer system Node over cursor-agent's bundled node (path breaks on CLI updates).
-  const preferred =
-    candidates.find((p) => /nodejs|program files/i.test(p)) ||
-    candidates.find((p) => !/cursor-agent/i.test(p)) ||
-    candidates[0];
-  return preferred || 'node';
+  // Prefer system Node over a node bundled with some CLI (that path breaks on CLI updates).
+  return candidates.find((p) => /nodejs|program files/i.test(p)) || candidates[0] || 'node';
 }
-// Absolute node path: Cursor's hook PATH often lacks `node`, so bare `node` silently never runs.
+// Absolute node path: a hook's PATH may lack `node`, and then a bare `node` silently never runs.
 const hookCommand = () => `"${slash(findNodeBin())}" "${slash(path.join(dir, 'hook.cjs'))}" "${slash(hookCfgFile)}"`;
 
 function writeJsonSettings(file, mutate) {
@@ -541,9 +424,6 @@ function writeJsonSettings(file, mutate) {
 function writeHooks(on) {
   return writeJsonSettings(settingsFile, (s) => (on ? withHooks(s, hookCommand()) : withoutHooks(s)));
 }
-function writeCursorHooks(on) {
-  return writeJsonSettings(cursorHooksFile, (s) => (on ? withCursorHooks(s, hookCommand()) : withoutCursorHooks(s)));
-}
 
 const hasNode = () => new Promise((resolve) => execFile('node', ['-v'], { windowsHide: true, timeout: 5000 }, (err) => resolve(!err)));
 async function setHooks(on) {
@@ -553,20 +433,7 @@ async function setHooks(on) {
   } else if (!writeHooks(on)) on = store.hooks;
   store.hooks = on;
   save();
-  if (!on && !store.cursorHooks) {
-    terminal.clear();
-    send('terminal', { sessions: [] });
-  }
-  createTray();
-}
-async function setCursorHooks(on) {
-  if (on && !(await hasNode())) {
-    dialog.showErrorBox('Nikki', 'Für Cursor-Sessions braucht es Node.js (der Befehl „node“ wurde nicht gefunden).');
-    on = false;
-  } else if (!writeCursorHooks(on)) on = store.cursorHooks;
-  store.cursorHooks = on;
-  save();
-  if (!on && !store.hooks) {
+  if (!on) {
     terminal.clear();
     send('terminal', { sessions: [] });
   }
@@ -616,12 +483,6 @@ function createTray() {
         click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked }),
       },
       { label: 'Claude Terminal-Sessions', type: 'checkbox', checked: store.hooks, click: (item) => setHooks(item.checked) },
-      {
-        label: 'Cursor-Sessions beobachten',
-        type: 'checkbox',
-        checked: store.cursorHooks,
-        click: (item) => setCursorHooks(item.checked),
-      },
       { type: 'separator' },
       { label: 'Beenden', click: () => app.quit() },
     ]),
@@ -635,13 +496,13 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   watchFullscreen();
-  feedCursor();
+  feedPointer();
   startHookServer();
   // safety: if the renderer never signals, still allow fullscreen-hide after the intro window
   setTimeout(endBootHold, 5000);
   if (store.hooks) writeHooks(true); // refresh the hook path, e.g. after an update moved the app
   // Cursor support is gone: take our hooks out of ~/.cursor/hooks.json once, then drop the flag
-  if (store.cursorHooks && (!fs.existsSync(cursorHooksFile) || writeCursorHooks(false))) {
+  if (store.cursorHooks && (!fs.existsSync(cursorHooksFile) || writeJsonSettings(cursorHooksFile, withoutCursorHooks))) {
     delete store.cursorHooks;
     save();
   }
@@ -656,17 +517,14 @@ app.whenReady().then(() => {
 });
 app.on('before-quit', () => {
   quitting = true;
-  clearInterval(cursorTimer);
-  cursorTimer = null;
+  clearInterval(pointerTimer);
+  pointerTimer = null;
 });
 app.on('will-quit', () => {
   quitting = true;
-  clearInterval(cursorTimer);
-  cursorTimer = null;
-  agents.claude.stop();
-  agents.cursor.stop();
-  agents.cursor.dispose?.();
-  agents.gemini.stop();
+  clearInterval(pointerTimer);
+  pointerTimer = null;
+  agent.stop();
   try {
     fullscreenWatcher?.stdout?.removeAllListeners('data');
     fullscreenWatcher?.kill();

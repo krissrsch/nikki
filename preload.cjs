@@ -5,19 +5,15 @@ const on = (channel) => (cb) => ipcRenderer.on(channel, (_e, data) => cb(data));
 contextBridge.exposeInMainWorld('companion', {
   getState: () => ipcRenderer.invoke('get-state'),
   pickFolder: () => ipcRenderer.invoke('pick-folder'),
-  branch: (cwd) => ipcRenderer.invoke('branch', cwd),
-  gitStatus: (cwd) => ipcRenderer.invoke('git-status', cwd),
-  gitOpenRemote: (cwd) => ipcRenderer.invoke('git-open-remote', cwd),
-  openAiStudio: (text) => ipcRenderer.invoke('open-aistudio', { text }),
-  cursorModels: () => ipcRenderer.invoke('cursor-models'),
-  toggleFavorite: (backend, modelId) => ipcRenderer.invoke('toggle-favorite', { backend, modelId }),
-  setModel: (cwd, backend, model) => ipcRenderer.invoke('set-model', { cwd, backend, model }),
+  branch: (cwd) => ipcRenderer.invoke('branch', cwd), // `git branch --show-current` or null
+  toggleFavorite: (_backend, modelId) => ipcRenderer.invoke('toggle-favorite', { modelId }),
+  setModel: (cwd, _backend, model) => ipcRenderer.invoke('set-model', { cwd, model }),
   chatsList: () => ipcRenderer.invoke('chats-list'),
   chatsSave: (chat) => ipcRenderer.invoke('chats-save', chat),
   chatsDelete: (id) => ipcRenderer.invoke('chats-delete', id),
   setLastChat: (id) => ipcRenderer.invoke('set-last-chat', id),
-  start: (prompt, cwd, { newSession, plan, model, backend, sessionId }) =>
-    ipcRenderer.invoke('start', { prompt, cwd, newSession, plan, model, backend, sessionId }),
+  start: (prompt, cwd, { newSession, plan, model, sessionId }) =>
+    ipcRenderer.invoke('start', { prompt, cwd, newSession, plan, model, sessionId }),
   stop: () => ipcRenderer.send('stop'),
   // answer: { answer: 'allow' | 'always' | 'deny', picks?: string[][], message?: string }
   answerPermission: (id, answer) => ipcRenderer.send('permission-answer', { id, ...answer }),
@@ -35,5 +31,5 @@ contextBridge.exposeInMainWorld('companion', {
   onPermissionCancel: on('permission-cancel'),
   onToggle: on('toggle'),
   onShow: on('show'),
-  onCursor: on('cursor'),
+  onPointer: on('pointer'), // mouse position for the eyes and click-through, { x, y } window-relative
 });
