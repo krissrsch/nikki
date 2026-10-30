@@ -758,8 +758,27 @@ button.tileHead { flex: none; padding: 0; border: 0; background: none; text-alig
   overflow-wrap: anywhere;
   user-select: text;
 }
+/* the card's own keys (app.js cardKey): a quiet badge, the button's text colour at low strength */
+kbd.key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  margin-left: 7px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  opacity: 0.55;
+  font: 600 10px/1 'Cascadia Code', Consolas, monospace;
+}
+#permission .opt { position: relative; padding-right: 36px; }
+#permission .opt kbd.key { position: absolute; top: 50%; right: 12px; margin: 0; translate: 0 -50%; }
+#permission:focus { outline: none; } /* focused only so its keys work; each button still shows its own ring */
 .actions { display: flex; justify-content: flex-end; gap: 6px; }
 .actions button {
+  display: inline-flex;
+  align-items: center;
   height: 30px;
   padding: 0 14px;
   border: 0;

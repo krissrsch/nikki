@@ -64,7 +64,7 @@ function setView(name) {
   for (const btn of document.querySelectorAll('#tabs .tab')) {
     btn.setAttribute('aria-pressed', String(btn.dataset.view === view));
   }
-  if (view === 'chat' && open) promptEl.focus();
+  if (view === 'chat' && open && !perms.length) promptEl.focus(); // a waiting card keeps the keyboard (its hotkeys)
   if (view === 'settings') api.settingsGet().then(applySettings); // autostart or the Claude path may have changed outside
   if (view === 'home') for (const id of live.keys()) renderTile(id); // "in 12 min" and co. are as old as the last look
   if (live.has(view)) NikkiModules.get(view).page($(VIEWS[view]), live.get(view));
@@ -708,7 +708,8 @@ function setBusy(b) {
 }
 
 // Animated when clicked; instant when opened from the keyboard or tray (opened many times a day).
-function setOpen(v, { instant = false } = {}) {
+// focus: false when nobody asked for the island (a card arrived): it must not take the keyboard from the terminal the user types in
+function setOpen(v, { instant = false, focus = true } = {}) {
   if (v === open) return;
   open = v;
   if (instant) {
@@ -726,8 +727,8 @@ function setOpen(v, { instant = false } = {}) {
     closeChatsMenu();
   }
   if (v) {
-    api.focus();
-    if (view === 'chat') promptEl.focus();
+    if (focus) api.focus();
+    if (view === 'chat' && !perms.length) promptEl.focus();
   }
 }
 
@@ -997,13 +998,20 @@ function setPlan(v) {
 function detail(input = {}) {
   return String(input.command ?? input.file_path ?? input.url ?? JSON.stringify(input, null, 2)).slice(0, 800);
 }
-function button(label, cls, onClick) {
+function button(label, cls, onClick, key, shortcuts) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = cls;
   b.textContent = label;
   b.addEventListener('click', onClick);
+  if (key) cardKey(b, key, shortcuts);
   return b;
+}
+// a card key (see the keydown handler below): a small badge on the button; screen readers get aria-keyshortcuts instead
+function cardKey(b, key, shortcuts = key) {
+  b.dataset.hotkey = key.toLowerCase();
+  b.setAttribute('aria-keyshortcuts', shortcuts);
+  b.append(Object.assign(document.createElement('kbd'), { className: 'key', textContent: key, ariaHidden: 'true' }));
 }
 function field(tag, placeholder) {
   const el = document.createElement(tag);
@@ -1012,9 +1020,13 @@ function field(tag, placeholder) {
   if (tag === 'textarea') el.rows = 1;
   return el;
 }
+let cardId = null;
+let cardAt = 0; // when the card on screen appeared: its hotkeys wait a moment, so keys typed for something else never answer it
 function renderPerm() {
   const r = perms[0];
   const wasHidden = $('permission').hidden;
+  if (r && r.id !== cardId) cardAt = Date.now();
+  cardId = r?.id ?? null;
   $('permission').hidden = !r;
   go.disabled = !!r; // stop is locked while a card waits (B6)
   const body = $('permBody');
@@ -1033,9 +1045,9 @@ function renderPerm() {
   code.textContent = detail(r.input);
   body.replaceChildren(code);
   $('permActions').replaceChildren(
-    button('Erlauben', 'primary', () => answerPerm({ answer: 'allow' })),
-    ...(r.origin === 'terminal' && !r.canAlways ? [] : [button('Immer', 'soft', () => answerPerm({ answer: 'always' }))]),
-    button('Ablehnen', 'danger', () => answerPerm({ answer: 'deny' })),
+    button('Erlauben', 'primary', () => answerPerm({ answer: 'allow' }), 'A', 'A Enter'),
+    ...(r.origin === 'terminal' && !r.canAlways ? [] : [button('Immer', 'soft', () => answerPerm({ answer: 'always' }), 'I')]),
+    button('Ablehnen', 'danger', () => answerPerm({ answer: 'deny' }), 'D'),
   );
 }
 
@@ -1046,7 +1058,7 @@ function renderQuestion(r) {
   if (!qs.length) {
     $('permTitle').textContent = r.title || 'Auswahl';
     $('permBody').replaceChildren();
-    $('permActions').replaceChildren(button('Schließen', 'ghost', () => answerPerm({ answer: 'deny' })));
+    $('permActions').replaceChildren(button('Schließen', 'ghost', () => answerPerm({ answer: 'deny' }), 'D'));
     return;
   }
   if (asked?.id !== r.id) asked = { id: r.id, i: 0, picks: [] };
@@ -1067,7 +1079,7 @@ function renderQuestion(r) {
     e.preventDefault();
     next(q.multiSelect ? [...chosen, ...typed()] : typed());
   });
-  const options = opts.map((o) => {
+  const options = opts.map((o, i) => {
     const label = o.label || o.id || String(o);
     const b = button('', 'opt', () => {
       if (!q.multiSelect) return next([label]);
@@ -1078,6 +1090,7 @@ function renderQuestion(r) {
     b.innerHTML = '<strong></strong><span></span>';
     b.firstChild.textContent = label;
     b.lastChild.textContent = o.description ?? '';
+    if (i < 9) cardKey(b, String(i + 1));
     return b;
   });
   $('permTitle').textContent = qs.length > 1 ? `${qText} (${asked.i + 1}/${qs.length})` : qText;
@@ -1085,8 +1098,8 @@ function renderQuestion(r) {
   body.classList.toggle('choiceRow', opts.length === 2 && opts.every((o) => !(o.description)));
   body.replaceChildren(...options, other);
   $('permActions').replaceChildren(
-    button('Überspringen', 'ghost', () => answerPerm({ answer: 'deny', message: 'Der Nutzer wollte die Frage nicht beantworten.' })),
-    ...(q.multiSelect ? [button('Weiter', 'primary', () => next([...chosen, ...typed()]))] : []),
+    button('Überspringen', 'ghost', () => answerPerm({ answer: 'deny', message: 'Der Nutzer wollte die Frage nicht beantworten.' }), 'D'),
+    ...(q.multiSelect ? [button('Weiter', 'primary', () => next([...chosen, ...typed()]), '↵', 'Enter')] : []),
   );
 }
 
@@ -1098,7 +1111,7 @@ function renderPlan(r) {
   $('permTitle').textContent = 'Plan prüfen';
   $('permBody').replaceChildren(text, why);
   $('permActions').replaceChildren(
-    button('Annehmen', 'primary', () => answerPerm({ answer: 'allow' })),
+    button('Annehmen', 'primary', () => answerPerm({ answer: 'allow' }), 'A', 'A Enter'),
     button('Ablehnen', 'danger', () => {
       const wish = why.value.trim();
       if (!wish) return answerPerm({ answer: 'deny', message: 'Plan abgelehnt, bitte überarbeiten.' });
@@ -1109,15 +1122,26 @@ function renderPlan(r) {
         interrupt: true,
         message: `Plan abgelehnt. Der Nutzer möchte: „${wish}“. Er schickt dir das gleich als eigene Nachricht. Beende deinen Zug jetzt ohne weitere Schritte.`,
       });
-    }),
+    }, 'D'),
   );
 }
+
+// the card takes the keyboard so its hotkeys work, unless the user is typing something: a draft is never taken over
+function focusCard() {
+  const el = document.activeElement;
+  if (typingIn(el) && el.value?.trim()) return;
+  $('permission').focus({ preventScroll: true });
+}
+const typingIn = (el) => !!el?.matches?.('textarea, select, [contenteditable="true"], input:not([type="checkbox"], [type="radio"], [type="button"])');
 
 function answerPerm(a) {
   const r = perms.shift();
   if (!r) return;
   api.answerPermission(r.id, a);
+  const focused = document.activeElement;
   renderPerm();
+  // the keyboard stays with the next card, or goes back to the composer (the card's buttons were just replaced or hidden)
+  if (focused === document.body || $('permission').contains(focused)) (perms.length ? $('permission') : promptEl).focus({ preventScroll: true });
   if (r.origin === 'terminal') return renderState();
   if (!perms.length) show({ state: 'working', text: 'Nikki macht weiter…' });
 }
@@ -1425,7 +1449,23 @@ addEventListener('keydown', (e) => {
     closeModelMenu();
   } else if (chatsMenu && !chatsMenu.hidden) {
     closeChatsMenu();
-  } else setOpen(false);
+  } else if (!perms.length) setOpen(false); // a waiting card keeps the island open: Esc does nothing then
+});
+// Card hotkeys while the island has the focus: A or Enter allows (accepts a plan), I always, D denies (skips a question),
+// 1-9 pick an option. Never while a text field has the focus (composer, own answer, plan feedback); a focused button keeps its own Enter.
+addEventListener('keydown', (e) => {
+  if (!perms.length || !open || e.repeat || e.ctrlKey || e.altKey || e.metaKey || typingIn(document.activeElement)) return;
+  if (Date.now() - cardAt < 500) return;
+  const card = $('permission');
+  const key = e.key.toLowerCase();
+  let target = null;
+  if (e.key === 'Enter') {
+    if (document.activeElement?.matches?.('button, a[href]')) return;
+    target = card.querySelector('[aria-keyshortcuts~="Enter"]');
+  } else if (/^[a-z1-9]$/.test(key)) target = card.querySelector(`[data-hotkey="${key}"]`);
+  if (!target || target.disabled) return;
+  e.preventDefault();
+  target.click();
 });
 
 api.onToggle(() => setOpen(!open, { instant: true }));
@@ -1463,7 +1503,8 @@ api.onPermissionRequest((r) => {
   if (r.origin === 'terminal') focusSession = r.sessionId; // the chat header shows whose card this is
   renderPerm();
   setView('chat');
-  setOpen(true);
+  setOpen(true, { focus: false });
+  if (perms[0] === r) focusCard();
   if (r.origin === 'terminal') return renderState();
   const text =
     r.toolName === 'AskUserQuestion'
