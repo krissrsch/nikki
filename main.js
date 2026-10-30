@@ -890,7 +890,7 @@ function voiceHeard(ms) {
     setVoice('idle');
     return pillDone('Nichts gehört. Halt die Taste beim Sprechen.', 'bad');
   }
-  execFile(whisperExe, whisperArgs(whisperModel, voiceWav), { cwd: path.dirname(whisperExe), windowsHide: true, timeout: 60000, encoding: 'utf8', maxBuffer: 1024 * 1024 }, (err, out) => {
+  execFile(whisperExe, whisperArgs(whisperModel, voiceWav, voiceHooks().map((h) => h.name)), { cwd: path.dirname(whisperExe), windowsHide: true, timeout: 60000, encoding: 'utf8', maxBuffer: 1024 * 1024 }, (err, out) => {
     fs.rmSync(voiceWav, { force: true });
     setVoice('idle');
     if (err) {
@@ -903,6 +903,7 @@ function voiceHeard(ms) {
   });
 }
 async function voiceAct(said) {
+  if (said.kind === 'unclear') return pillDone(said.text, 'bad');
   if (said.kind !== 'webhook') {
     send('voice-text', said);
     return pill?.webContents.send('pill', { phase: 'hidden' }), pill?.hide();
