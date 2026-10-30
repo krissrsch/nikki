@@ -23,6 +23,12 @@ test('slim drops tool output and file contents and cuts long commands (M10)', ()
   assert.equal(hookToStatus(out).text, 'Nikki tippt a.js…');
 });
 
+test("slim keeps Stop's last answer, cut to 4000 characters", () => {
+  const out = slim({ hook_event_name: 'Stop', session_id: 's1', last_assistant_message: 'a'.repeat(9000), transcript_path: 'x' });
+  assert.equal(out.last_assistant_message.length, 4000);
+  assert.equal(slim({ hook_event_name: 'Stop', last_assistant_message: { not: 'text' } }).last_assistant_message, undefined);
+});
+
 test('slim keeps what a question needs', () => {
   const raw = {
     hook_event_name: 'PreToolUse',

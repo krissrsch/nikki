@@ -801,8 +801,31 @@ function closeMenu() {
 // ---- session chips
 
 // chat header: our own project chip first (active unless a terminal session is pinned), then the observed sessions
+// a pinned terminal session shows Claude's last answer from there (Stop hook) instead of our own conversation
+let termReplyKey = '';
+function renderTermReply(t) {
+  $('output').classList.toggle('pinned', !!t);
+  const box = $('termReply');
+  box.hidden = !t;
+  const key = t ? `${t.id}\n${t.last ?? ''}` : '';
+  if (key === termReplyKey) return;
+  termReplyKey = key;
+  if (!t) return scrollChatToEnd();
+  const body = document.createElement('div');
+  if (t.last) {
+    body.className = 'msg msg-assistant md';
+    body.innerHTML = md(t.last);
+  } else {
+    body.className = 'msg termEmpty';
+    body.textContent = 'Noch keine Antwort. Sobald Claude dort fertig ist, steht sie hier.';
+  }
+  const hint = Object.assign(document.createElement('p'), { className: 'meta termHint', textContent: 'aus dem Terminal' });
+  box.replaceChildren(hint, body);
+  scrollChatToEnd();
+}
 function renderSessionPills() {
   const pinnedT = focusSession && terminal.find((t) => t.id === focusSession);
+  renderTermReply(pinnedT || null);
   promptEl.placeholder = pinnedT ? `Nachricht an ${folderName(pinnedT.cwd)} vormerken…` : 'Was soll Claude tun?';
   $('ownDot').dataset.state = ownState();
   $('projectBtn').setAttribute('aria-pressed', String(!focusSession));

@@ -67,6 +67,23 @@ describe('Terminal-Rückkanal', () => {
     await page.waitForSelector('#permission', { state: 'hidden' });
   });
 
+  test('Angepinnte Terminal-Session zeigt Claudes letzte Antwort statt des eigenen Chats', async () => {
+    await hook({ ...stopEvent, last_assistant_message: '**Fertig.** Alle Tests mit `npm test` sind grün.' });
+    await nikki.openChat();
+    const chip = page.locator('#sessionPills .chip', { hasText: 'demo · Terminal' });
+    await chip.waitFor();
+    if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click(); // a card of this session may have pinned it already
+    await page.waitForSelector('#termReply:not([hidden]) .msg-assistant strong:text-is("Fertig.")');
+    assert.equal(await page.textContent('#termReply .termHint'), 'aus dem Terminal');
+    assert.equal(await page.textContent('#termReply .msg-assistant code'), 'npm test');
+    assert.equal(await page.locator('#output.pinned').count(), 1, 'der eigene Verlauf tritt zurück');
+    await chip.click(); // unpinned: our own chat is back
+    await page.waitForSelector('#termReply', { state: 'hidden' });
+    assert.equal(await page.locator('#output.pinned').count(), 0);
+    await chip.click();
+    await page.waitForSelector('#termReply:not([hidden])');
+  });
+
   test('Vorgemerkte Nachricht geht mit dem Stop-Hook an Claude, einmal', async () => {
     await hook({ ...SESSION, hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: { file_path: 'a.js' } });
     assert.equal(await page.evaluate(() => window.companion.queueMessage('term-1', 'Bitte noch Tests schreiben')), true);
