@@ -230,131 +230,19 @@ function renderChatDot() {
   dot.parentElement.setAttribute('aria-label', tone ? `Chat, ${DOT_LABEL[tone]}` : 'Chat');
 }
 
-// ---- sounds: synthesized in-app (no files, no Windows system sounds)
+// ---- sounds: sound.js makes them, here only the switch and the shared audio context
 let audio;
+let room;
 function ensureAudio() {
   audio ??= new AudioContext();
+  room ??= soundRoom(audio);
   audio.resume();
   return audio;
 }
-function chime(kind) {
-  if (muted) return;
-  const ctx = ensureAudio();
-  (kind === 'needsYou' ? [880, 660] : [660, 990]).forEach((freq, i) => {
-    const t = ctx.currentTime + i * 0.12;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.18, t + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.4);
-  });
+function play(name) {
+  if (!muted) playSound(ensureAudio(), room, name);
 }
-// Nikki's small sounds when she is touched: a pitch glide through a warm filter, the "r" of a mrrp is a fast tremolo
-const CAT_VOICE = {
-  mrrp: [{ from: 420, to: 640, dur: 0.2, vol: 0.13, trill: 30 }],
-  chirp: [{ from: 720, to: 1080, dur: 0.09, vol: 0.1 }, { from: 820, to: 1240, dur: 0.12, vol: 0.11, at: 0.1 }],
-  lift: [{ from: 340, to: 560, dur: 0.07, vol: 0.07 }],
-  land: [{ from: 190, to: 90, dur: 0.1, vol: 0.2 }],
-};
-function catVoice(kind) {
-  if (kind === 'mrow') return meow();
-  if (muted) return;
-  const ctx = ensureAudio();
-  for (const { from, to, dur, vol, trill, at = 0 } of CAT_VOICE[kind]) {
-    const t = ctx.currentTime + at;
-    const osc = ctx.createOscillator();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(from, t);
-    osc.frequency.exponentialRampToValueAtTime(to, t + dur);
-    filter.type = 'lowpass';
-    filter.frequency.value = 2200;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(vol, t + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.06);
-    osc.connect(filter).connect(gain).connect(ctx.destination);
-    if (trill) {
-      const lfo = ctx.createOscillator();
-      const depth = ctx.createGain();
-      lfo.frequency.value = trill;
-      depth.gain.value = vol * 0.7;
-      lfo.connect(depth).connect(gain.gain);
-      lfo.start(t);
-      lfo.stop(t + dur + 0.08);
-    }
-    osc.start(t);
-    osc.stop(t + dur + 0.08);
-  }
-}
-/** Soft cat meow (Web Audio — no files): Nikki says hello at start. */
-function meow() {
-  if (muted) return;
-  const ctx = ensureAudio();
-  const t = ctx.currentTime;
-  const master = ctx.createGain();
-  master.gain.setValueAtTime(0.0001, t);
-  master.gain.exponentialRampToValueAtTime(0.22, t + 0.04);
-  master.gain.exponentialRampToValueAtTime(0.12, t + 0.18);
-  master.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
-  master.connect(ctx.destination);
-
-  const filt = ctx.createBiquadFilter();
-  filt.type = 'bandpass';
-  filt.Q.value = 2.2;
-  filt.frequency.setValueAtTime(900, t);
-  filt.frequency.exponentialRampToValueAtTime(1600, t + 0.08);
-  filt.frequency.exponentialRampToValueAtTime(520, t + 0.48);
-  filt.connect(master);
-
-  // body tone: “mrr” → “yew”
-  const body = ctx.createOscillator();
-  body.type = 'triangle';
-  body.frequency.setValueAtTime(620, t);
-  body.frequency.exponentialRampToValueAtTime(1100, t + 0.09);
-  body.frequency.exponentialRampToValueAtTime(380, t + 0.5);
-  const bodyG = ctx.createGain();
-  bodyG.gain.value = 0.7;
-  body.connect(bodyG).connect(filt);
-
-  // soft upper partial (less buzz than sawtooth)
-  const air = ctx.createOscillator();
-  air.type = 'sine';
-  air.frequency.setValueAtTime(1240, t);
-  air.frequency.exponentialRampToValueAtTime(1980, t + 0.09);
-  air.frequency.exponentialRampToValueAtTime(700, t + 0.5);
-  const airG = ctx.createGain();
-  airG.gain.value = 0.22;
-  air.connect(airG).connect(filt);
-
-  // tiny noise rasp so it reads as a mouth, not a beep
-  const nLen = Math.max(1, Math.floor(ctx.sampleRate * 0.55));
-  const nBuf = ctx.createBuffer(1, nLen, ctx.sampleRate);
-  const nData = nBuf.getChannelData(0);
-  for (let i = 0; i < nLen; i++) nData[i] = (Math.random() * 2 - 1) * (1 - i / nLen);
-  const noise = ctx.createBufferSource();
-  noise.buffer = nBuf;
-  const nFilt = ctx.createBiquadFilter();
-  nFilt.type = 'bandpass';
-  nFilt.frequency.value = 1400;
-  nFilt.Q.value = 1.2;
-  const nG = ctx.createGain();
-  nG.gain.setValueAtTime(0.0001, t);
-  nG.gain.exponentialRampToValueAtTime(0.08, t + 0.05);
-  nG.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-  noise.connect(nFilt).connect(nG).connect(master);
-
-  body.start(t);
-  air.start(t);
-  noise.start(t);
-  body.stop(t + 0.55);
-  air.stop(t + 0.55);
-  noise.stop(t + 0.55);
-}
+const chime = play; // needsYou | done
 // Electron still gates AudioContext until a gesture — unlock so later sounds can play
 document.addEventListener('pointerdown', () => ensureAudio(), { once: true });
 
@@ -414,7 +302,7 @@ cat = createCatStage({
   tabs: $('tabs'),
   reduceMotion,
   canJump: () => settings.catJump !== false,
-  voice: catVoice,
+  voice: play,
   ctx: () => ({ box: $('panelBox'), home: document.querySelector('[data-tile="claude"]'), composer: $('composer'), pageOf: (v) => $(VIEWS[v]) }),
 });
 new ResizeObserver(() => cat.sync()).observe($('panelBox'));
@@ -1603,7 +1491,7 @@ api.onPermissionCancel((id) => {
 (async () => {
   setView('home');
   const state = await api.getState();
-  applySettings(await api.settingsGet()); // before the hello meow so mute is respected
+  applySettings(await api.settingsGet()); // before the hello so mute is respected
   api.onWeather(renderWeather);
   renderWeather(await api.weatherGet());
   projects = state.projects;
@@ -1626,7 +1514,7 @@ api.onPermissionCancel((id) => {
   while (document.visibilityState !== 'visible') await new Promise((r) => document.addEventListener('visibilitychange', r, { once: true }));
   island.classList.remove('boot'); // fades in from above, then opens on Home
   setOpen(true);
-  meow();
+  play('hello');
 
   if (!claudeFound) {
     show({ state: 'error', text: 'Nikki findet Claude nicht.' });
