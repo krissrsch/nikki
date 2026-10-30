@@ -10,8 +10,8 @@ Gegrillt: ja
 
 | Phase | Stand |
 |---|---|
-| 0 | **Fertig.** Cursor, Gemini, AI Studio und Git-Pill sind entfernt. B1–B16, H1–H4, M1–M12 und N1–N12 sind behoben, bis auf die rohen englischen CLI-Fehlertexte. `npm test` und `npm run e2e` (Playwright, isoliert) sind grün. Kein Release: Der Nutzer muss `npm run release` freigeben. |
-| 1 | Teil 1 **fertig**: Notch mit Augen und Schnurrhaaren, Glance-Rangfolge, Tabs, Chat-Status-Punkt, Höhen-Animation, Settings, schlanker Tray, frei belegbarer Hotkey. Teil 2 **läuft**: Modul-Registry, Dashboard, Notizblock, To-do, Timer, Kalender. Abweichung: Renderer-Logik liegt als klassisches Skript mit vm-Test in `renderer/` statt in `lib/`; ES-Module kommen später. |
+| 0 | **Fertig.** Cursor, Gemini, AI Studio und Git-Pill sind entfernt. B1–B16, H1–H4, M1–M12 und N1–N12 sind behoben, bis auf die rohen englischen CLI-Fehlertexte. `npm test` und `npm run e2e` (Playwright, isoliert) sind grün. **Release 1.1.0 veröffentlicht** (2026-10-30), zusammen mit Phase 1 und dem Rückkanal. |
+| 1 | Teil 1 **fertig**: Notch mit Augen und Schnurrhaaren, Glance-Rangfolge, Tabs, Chat-Status-Punkt, Höhen-Animation, Settings, schlanker Tray, frei belegbarer Hotkey. Teil 2 **fertig**: Modul-Registry, Dashboard, Notizblock, To-do, Timer, Kalender. Abweichung: Renderer-Logik liegt als klassisches Skript mit vm-Test in `renderer/` statt in `lib/`; ES-Module kommen später. |
 | 2 | 2.1 und 2.3a **fertig**: Freigaben, Fragen und Pläne aus Terminal-Sessions lassen sich in der Insel beantworten (`hook.cjs --wait`, `lib/relay.js`, fail-open, #15433 abgefangen). Nachrichten lassen sich für arbeitende Sessions vormerken (`hook.cjs --stop`). Den Schalter „Freigaben in Nikki beantworten“ gibt es in den Settings. Offen: 2.2-Details (letzte Antwort aus `Stop`, Hotkeys für Erlauben/Ablehnen) und 2.3b, der Nikki-Channel. |
 | 3 | Der Spike für den C#-Helfer läuft (SMTC + Lautstärke). Die Module folgen nach Phase 1, Teil 2. |
 | 4 | Das Referenzfoto ist da (privat, außerhalb des Repos), beschrieben in `gedaechtnis/nikki-aussehen.md`. |
