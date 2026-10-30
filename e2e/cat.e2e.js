@@ -49,6 +49,48 @@ describe('Nikki die Katze', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('ziehen: sie bleibt dort, je Ansicht und nach dem Neustart des Fensters; Doppelklick schickt sie zurück', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    await page.waitForTimeout(600);
+    const pos = () => page.$eval('.catRest', (e) => ({ left: e.offsetLeft, top: e.offsetTop, type: e.dataset.type }));
+    const home = await pos();
+    const box = await page.$eval('.catRest .catIn', (e) => e.getBoundingClientRect().toJSON());
+    await page.mouse.move(box.x + 46, box.y + 50);
+    await page.mouse.down();
+    await page.mouse.move(box.x - 60, box.y + 80, { steps: 6 });
+    assert.equal(await page.$eval('.catRest', (e) => e.classList.contains('held')), true, 'sie hängt an der Maus');
+    await page.mouse.move(box.x - 150, box.y + 120, { steps: 6 });
+    await page.mouse.up();
+    const moved = await pos();
+    assert.deepEqual([moved.left, moved.top], [home.left - 196, home.top + 120 - 50]);
+    await page.click('#tabs .tab[data-view="todo"]');
+    const todo = await pos();
+    assert.equal(todo.type, 'peek', 'der Platz gilt nur für diese Ansicht');
+    await page.click('#tabs .tab[data-view="home"]');
+    assert.deepEqual(await pos(), moved);
+    await page.reload();
+    await page.waitForTimeout(800);
+    assert.deepEqual(await pos(), moved, 'nach dem Neuladen noch dort');
+    await page.dblclick('.catRest .catIn');
+    await until(async () => (await pos()).left === home.left, 'zurück in der Kachel');
+    assert.deepEqual(nikki.errors, []);
+  });
+
+  test('Klick: sie federt, reagiert und bleibt nicht hängen; die Kachel zeigt den Zustand nur als Punkt', async () => {
+    nikki = await launch({ state: { projects: ['C:/proj/demo'], current: 'C:/proj/demo' } });
+    const { page } = nikki;
+    await page.waitForTimeout(600);
+    const face = () => page.$eval('.catRest .cat', (e) => ({ mood: e.dataset.mood, moving: e.getAnimations().length }));
+    await page.click('.catRest .catIn');
+    const after = await face();
+    assert.equal(after.mood, 'purr');
+    assert.ok(after.moving > 0, 'die Sprung-Animation läuft');
+    await until(async () => (await face()).moving === 0, 'die Animation endet');
+    assert.equal(await page.$$eval('#claudeSessions .sState', (e) => e.length), 0, 'keine Zustandswörter');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('die Lichtkante läuft über den ganzen Bildschirm: das Fenster ist so breit wie die Anzeige', async () => {
     nikki = await launch();
     const { app } = nikki;
