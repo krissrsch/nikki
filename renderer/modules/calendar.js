@@ -15,8 +15,6 @@ function calMonth(year, month) {
   return [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
 }
 const calOnDay = (events, key) => events.filter((e) => calDayKey(e.at) === key).sort((a, b) => a.at - b.at);
-// what comes next (already started ones are over), soonest first
-const calUpcoming = (events, now) => events.filter((e) => e.at >= now).sort((a, b) => a.at - b.at);
 // due for the one reminder: starts within 15 min and was not announced yet
 const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now && e.at - now <= CAL_REMIND_MS);
 
@@ -191,18 +189,23 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
       root = el;
       render();
     },
-    tile(el, c) {
+    // Home (canvas Glas): today big on the left, the next two appointments of today beside it
+    tile(el) {
       const now = Date.now();
-      const [next, after] = calUpcoming(data.events, now);
-      const soon = next && next.at - now < CAL_REMIND_MS;
-      el.append(c.head(next ? (soon ? inMin(next.at - now) : dayWord(next.at, now)) : '', soon ? 'warn' : ''));
-      if (!next) {
-        el.append(h('span', { className: 'tileBig' }, 'Nichts geplant'), h('span', { className: 'tileSub' }, 'Mit + im Kalender trägst du was ein.'));
-        return;
-      }
+      const date = (o) => new Date(now).toLocaleDateString('de-DE', o);
+      const next = calOnDay(data.events, calDayKey(now)).filter((e) => e.at + e.dur * 60000 > now).slice(0, 2);
       el.append(
-        h('div', { className: 'tileStack' }, h('span', { className: 'tileBig', title: next.title }, next.title), h('span', { className: 'tileSub' }, `${time(next.at)} bis ${time(next.at + next.dur * 60000)}`)),
-        h('span', { className: 'tileSub' }, after ? `Danach ${calDayKey(after.at) === calDayKey(next.at) ? '' : `${dayWord(after.at, now)} `}${time(after.at)} ${after.title}` : 'Danach ist frei.'),
+        h('div', { className: 'calToday' }, h('span', { className: 'calWeekday' }, date({ weekday: 'long' })), h('span', { className: 'calNum' }, date({ day: 'numeric' })), h('span', { className: 'tileSub' }, date({ month: 'long', year: 'numeric' }))),
+        h(
+          'div',
+          { className: 'calNext' },
+          ...(next.length
+            ? next.map((e) => {
+                const soon = e.at - now < CAL_REMIND_MS;
+                return h('div', { className: 'calChip' }, h('span', { className: 'calChipTitle', title: e.title }, e.title), h('span', { className: `calChipTime${soon ? ' soon' : ''}` }, soon ? `${time(e.at)} · ${inMin(e.at - now)}` : time(e.at)));
+              })
+            : [h('p', { className: 'tileHint' }, 'Heute steht nichts an.')]),
+        ),
       );
     },
   });

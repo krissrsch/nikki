@@ -1,5 +1,5 @@
 // Musik (plan 3.2): what Windows plays (SMTC through helper/NikkiHelper.exe, which main runs while this module is on).
-// Page: cover, title, artist · app, progress, back/play/next, volume. Tile: cover, title, progress, play.
+// Page: cover, title, artist · app, progress, back/play/next, volume. Home tile: the same without the volume.
 // Closed notch: while something plays, Nikki's eyes dance and the glow shows its music edge.
 // No data of its own: main sends media and volume as they change (null: nothing plays, or no helper).
 
@@ -150,15 +150,23 @@ function musicApp(id) {
       root = el;
       render();
     },
-    tile(el, c) {
+    // Home (canvas Glas): cover, title, artist · app, progress and back/play/next; quiet, just a line, no empty cover
+    tile(el) {
+      el.classList.toggle('musicTile', !!media);
       if (!media) {
-        el.append(c.head(), h('span', { className: 'tileBig' }, 'Gerade still'), h('span', { className: 'tileSub' }, 'Starte Musik, Nikki tanzt mit.'));
+        el.append(h('div', { className: 'tileHead', innerHTML: ICON_NOTE.replace('"ti"', '"hi"') }, 'Musik'), h('div', { className: 'tileStack' }, h('span', { className: 'tileBig' }, 'Gerade still'), h('span', { className: 'tileSub' }, 'Starte Musik, Nikki tanzt mit.')));
         return;
       }
+      const sub = [media.artist, musicApp(media.app)].filter(Boolean).join(' · ');
       el.append(
-        c.head(musicApp(media.app)),
-        h('div', { className: 'musicRow' }, cover('musicCover mini'), h('span', { className: 'tileStack' }, h('span', { className: 'musicTileTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'tileSub' }, media.artist))),
-        h('div', { className: 'musicRow' }, track('thin'), playBtn('small')),
+        cover('musicCover tileCover'),
+        h(
+          'div',
+          { className: 'musicTileMain' },
+          h('div', { className: 'tileStack' }, h('span', { className: 'musicTileTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'tileSub', title: sub }, sub)),
+          track(),
+          h('div', { className: 'musicCtrl' }, round('Zurück', ICON_PREV, '', () => send('prev')), playBtn(''), round('Weiter', ICON_NEXT, '', () => send('next'))),
+        ),
       );
       paint();
     },

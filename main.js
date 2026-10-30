@@ -18,6 +18,7 @@ import { DEFAULT_MODULES, moduleFile, normalizeModules, withNewModules } from '.
 import { createRelay } from './lib/relay.js';
 import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
 import { onHook, sweep } from './lib/terminal.js';
+import { forecastUrl, geocodeUrl, parseForecast, parsePlace } from './lib/weather.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -396,6 +397,13 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     store.glow = !!value;
     syncSpectrum();
   } else if (key === 'glowLevel' && GLOW_LEVELS.includes(value)) store.glowLevel = value;
+  else if (key === 'weatherCity') {
+    const city = String(value ?? '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 80);
+    if (city !== store.weatherCity) {
+      store.weatherCity = city;
+      fetchWeather();
+    }
+  }
   save();
   return { ...(await settings()), error };
 });
@@ -838,6 +846,34 @@ ipcMain.handle('clip-keep', (_e, on) => {
   return clipState();
 });
 
+// --- weather for the Home tile (Open-Meteo, lib/weather.js): fetched here, never in the renderer (CSP); every 30 min and when the city changes.
+// The last good answer stays in the store; offline it is shown with its time and an error, without one a friendly hint.
+// store.weather: { query, place?: { name, lat, lon }, temp?, text?, icon?, max?, min?, hours?, at?, error?: 'offline' | 'notfound' } | null
+const getJson = async (url) => {
+  const r = await net.fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+};
+async function fetchWeather() {
+  const city = store.weatherCity;
+  const last = store.weather?.query === city ? store.weather : null;
+  let next;
+  if (!city) next = null;
+  else
+    try {
+      const place = last?.place ?? parsePlace(await getJson(geocodeUrl(city)));
+      next = place ? { query: city, place, ...parseForecast(await getJson(forecastUrl(place))), at: Date.now() } : { query: city, error: 'notfound' };
+    } catch (e) {
+      console.error('weather:', e.message);
+      next = { ...(last ?? { query: city }), error: 'offline' };
+    }
+  if (store.weatherCity !== city) return; // the city changed meanwhile: its own fetch answers
+  store.weather = next;
+  save();
+  send('weather', next);
+}
+ipcMain.handle('weather-get', () => (store.weather?.query === store.weatherCity ? store.weather : null));
+
 ipcMain.on('toast', (_e, text) => notify(String(text ?? '').slice(0, 200), true));
 ipcMain.on('open-external', (_e, url) => /^https?:\/\//i.test(url) && shell.openExternal(url));
 ipcMain.on('stop', () => agent.stop());
@@ -1090,6 +1126,8 @@ app.whenReady().then(() => {
   startHookServer();
   syncHelper();
   syncClipboard();
+  if (store.weatherCity) fetchWeather();
+  setInterval(() => store.weatherCity && fetchWeather(), 30 * 60 * 1000).unref();
   applyAwake(); // switched on by hand last time
   // a watcher that is slow to start (Add-Type) must not keep the island away for long
   setTimeout(() => fullscreen === null && setFullscreen(false), 3000);

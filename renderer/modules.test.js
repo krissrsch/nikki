@@ -8,18 +8,18 @@ const ctx = vm.createContext({});
 for (const f of ['modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js', 'modules/clipboard.js']) {
   vm.runInContext(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
-const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, calDayKey, calMonth, calOnDay, calUpcoming, calDue, todoShown, notesWhen, timerLeft, timerText })', ctx);
+const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText })', ctx);
 // objects from the sandbox have another Object.prototype: compare plain copies
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const MIN = 60 * 1000;
 
-test('registry: the modules register with page and tile, in tab order, and no globals collide', () => {
+test('registry: the modules register with a page, in tab order, and no globals collide; only music and calendar have a Home tile', () => {
   assert.deepEqual([...g.NikkiModules.keys()], ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'clipboard']);
   for (const m of g.NikkiModules.values()) {
     assert.equal(typeof m.page, 'function', m.id);
-    assert.equal(typeof m.tile, 'function', m.id);
     assert.match(m.icon, /^<svg class="ti"/, m.id);
   }
+  assert.deepEqual([...g.NikkiModules.values()].filter((m) => m.tile).map((m) => m.id), ['music', 'calendar']);
 });
 
 test('moduleList: saved order, unknown ids dropped, new modules last and off', () => {
@@ -45,7 +45,7 @@ test('calendar: month grid starts on Monday', () => {
   assert.equal(g.calDayKey(new Date(2026, 0, 5, 23, 59).getTime()), '2026-01-05');
 });
 
-test('calendar: a day, what comes next, which reminder is due', () => {
+test('calendar: a day, which reminder is due', () => {
   const now = new Date(2026, 9, 30, 9, 18).getTime();
   const at = (h, m) => new Date(2026, 9, 30, h, m).getTime();
   const daily = { title: 'Daily', at: at(9, 30), dur: 15 };
@@ -54,7 +54,6 @@ test('calendar: a day, what comes next, which reminder is due', () => {
   const tomorrow = { title: 'Morgen', at: new Date(2026, 9, 31, 9, 0).getTime(), dur: 30 };
   const events = [review, tomorrow, daily, early];
   assert.deepEqual(plain(g.calOnDay(events, '2026-10-30')).map((e) => e.title), ['Früh', 'Daily', 'Review']);
-  assert.deepEqual(plain(g.calUpcoming(events, now)).map((e) => e.title), ['Daily', 'Review', 'Morgen'], 'started ones are not next');
   assert.deepEqual(plain(g.calDue(events, now)).map((e) => e.title), ['Daily']);
   assert.deepEqual(plain(g.calDue([{ ...daily, reminded: true }], now)), [], 'only once');
   assert.equal(g.calDue([{ ...daily, at: now + 15 * MIN }], now).length, 1, '15 min before');

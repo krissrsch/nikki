@@ -111,11 +111,6 @@
       // files may have gone from the folder meanwhile
       api.shelfList().then((list) => JSON.stringify(list) !== JSON.stringify(items) && take({ items: list, errors: [] }), fail);
     },
-    tile(el, c) {
-      el.append(c.head(items.length ? count(items.length) : ''));
-      el.append(items.length ? h('div', { className: 'shelfRow' }, ...items.slice(-4).map(thumb)) : h('span', { className: 'tileBig' }, 'Leer'));
-      el.append(h('span', { className: 'tileSub' }, 'Dateien auf die Insel ziehen'));
-    },
     // { paths, text } from a drop on the island while the chat tab is not open
     async drop({ paths, text }) {
       if (dragging) return;

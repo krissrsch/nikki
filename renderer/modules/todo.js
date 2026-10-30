@@ -95,15 +95,5 @@ function todoShown(items, filter, project) {
       root = el;
       render();
     },
-    tile(el, c) {
-      const open = data.items.filter((t) => !t.done).length;
-      el.append(c.head(`${open} offen`));
-      const first = todoShown(data.items, 'all').slice(0, 3);
-      if (!first.length) {
-        el.append(h('span', { className: 'tileBig' }, 'Nichts offen'), h('span', { className: 'tileSub' }, 'Neue To-dos schreibst du im To-do-Tab.'));
-        return;
-      }
-      el.append(h('div', { className: 'tileList' }, ...first.map((t) => h('label', { className: `tileCheck${t.done ? ' done' : ''}` }, check(t, () => root && render()), h('span', {}, t.text)))));
-    },
   });
 })();
