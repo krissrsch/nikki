@@ -166,7 +166,7 @@ Den Backlog mit den übrigen Ideen aus `notes/research/competitors.md` §5 pfleg
 
 ## Phase 4: Design und Maskottchen (Release 2.0)
 
-- Du legst Referenzfotos der echten Nikki in `assets/reference/nikki/` ab. Der Design-Agent baut daraus eine Nikki im Stil der Notch-Maskottchen: weich und minimal, kein Mochi-Klon. Einsatzorte sind die Dashboard-Begrüßung, Ein-Ausblenden beim Chat und der Start.
+- Die Referenzfotos der echten Nikki liegen außerhalb des Repos, weil sie privat sind: `%APPDATA%\AgentOS\projekte\notch-nikki\referenz\nikki\`. Die Beschreibung steht in `gedaechtnis/nikki-aussehen.md`: weiß mit grau-braunen Tabby-Flecken, Tabby-Kappe mit weißer Blesse, bernsteinfarbene Augen, rosa Nase, geringelter Schwanz. Der Design-Agent baut daraus eine Nikki im Stil der Notch-Maskottchen: weich und minimal, kein Mochi-Klon. Einsatzorte sind die Dashboard-Begrüßung, Ein-Ausblenden beim Chat und der Start.
 - Die Augen werden final abgestimmt, eigene Töne kommen dazu.
 - Skills: `impeccable` (audit/polish) und `accessibility`.
 - `PRODUCT.md` und `README.md` werden auf den neuen Stand gebracht.
