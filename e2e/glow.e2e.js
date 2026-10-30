@@ -198,8 +198,11 @@ describe('Notch und Glow', () => {
     await page.fill('#prompt', '');
     await nikki.fakeClaude();
     await fromMain('voice-text', { kind: 'claude', text: 'Wie spät ist es?' });
-    await page.waitForTimeout(300);
-    assert.equal(await nikki.app.evaluate(() => globalThis.e2e.starts.length), 0, 'ohne Projekt geht nichts raus');
+    await until(() => nikki.app.evaluate(() => globalThis.e2e.starts.length === 1), 'läuft ohne Projekt im allgemeinen Chat');
+    const run = await nikki.app.evaluate(() => globalThis.e2e.starts[0]);
+    assert.equal(run.prompt, 'Wie spät ist es?');
+    assert.match(run.cwd, /allgemein$/);
+    assert.equal(await page.textContent('#projectName'), 'Allgemein');
 
     const s = await nikki.settings('discord');
     await s.fill('#hookName', 'Team');

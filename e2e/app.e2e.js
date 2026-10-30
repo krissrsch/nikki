@@ -28,7 +28,7 @@ describe('Nikki offline', () => {
     assert.equal(where.home, nikki.home);
     await nikki.page.waitForTimeout(1500); // late errors from the first ticks after the intro
     assert.deepEqual(nikki.errors, []);
-    assert.equal(await nikki.page.textContent('#projectName'), 'Projekt wählen');
+    assert.equal(await nikki.page.textContent('#projectName'), 'Allgemein');
   });
 
   test('Insel öffnet und schließt', async () => {
