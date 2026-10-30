@@ -1,29 +1,33 @@
 # Nikki
 
-Notch-Companion für Windows: die kleine Katze oben am Bildschirmrand, die Agent-Aufgaben in deinem Projektordner startet und begleitet — über deine lokal eingeloggte **Claude Code**- oder **Cursor**-CLI, **ohne API-Key**.
+Notch-App für Windows mit Claude-Code-Begleiter: die kleine Katze oben am Bildschirmrand. Sie startet und begleitet Claude-Code-Aufgaben in deinem Projektordner über deine lokal eingeloggte **Claude Code**-CLI, **ohne API-Key**, und bringt dazu Notch-Module wie Kalender, To-do, Notizen und Timer mit.
 
-Die Insel sitzt oben mittig. Beim Start öffnet sie sich, Nikki spawnt mit kurzem Miau, setzt sich ins Home-Menü, und die Agenten-Auswahl erscheint. Zugeklappt siehst du auf einen Blick, was läuft; aufgeklappt promptest du, wählst Agent und Modell, genehmigst Tools und liest die Antwort.
+Die Insel sitzt oben mittig. Zugeklappt zeigen Nikkis Augen, was los ist, und links und rechts steht das Wichtigste. Aufgeklappt gibt es Home („Heute“ mit Kacheln), den Chat und die Module.
 
 ## Was sie kann
 
-- **Claude Code**, **Cursor** (ACP) und optional **Gemini CLI / AI Studio** ansteuern
-- Live-Status, Schritte und Streaming-Antworten in der Insel
-- Berechtigungen, Agent-Fragen und Pläne direkt beantworten (Allow / Always / Deny)
-- Projektordner merken, Chats fortsetzen, Dateien per Drag & Drop anhängen
-- Modelle und Favoriten pro Backend wählen
-- Optional Terminal-/IDE-Sessions nur beobachten (Hooks), ohne deren Freigaben zu übernehmen
-- Tray, Hotkey und Fullscreen-Erkennung: aus dem Weg, wenn ein Spiel oder Video den Screen nimmt — beim Start bleibt das Intro trotzdem sichtbar
+- Claude Code starten, mit Live-Status, Schritten und Antworten in der Insel
+- Berechtigungen, Fragen und Pläne beantworten (Erlauben / Immer / Ablehnen), auch für Claude-Code-Sessions im Terminal. Antwortest du nicht, entscheidet das Terminal
+- Nachrichten an eine laufende Terminal-Session vormerken
+- Projekte, Chats und Modelle pro Projekt; Dateien per Drag & Drop anhängen
+- Module, in den Einstellungen einzeln schaltbar:
+  - **Kalender:** lokal, mit Hinweis 15 Minuten vorher
+  - **To-do:** mit „An Chat“
+  - **Notizen:** Abreißblock
+  - **Timer:** Pomodoro
+- Hotkey frei belegbar, Autostart, Töne. Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
 
 ## Voraussetzung
 
 - Windows 11
-- Installiertes und eingeloggtes [Claude Code](https://claude.ai/code) und/oder [Cursor](https://cursor.com) CLI (`agent login`)
+- Installiertes und eingeloggtes [Claude Code](https://claude.ai/code)
+- Für Terminal-Sessions: Node.js
 
 ## Installieren
 
 Installer von den [Releases](https://github.com/krissrsch/nikki/releases) laden: **Nikki-Setup.exe**.
 
-Hotkey (Standard): `Ctrl+Alt+Space` (Fallback `Ctrl+Alt+K`). Weitere Optionen im Tray-Menü (Töne, Hooks, Ein-/Ausblenden).
+Hotkey (Standard): `Ctrl+Alt+Space` (Fallback `Ctrl+Alt+K`), änderbar in den Einstellungen (Zahnrad in der Insel).
 
 ## Entwickeln
 
@@ -31,6 +35,7 @@ Hotkey (Standard): `Ctrl+Alt+Space` (Fallback `Ctrl+Alt+K`). Weitere Optionen im
 npm install
 npm start
 npm test
+npm run e2e       # Playwright, isoliert (siehe e2e/README.md)
 npm run dist      # baut Nikki-Setup.exe
 npm run release   # Build + GitHub Release
 ```

@@ -1,6 +1,6 @@
 {
   "name": "desktopcompanion",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Notch companion that runs tasks through the logged-in Claude Code CLI (no API key)",
   "main": "main.js",
@@ -35,7 +35,12 @@
       "!builder-*.yml",
       "!latest.yml",
       "!node_modules/@anthropic-ai/claude-agent-sdk-win32-x64/**",
-      "!e2e/**"
+      "!e2e/**",
+      "!.claude/**",
+      "!.cursor/**",
+      "!.mcp.json",
+      "!.agentos-task.md",
+      "!helper/**"
     ],
     "win": {
       "target": "nsis",
