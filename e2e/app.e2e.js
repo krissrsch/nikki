@@ -170,4 +170,58 @@ describe('Nikki offline', () => {
     await page.click('#go'); // the stop button still stops
     await until(async () => (await nikki.calls()).stops === 1, 'Stop-Knopf stoppt');
   });
+
+  test('Karten-Hotkeys: A erlaubt, D lehnt ab, Ziffer wählt; der Composer kapert nichts, Esc schließt nicht', async () => {
+    const a = project('projA');
+    nikki = await launch({ state: { projects: [a] } });
+    const { page, app } = nikki;
+    await nikki.fakeClaude();
+    await app.evaluate(({ ipcMain }) => {
+      globalThis.answers = [];
+      ipcMain.on('permission-answer', (_e, x) => globalThis.answers.push(x));
+    });
+    const answers = () => app.evaluate(() => globalThis.answers);
+    await nikki.openChat();
+    await nikki.send('Lauf los');
+    await until(nikki.busy, 'Aufgabe läuft');
+    const card = async (r) => {
+      await nikki.permission(r);
+      await page.waitForSelector('#permission:not([hidden])');
+      await page.waitForTimeout(600); // keys only count a moment after the card appeared
+    };
+
+    await card({ id: 1, toolName: 'Bash', input: { command: 'npm test' } });
+    assert.deepEqual(await page.$$eval('#permActions kbd', (k) => k.map((x) => x.textContent)), ['A', 'I', 'D']);
+    assert.equal(await page.getAttribute('#permActions .primary', 'aria-keyshortcuts'), 'A Enter');
+    await page.keyboard.press('a');
+    await card({ id: 2, toolName: 'Bash', input: { command: 'rm -rf build' } });
+    await page.keyboard.press('d');
+    await card({ id: 3, toolName: 'AskUserQuestion', input: { questions: [{ question: 'Tee oder Kaffee?', options: [{ label: 'Tee' }, { label: 'Kaffee' }] }] } });
+    assert.deepEqual(await page.$$eval('#permBody .opt kbd', (k) => k.map((x) => x.textContent)), ['1', '2']);
+    await page.keyboard.press('2');
+    await until(async () => (await answers()).length === 3, 'drei Antworten');
+    assert.deepEqual(await answers(), [
+      { id: 1, answer: 'allow' },
+      { id: 2, answer: 'deny' },
+      { id: 3, answer: 'allow', picks: [['Kaffee']] },
+    ]);
+
+    // in the composer the keys stay text, Enter sends nothing and stops nothing (B6); Esc leaves the island open
+    await card({ id: 4, toolName: 'Bash', input: { command: 'echo hi' } });
+    await page.focus('#prompt');
+    await page.keyboard.press('a');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    assert.equal((await answers()).length, 3, 'der Composer hat die Karte beantwortet');
+    assert.equal((await nikki.calls()).stops, 0, 'Enter hat die Aufgabe gestoppt');
+    assert.equal(await isOpen(), true, 'Esc hat die Insel geschlossen');
+    await page.click('#permTitle'); // back on the card: Enter allows
+    await page.keyboard.press('Enter');
+    await until(async () => (await answers()).length === 4, 'Enter erlaubt');
+    assert.deepEqual((await answers())[3], { id: 4, answer: 'allow' });
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'prompt', 'danach zurück im Composer');
+    assert.deepEqual(nikki.errors, []);
+  });
 });
