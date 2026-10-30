@@ -230,7 +230,17 @@ function catOffset(el, box) {
 }
 
 // Her place per view: 'sit' (Home: bottom right in the Claude tile) or 'peek' (over the top edge of something in the page).
+// Every other page has its own spot where there is air (candidates are tried in order, the first anchor that exists wins):
+//   sit  at: top-right | bottom-right | left (beside the anchor, bottom aligned)    peek  x: share of the anchor's width
 // Everything is a pure function of the layout, so the stage can ask again after every resize.
+const CAT_PLACES = {
+  music: [{ sel: '.musicPage, .musicEmpty', type: 'sit', at: 'top-right' }],
+  calendar: [{ sel: null, type: 'sit', at: 'bottom-right' }],
+  shelf: [{ sel: '.shelfGrid, .shelfEmpty', type: 'peek', x: 0.55 }],
+  todo: [{ sel: '.todoList', type: 'peek', x: 0.62 }],
+  notes: [{ sel: '.padBar', type: 'peek', x: 0.5 }, { sel: '.padEmpty', type: 'sit', at: 'bottom-right' }],
+  timer: [{ sel: '.timerRing', type: 'sit', at: 'left' }],
+};
 function catSpot(view, { box, home, composer, pageOf }) {
   if (view === 'home' && home) {
     const r = catOffset(home, box);
@@ -241,7 +251,17 @@ function catSpot(view, { box, home, composer, pageOf }) {
     // left of centre: the permission card's buttons sit at the right edge and must stay clickable
     return { type: 'peek', left: Math.round(r.x + r.w * 0.42 - CAT_W / 2), edge: r.y };
   }
-  const first = pageOf?.(view)?.firstElementChild;
+  const page = pageOf?.(view);
+  for (const c of CAT_PLACES[view] ?? []) {
+    const el = c.sel ? page?.querySelector?.(c.sel) : page;
+    if (!el || !el.offsetParent) continue;
+    const r = catOffset(el, box);
+    if (c.type === 'peek') return { type: 'peek', left: Math.round(r.x + r.w * c.x - CAT_W / 2), edge: r.y };
+    if (c.at === 'top-right') return { type: 'sit', left: r.x + r.w - CAT_W - 10, top: r.y + 8 };
+    if (c.at === 'left') return { type: 'sit', left: Math.max(16, r.x - CAT_W - 14), top: r.y + r.h - CAT_H };
+    return { type: 'sit', left: r.x + r.w - CAT_W - 4, top: r.y + r.h - CAT_H };
+  }
+  const first = page?.firstElementChild;
   const r = first ? catOffset(first, box) : { y: 62 };
   return { type: 'peek', left: Math.round(box.offsetWidth * 0.62), edge: Math.max(r.y, 62) };
 }
