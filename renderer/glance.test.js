@@ -51,6 +51,13 @@ test('rank: voice > needs you > agent > music', () => {
   assert.equal(glance({ status: 'error', sound: true, now: NOW }).glow, 'error');
 });
 
+test('fertig blitzt nur kurz: danach zeigt die Kante wieder die Musik', () => {
+  assert.equal(glance({ status: 'done', music, doneAge: 3999, now: NOW }).glow, 'done');
+  assert.deepEqual(glance({ status: 'done', music, doneAge: 4000, now: NOW }), { mood: 'music', glow: 'music' });
+  assert.equal(glance({ status: 'done', sound: true, doneAge: 9000, now: NOW }).glow, 'music');
+  assert.equal(glance({ status: 'done', doneAge: 9000, now: NOW }).glow, null);
+});
+
 test('chat dot: needs you > error > done', () => {
   assert.equal(chatDot({}), null);
   assert.equal(chatDot({ needsYou: true, unseen: 'error', terminalDone: true }), 'warn');

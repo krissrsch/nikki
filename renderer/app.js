@@ -38,6 +38,7 @@ let unseen = null; // 'done' | 'error' of our own task, until the chat was looke
 let lastActivity = Date.now();
 let hover = false; // pointer over the island: Nikki wakes up
 let drag = null; // the closed notch under the mouse: { off, moved }
+let peek = null; // her head behind the closed notch
 const modelMenu = $('modelMenu');
 const chatsMenu = $('chatsMenu');
 const threadEl = $('thread');
@@ -207,16 +208,25 @@ const glowEl = $('glow');
 // the spectrum (spectrum.js) hears system sound: the glow then shows its music edge
 const spectrum = createSpectrum($('specBars'), () => renderGlance());
 const showSpectrum = () => spectrum.show(!open && settings.glow !== false && !reduceMotion);
+let glanceStatus = 'idle';
+let doneSince = 0;
 function renderGlance() {
   if (introRunning) return;
   const s = shown();
   const fromModules = {}; // { music } from the music module
   for (const [id, ctx] of live) Object.assign(fromModules, NikkiModules.get(id).glance?.(ctx));
-  const g = glance({ ...fromModules, status: s.observed ? s.state : ownState(), sound: spectrum.sound, lastActivity, hover, sleepMin });
+  const status = s.observed ? s.state : ownState();
+  if (status === 'done' && glanceStatus !== 'done') {
+    doneSince = Date.now();
+    setTimeout(renderGlance, DONE_MS + 50); // the flash is over: what ranks below shows again
+  }
+  glanceStatus = status;
+  const g = glance({ ...fromModules, status, doneAge: status === 'done' ? Date.now() - doneSince : 0, sound: spectrum.sound, lastActivity, hover, sleepMin });
   island.dataset.mood = g.mood;
   glowEl.dataset.glow = settings.glow === false ? '' : (g.glow ?? '');
   $('notch').setAttribute('aria-label', MOOD_LABEL[g.mood]);
   cat?.setGlow(g.glow, g.mood === 'sleep');
+  peek?.update({ glow: g.glow, hover, sleeping: g.mood === 'sleep', open });
 }
 setInterval(renderGlance, 10 * 1000); // falling asleep needs no event
 const touch = () => (lastActivity = Date.now());
@@ -299,6 +309,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ---- Nikki the cat: sits in the Claude tile, peeks over an edge on the other pages, jumps with the tabs
 document.body.insertAdjacentHTML('beforeend', catDefs());
+peek = createNotchPeek($('notchPeek'), island);
 cat = createCatStage({
   box: $('panelBox'),
   tabs: $('tabs'),
@@ -682,6 +693,7 @@ function setOpen(v, { instant = false, focus = true } = {}) {
   fitIsland();
   touch();
   renderState();
+  renderGlance();
   if (!v) {
     closeMenu();
     closeModelMenu();

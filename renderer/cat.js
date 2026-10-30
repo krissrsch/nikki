@@ -1,4 +1,5 @@
-// Nikki the cat: the white cat with black spots from Nikki 1.0 (body in profile, face to the viewer), 19 moods, and a stage that moves her through the island.
+// Nikki the cat, drawn after the real one: white with a grey-brown tabby cap and white blaze, amber eyes, tabby saddle, ringed tail. Body in profile,
+// face to the viewer, 19 moods, a stage that moves her through the island, and the head that peeks out from behind the closed notch.
 // Classic script (globals) like glance.js. Pure part first (tables, markup, CSS: cat.css is generated from here, see scripts/build-cat-css.mjs),
 // the DOM part (createCatStage) at the end. The CSP allows no inline styles: everything is classes and attributes.
 
@@ -62,41 +63,76 @@ const CAT_EYES = ['pill', 'tall', 'round', 'big', 'happy', 'closed', 'sad', 'squ
 const CAT_MOUTHS = ['cat', 'smile', 'open', 'frown', 'yawn', 'o'];
 const CAT_EXTRAS = ['sweat', 'tear', 'zz', 'notes', 'bang', 'err', 'think', 'arcs', 'spark', 'wave', 'box'];
 
-// shared <defs> (eye shapes); once per document, referenced by every cat
+const CAT_TABBY = '#8b8075';
+const CAT_STRIPE = '#6a6056';
+
+// shared <defs> (fur, iris, clips, eye shapes); once per document, referenced by every cat
 function catDefs() {
+  const eye = (id, rx, ry, px, py, gx, gy, gr) => `<g id="${id}"><ellipse rx="${rx + 0.9}" ry="${ry + 0.9}" fill="#2a2420"/><ellipse rx="${rx}" ry="${ry}" fill="url(#nbIris)"/><ellipse rx="${px}" ry="${py}" fill="#17130f"/><circle cx="${gx}" cy="${gy}" r="${gr}" fill="#fff"/></g>`;
   return `<svg class="catDefs" width="0" height="0" aria-hidden="true" focusable="false"><defs>
-<g id="nbPill"><ellipse rx="6.6" ry="8.3" fill="#1e1a24"/><circle cx="2.4" cy="-3.2" r="2.8" fill="#fff"/></g>
-<g id="nbTall"><ellipse rx="6.8" ry="10.5" fill="#1e1a24"/><circle cx="2.4" cy="-5" r="2.8" fill="#fff"/></g>
-<g id="nbRound"><circle r="7.5" fill="#1e1a24"/><circle cx="2.4" cy="-2.8" r="2.6" fill="#fff"/></g>
-<g id="nbBig"><circle r="9" fill="#1e1a24"/><circle cx="2.6" cy="-3.2" r="3" fill="#fff"/><circle cx="-2.8" cy="3.2" r="1.3" fill="#fff" opacity=".8"/></g>
-<g id="nbHappy"><path d="M-7 3 Q0 -7 7 3" fill="none" stroke="#1e1a24" stroke-width="4" stroke-linecap="round"/></g>
-<g id="nbClosed"><path d="M-7 -1 Q0 6 7 -1" fill="none" stroke="#1e1a24" stroke-width="4" stroke-linecap="round"/></g>
-<g id="nbSad"><ellipse rx="5.6" ry="7" fill="#1e1a24" transform="rotate(8)"/><circle cx="1.6" cy="-2.4" r="2" fill="#fff"/><path d="M-8 -12 L5 -8" stroke="#1e1a24" stroke-width="3" stroke-linecap="round"/></g>
-<g id="nbSquint"><path d="M-6 -6 L5 0 L-6 6" fill="none" stroke="#1e1a24" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></g>
+<linearGradient id="nbFur" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ece8e2"/></linearGradient>
+<radialGradient id="nbIris"><stop offset="0" stop-color="#f1e390"/><stop offset=".62" stop-color="#d6bd52"/><stop offset="1" stop-color="#9c8430"/></radialGradient>
+<clipPath id="nbHeadClip"><path d="${CAT_HEAD}"/></clipPath>
+<clipPath id="nbBodyClip"><path d="${CAT_BODY}"/></clipPath>
+${eye('nbPill', 7.2, 7.8, 5.4, 6.2, 2.4, -3, 2.6)}
+${eye('nbTall', 7.4, 10, 5.4, 8, 2.4, -4.6, 2.7)}
+${eye('nbRound', 7.6, 7.6, 4.6, 4.8, 2.6, -2.8, 2.4)}
+${eye('nbBig', 9, 9, 6.4, 6.6, 3, -3.4, 3)}
+<g id="nbHappy"><path d="M-7 3 Q0 -7 7 3" fill="none" stroke="#1e1a24" stroke-width="3.6" stroke-linecap="round"/></g>
+<g id="nbClosed"><path d="M-7 -1 Q0 6 7 -1" fill="none" stroke="#1e1a24" stroke-width="3.6" stroke-linecap="round"/></g>
+<g id="nbSad"><use href="#nbPill"/><path d="M-9 -12 L5 -9" stroke="#1e1a24" stroke-width="3" stroke-linecap="round"/></g>
+<g id="nbSquint"><path d="M-6 -6 L5 0 L-6 6" fill="none" stroke="#1e1a24" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></g>
 <g id="nbHeart"><path d="M0 5 C-9 -1 -6 -9 0 -4 C6 -9 9 -1 0 5Z" fill="#ff7f98"/></g>
 <g id="nbSpiral"><path d="M0 0 m-5 0 a5 5 0 1 1 10 0 a3.5 3.5 0 1 1 -7 0 a2 2 0 1 1 4 0" fill="none" stroke="#1e1a24" stroke-width="2.6" stroke-linecap="round"/></g>
 </defs></svg>`;
 }
 
-// one cat; the look is chosen by data-mood on the svg (cat.css)
-function catSvg() {
-  const at = (x) => `translate(${x} 27)`;
-  const pair = (id, flip) => `<use href="#${id}" transform="${at(37)} scale(.47)"/><use href="#${id}" transform="${at(47)} scale(${flip ? '-.47 .47' : '.47'})"/>`;
+const CAT_HEAD = 'M27 27 C27 17 34 13.5 42 13.5 C50 13.5 57 17 57 27 C57 35.5 50 40.5 42 40.5 C34 40.5 27 35.5 27 27Z';
+const CAT_BODY = 'M13.5 40 C13.5 33.5 20 31 27.5 31.3 C35 31.6 40.5 34.5 40.5 41 C40.5 47 34 49.5 27 49.5 C19.5 49.5 13.5 46.5 13.5 40Z';
+
+// the head alone, in the drawing's 64 x 56 units: the whole cat wears it, and it peeks out from behind the notch
+function catHead() {
+  const mirror = (m) => `<g transform="matrix(-1 0 0 1 84 0)">${m}</g>`;
+  const at = (x) => `translate(${x} 26)`;
+  const size = 'scale(.52)';
+  const pair = (id, flip) => `<use href="#${id}" transform="${at(36.5)} ${size}"/><use href="#${id}" transform="${at(47.5)} ${flip ? 'scale(-.52 .52)' : size}"/>`;
   const eyes = [
     ['pill', `<g class="fb c-blink">${pair('nbPill')}</g>`], ['tall', pair('nbTall')], ['round', pair('nbRound')], ['big', pair('nbBig')], ['happy', pair('nbHappy')],
     ['closed', pair('nbClosed')], ['sad', pair('nbSad', true)], ['squint', pair('nbSquint', true)],
-    ['heart', `<g class="fb c-beat"><use href="#nbHeart" transform="${at(37)} scale(.47)"/></g><g class="fb c-beat"><use href="#nbHeart" transform="${at(47)} scale(.47)"/></g>`],
-    ['spiral', `<g class="fb c-spin"><use href="#nbSpiral" transform="${at(37)} scale(.47)"/></g><g class="fb c-spinR"><use href="#nbSpiral" transform="${at(47)} scale(.47)"/></g>`],
+    ['heart', `<g class="fb c-beat"><use href="#nbHeart" transform="${at(36.5)} ${size}"/></g><g class="fb c-beat"><use href="#nbHeart" transform="${at(47.5)} ${size}"/></g>`],
+    ['spiral', `<g class="fb c-spin"><use href="#nbSpiral" transform="${at(36.5)} ${size}"/></g><g class="fb c-spinR"><use href="#nbSpiral" transform="${at(47.5)} ${size}"/></g>`],
   ].map(([k, m]) => `<g class="ce ce-${k}">${m}</g>`).join('');
-  const whisk = (side, d) => `<g class="fb c-wh${side}"><g class="c-wd" fill="none" stroke="#a9a49c" stroke-width="1" stroke-linecap="round">${d.map((p) => `<path d="${p}"/>`).join('')}</g></g>`;
+  const whisk = (side, d) => `<g class="fb c-wh${side}"><g class="c-wd" fill="none" stroke="#d8d4ce" stroke-width=".45" stroke-linecap="round">${d.map((p) => `<path d="${p}"/>`).join('')}</g></g>`;
   const mouths = {
-    cat: '<path d="M54.5 72 Q57.3 75 60 72 Q62.7 75 65.5 72" fill="none" stroke="#2a2430" stroke-width="2.4" stroke-linecap="round"/>',
-    smile: '<path d="M53 71.5 Q60 79 67 71.5" fill="none" stroke="#2a2430" stroke-width="2.4" stroke-linecap="round"/>',
+    cat: '<path d="M54.5 72 Q57.3 75 60 72 Q62.7 75 65.5 72" fill="none" stroke="#2a2430" stroke-width="1.8" stroke-linecap="round"/>',
+    smile: '<path d="M53 71.5 Q60 79 67 71.5" fill="none" stroke="#2a2430" stroke-width="1.8" stroke-linecap="round"/>',
     open: '<ellipse cx="60" cy="75" rx="3.4" ry="4.2" fill="#3a2430"/><ellipse cx="60" cy="77" rx="2" ry="1.6" fill="#f08ca4"/>',
-    frown: '<path d="M54.5 76 Q60 71 65.5 76" fill="none" stroke="#2a2430" stroke-width="2.4" stroke-linecap="round"/>',
+    frown: '<path d="M54.5 76 Q60 71 65.5 76" fill="none" stroke="#2a2430" stroke-width="1.8" stroke-linecap="round"/>',
     yawn: '<g class="fbt c-yawn"><ellipse cx="60" cy="76" rx="5.5" ry="6.5" fill="#3a2430"/><ellipse cx="60" cy="79" rx="3.4" ry="2.4" fill="#f08ca4"/></g>',
     o: '<ellipse cx="60" cy="73.5" rx="2.2" ry="2.6" fill="#3a2430"/>',
   };
+  const ear = '<path d="M29 22 C28 14 29.5 7 31 3.6 C31.6 2.4 32.8 2.4 33.7 3.2 C37 6 40 9.5 42 14 Z" fill="#7d7268"/><path d="M31.4 18 C31 12.5 31.8 8.6 32.6 6.4 C35 8.4 37 10.8 38.6 13.6 Z" fill="#e9aab4"/>';
+  // the cap leaves the blaze free: narrow on the forehead, the whole muzzle below the eyes
+  const cap = `<path d="M24 8 H41.4 C41.6 15 41.2 18.5 40.2 21.5 C41 25 41.2 28 38 31 C35 33.6 30 33.4 26 31 Z" fill="${CAT_TABBY}"/><path d="M38.4 15 L37.8 19.5 M34.4 15.6 L33.2 20" fill="none" stroke="${CAT_STRIPE}" stroke-width="1" stroke-linecap="round"/>`;
+  return `<g class="c-head">
+<g class="c-earL">${ear}</g><g class="c-earR">${mirror(ear)}</g>
+<path d="${CAT_HEAD}" fill="url(#nbFur)"/>
+<g clip-path="url(#nbHeadClip)">${cap}${mirror(cap)}</g>
+<ellipse class="c-blush" cx="33" cy="34" rx="2.6" ry="1.5" fill="#f4afbe"/><ellipse class="c-blush" cx="51" cy="34" rx="2.6" ry="1.5" fill="#f4afbe"/>
+${whisk('L', ['M31 32.5 Q27 31.4 24 30', 'M31 34.4 Q27 34.6 24 35.4'])}${whisk('R', ['M53 32.5 Q57 31.4 60 30', 'M53 34.4 Q57 34.6 60 35.4'])}
+<g class="fb c-eyes">${eyes}</g>
+<path d="M40.6 31.2 h2.8 q.3 0 .1 .4 l-1.2 1.4 q-.3 .3 -.6 0 l-1.2 -1.4 q-.2 -.4 .1 -.4z" fill="#efa6b4"/>
+<g transform="translate(42 33.6) scale(.55) translate(-60 -72)">${CAT_MOUTHS.map((k) => `<g class="cm cm-${k}">${mouths[k]}</g>`).join('')}</g>
+</g>`;
+}
+
+// just her head, for the closed notch
+function catHeadSvg() {
+  return `<svg class="cat catHead" data-mood="idle" viewBox="20 0 44 44" role="presentation">${catHead()}</svg>`;
+}
+
+// one cat; the look is chosen by data-mood on the svg (cat.css)
+function catSvg() {
   const font = 'font-family="Segoe UI, system-ui, sans-serif"';
   const extras = {
     sweat: '<g class="fb c-drop"><path d="M108 34 Q112 41 108 44 Q104 41 108 34 Z" fill="#9fd4ff"/></g>',
@@ -114,25 +150,16 @@ function catSvg() {
   // signs that sit on the body are drawn inside it, the rest (z, notes, arcs, spark, wave) around it
   const onBody = ['sweat', 'tear'];
   const x = (list) => list.map((k) => `<g class="cx cx-${k}">${extras[k]}</g>`).join('');
-  const leg = (name, step, rx, w, fill) => `<g class="c-${name}"><g class="${step}"><rect x="${rx}" y="43" width="${w}" height="11" rx="${w / 2}" fill="${fill}"/></g></g>`;
-  // the drawing is 1.0's, in its 64 x 56 units
+  const leg = (name, step, rx, w, fur) => `<g class="c-${name}"><g class="${step}"><rect x="${rx}" y="43" width="${w}" height="10.4" rx="${w / 2}" fill="${fur}"/><ellipse cx="${rx + w / 2 + 0.5}" cy="52.6" rx="${w / 2 + 0.7}" ry="1.9" fill="${fur}"/></g></g>`;
+  const tail = 'M15 41 C8 40 4 32 5.5 22.5 C6 19.5 7.2 17.6 9 16.6';
+  // the drawing is in 64 x 56 units
   return `<svg class="cat" data-mood="idle" viewBox="-8 -4 136 120" role="img" aria-label="Nikki ist wach">
 <g class="fbb c-body"><g transform="translate(2 12) scale(1.8)">
-${leg('lb2', 'c-leg2', 22, 6, '#d9d5ce')}${leg('lf2', 'c-leg1', 36, 6, '#d9d5ce')}
-<g class="c-tail"><g class="c-sway"><path d="M15 40 C8 38 5.5 31 7.5 24" fill="none" stroke="#fbfaf7" stroke-width="5.6" stroke-linecap="round"/><circle cx="7.6" cy="24.4" r="3" fill="#1b1b20"/></g></g>
-<g class="c-torso"><ellipse cx="26" cy="41" rx="13" ry="8.5" fill="#fbfaf7"/><ellipse cx="22" cy="37.5" rx="6" ry="4.2" fill="#1b1b20"/></g>
-${leg('lb1', 'c-leg1', 16, 6.2, '#fbfaf7')}${leg('lf1', 'c-leg2', 30, 6.2, '#fbfaf7')}
-<g class="c-head">
-<g class="c-earL"><path d="M29.5 21 L31 4.5 L40.5 12.5 Z" fill="#fbfaf7"/><path d="M32.4 17.5 L33.1 9.6 L37.8 13.4 Z" fill="#f4a8b8"/></g>
-<g class="c-earR"><path d="M44.5 11.5 L54 4 L56.5 20 Z" fill="#fbfaf7"/><path d="M47.6 12.4 L52.4 8.6 L53.6 16.6 Z" fill="#f4a8b8"/></g>
-<ellipse cx="42" cy="27" rx="15" ry="13" fill="#fbfaf7"/>
-<ellipse cx="33.5" cy="19.5" rx="5.2" ry="4.2" fill="#1b1b20"/>
-<ellipse class="c-blush" cx="33.5" cy="32" rx="2.8" ry="1.7" fill="#f7b3c2"/><ellipse class="c-blush" cx="50.5" cy="32" rx="2.8" ry="1.7" fill="#f7b3c2"/>
-${whisk('L', ['M29.5 31 L25 30.2', 'M29.5 33.6 L25 34.4'])}${whisk('R', ['M54.5 31 L59 30.2', 'M54.5 33.6 L59 34.4'])}
-<g class="fb c-eyes">${eyes}</g>
-<path d="M40.4 31.3 h3.2 l-1.6 1.8 z" fill="#ec8aa0"/>
-<g transform="translate(42 33.6) scale(.55) translate(-60 -72)">${CAT_MOUTHS.map((k) => `<g class="cm cm-${k}">${mouths[k]}</g>`).join('')}</g>
-</g>
+${leg('lb2', 'c-leg2', 22, 5.6, '#ddd8d1')}${leg('lf2', 'c-leg1', 36, 5.6, '#ddd8d1')}
+<g class="c-tail"><g class="c-sway"><path d="${tail}" fill="none" stroke="${CAT_TABBY}" stroke-width="4.8" stroke-linecap="round"/><path d="${tail}" fill="none" stroke="${CAT_STRIPE}" stroke-width="4.8" stroke-dasharray="1.4 5"/><circle cx="9" cy="16.6" r="2.4" fill="${CAT_STRIPE}"/></g></g>
+<g class="c-torso"><path d="${CAT_BODY}" fill="url(#nbFur)"/><g clip-path="url(#nbBodyClip)"><path d="M17 29 L33 29 C34 34 33 39 29 40 C25 41 23 38 20 38.5 C17 39 15 36 15 34Z" fill="${CAT_TABBY}"/><path d="M22 31 L21.6 36.5 M27 31 L27 37.5" fill="none" stroke="${CAT_STRIPE}" stroke-width="1.2" stroke-linecap="round"/><ellipse cx="15.5" cy="45" rx="3.6" ry="4.2" fill="${CAT_TABBY}"/></g></g>
+${leg('lb1', 'c-leg1', 16, 5.8, '#fbfaf7')}${leg('lf1', 'c-leg2', 30, 5.8, '#fbfaf7')}
+${catHead()}
 </g>${x(onBody)}</g>
 ${x(['zz', 'notes', 'bang', 'err', 'think', 'arcs', 'spark', 'wave', 'box'])}
 </svg>`;
@@ -347,6 +374,52 @@ function catSavePlaces(places) {
 
 const CAT_EASE = 'cubic-bezier(0.45, 0, 0.55, 1)';
 const CAT_EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
+
+// Her head behind the closed notch: she looks out now and then and when something happens, on one side, never in front of the eyes.
+// Nothing here catches the mouse. while: moods she stays out for; visit: moods that bring her out for a moment.
+const CAT_PEEK_WHILE = ['need', 'listen'];
+const CAT_PEEK_VISIT = ['done', 'error'];
+const CAT_PEEK_MS = 3400;
+function catPeekShow({ mood, last, hover, visiting }) {
+  return hover || visiting || CAT_PEEK_WHILE.includes(mood) || (mood !== last && CAT_PEEK_VISIT.includes(mood));
+}
+function createNotchPeek(host, island) {
+  host.innerHTML = `<div class="peekCat">${catHeadSvg()}</div>`;
+  const svg = host.querySelector('.cat');
+  let now = { mood: 'idle', hover: false, blocked: true };
+  let until = 0;
+  let timer = 0;
+  function paint() {
+    const visiting = Date.now() < until;
+    const on = !now.blocked && (visiting || now.hover || CAT_PEEK_WHILE.includes(now.mood));
+    if (on && !host.dataset.side) host.dataset.side = island.dataset.peek = Math.random() < 0.5 ? 'L' : 'R';
+    if (!on) delete island.dataset.peek;
+    host.toggleAttribute('data-on', on);
+    if (!on) delete host.dataset.side;
+    svg.dataset.mood = now.mood;
+  }
+  function visit(ms = CAT_PEEK_MS) {
+    until = Date.now() + ms;
+    clearTimeout(timer);
+    timer = setTimeout(paint, ms);
+    paint();
+  }
+  (function idle() {
+    setTimeout(() => {
+      if (!now.blocked) visit();
+      idle();
+    }, 45000 + Math.random() * 75000);
+  })();
+  return {
+    update({ glow, hover, sleeping, open }) {
+      const mood = catMoodFor(glow);
+      const last = now.mood;
+      now = { mood, hover, blocked: open || (sleeping && !hover) };
+      if (catPeekShow({ mood, last }) && !now.blocked && CAT_PEEK_VISIT.includes(mood)) visit();
+      else paint();
+    },
+  };
+}
 
 function createCatStage({ box, tabs, ctx, reduceMotion = false, canJump = () => true, voice = () => {} }) {
   const mk = (cls) => {
