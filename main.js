@@ -1,17 +1,20 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, protocol, screen, shell, Tray } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, powerSaveBlocker, protocol, screen, shell, Tray } from 'electron';
 import { execFile, spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+import readline from 'node:readline';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createClaudeAgent } from './backends/claude.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
-import { DEFAULT_MODULES, moduleFile, normalizeModules } from './lib/modules.js';
+import { mediaCommand } from './lib/media.js';
+import { DEFAULT_MODULES, moduleFile, normalizeModules, withNewModules } from './lib/modules.js';
 import { createRelay } from './lib/relay.js';
+import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
 import { onHook, sweep } from './lib/terminal.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -46,7 +49,7 @@ function findClaude(again = false) {
   return claudeLookup;
 }
 const WIDTH = 760; // open island (720) + room for its shadow
-const HEIGHT = 600; // the open island grows with its page up to ~550; the rest of the window lets clicks through
+const HEIGHT = 640; // the open island grows with its page up to ~580 (Home with three rows) plus its shadow; the rest lets clicks through
 
 // Usage must run on the user's own subscription, never on an API key or another endpoint that happens to be set (N10).
 delete process.env.ANTHROPIC_API_KEY;
@@ -68,6 +71,7 @@ let store = {
   sleepMin: 5, // minutes without activity until Nikki falls asleep in the notch
   showBranch: true,
   modules: DEFAULT_MODULES, // [{ id, on }] in tab order, see lib/modules.js
+  keepAwake: false, // by hand: PC and screen stay awake (while our Claude run works they do anyway)
 };
 let storeNotice = null; // shown once the app is ready
 let storeWritable = true; // never overwrite a state.json we could not read: that is how chats got lost (H2)
@@ -79,7 +83,7 @@ try {
   // 1.0 chats from Cursor or Gemini carry a session id Claude does not know
   store.chats = (Array.isArray(store.chats) ? store.chats : []).map((c) => (c?.backend && c.backend !== 'claude' ? { ...c, backend: 'claude', sessionId: null } : c));
   store.lastChatId = store.lastChatId ?? null;
-  store.modules = normalizeModules(store.modules);
+  store.modules = withNewModules(normalizeModules(store.modules));
   delete store.sessions; // 1.0: last session per project, now only chats carry one (N9)
   delete store.backends;
 } catch (e) {
@@ -179,12 +183,25 @@ const agent = createClaudeAgent({
   askPermission,
   onStatus: (s) => {
     send('status', s);
+    agentWorking = !['done', 'error', 'idle'].includes(s.state);
+    applyAwake();
     const where = activeCwd ? path.basename(activeCwd) : 'Projekt';
     if (s.state === 'done') notify(`Fertig in ${where}.`);
     if (s.state === 'error') notify(`Fehler in ${where}.`);
   },
   onSession: (sid) => send('session', { id: sid, cwd: activeCwd }),
 });
+
+// --- keep the PC awake: on its own while our Claude run works (the system may not sleep, the screen may go off),
+// by hand from the settings (the screen stays on too)
+let agentWorking = false;
+let awake = { id: null, type: null };
+function applyAwake() {
+  const type = store.keepAwake ? 'prevent-display-sleep' : agentWorking ? 'prevent-app-suspension' : null;
+  if (type === awake.type) return;
+  if (awake.id !== null) powerSaveBlocker.stop(awake.id);
+  awake = { id: type ? powerSaveBlocker.start(type) : null, type };
+}
 
 // --- the island sits at the top-center of one display: the primary one at start, the mouse pointer's one when opened
 function place(display) {
@@ -338,6 +355,7 @@ const settings = async () => ({
   claudePath: await findClaude(),
   showBranch: store.showBranch !== false,
   modules: store.modules,
+  keepAwake: !!store.keepAwake,
 });
 ipcMain.handle('settings-get', settings);
 ipcMain.handle('settings-set', async (_e, key, value) => {
@@ -353,7 +371,13 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     if (!store.relay) relay.cancelAll();
   }
   else if (key === 'showBranch') store.showBranch = !!value;
-  else if (key === 'modules') store.modules = normalizeModules(value, store.modules);
+  else if (key === 'modules') {
+    store.modules = normalizeModules(value, store.modules);
+    syncHelper();
+  } else if (key === 'keepAwake') {
+    store.keepAwake = !!value;
+    applyAwake();
+  }
   save();
   return { ...(await settings()), error };
 });
@@ -456,6 +480,225 @@ ipcMain.handle('module-set', (_e, id, data) => {
     return false;
   }
 });
+// --- Windows helper (helper/NikkiHelper.exe, JSON lines over stdio): what plays (SMTC) and the system volume.
+// Runs only while the music module is on; a crash restarts it with backoff, like the fullscreen watcher.
+// NIKKI_NO_HELPER (e2e runs): never read the user's real media session or touch the volume.
+const helperExe = path.join(dir, 'helper', 'NikkiHelper.exe');
+let helper = null;
+let helperDelay = 1000;
+let helperBuild = null; // dev: build.cmd runs once when the exe is missing
+let mediaNow = null; // { app, title, artist, album, status, position, duration, updatedAt, cover: data URL | '' } | null
+let volumeNow = null; // { level 0-100, muted } | null
+const musicOn = () => !process.env.NIKKI_NO_HELPER && !quitting && store.modules.some((m) => m.id === 'music' && m.on);
+function syncHelper() {
+  if (musicOn()) startHelper();
+  else stopHelper();
+}
+function startHelper() {
+  if (helper) return;
+  if (!fs.existsSync(helperExe)) {
+    if (!app.isPackaged && !helperBuild)
+      helperBuild = new Promise((resolve) =>
+        execFile('cmd.exe', ['/c', path.join(dir, 'helper', 'build.cmd')], { windowsHide: true, timeout: 120000 }, (err, out) => {
+          if (err) console.error('helper build:', err.message, String(out));
+          resolve();
+        }),
+      ).then(syncHelper);
+    return;
+  }
+  const born = Date.now();
+  const p = (helper = spawn(helperExe, [], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }));
+  p.stdin.on('error', () => {}); // a command sent while it dies must not take main down (EPIPE)
+  readline.createInterface({ input: p.stdout, crlfDelay: Infinity }).on('line', onHelperLine);
+  let gone = false;
+  const restart = () => {
+    if (gone) return;
+    gone = true;
+    if (helper === p) helper = null;
+    if (!helper) {
+      // switched off and on quickly: the new helper's news stays
+      mediaNow = volumeNow = null;
+      send('media', null);
+      send('volume', null);
+    }
+    if (p.stopped || !musicOn()) return;
+    // a helper that ran a while starts over quickly; one that dies at once waits longer each time
+    helperDelay = Date.now() - born > 30000 ? 1000 : Math.min(helperDelay * 2, 60000);
+    setTimeout(syncHelper, helperDelay);
+  };
+  p.on('error', restart);
+  p.on('exit', restart);
+}
+function stopHelper() {
+  if (!helper) return;
+  helper.stopped = true;
+  helper.kill();
+  helper = null;
+}
+// The cover reaches the renderer as a data URL of at most 256 px, never as a path; nativeImage only decodes real images.
+let coverCache = { file: '', url: '' };
+function coverUrl(file) {
+  if (!file || path.basename(path.dirname(file)) !== 'nikki-covers') return '';
+  if (coverCache.file !== file) {
+    const img = nativeImage.createFromPath(file);
+    const { width, height } = img.getSize();
+    const small = width > 256 || height > 256 ? img.resize(width >= height ? { width: 256 } : { height: 256 }) : img;
+    coverCache = { file, url: img.isEmpty() ? '' : `data:image/jpeg;base64,${small.toJPEG(85).toString('base64')}` }; // a PNG is ~8x bigger
+  }
+  return coverCache.url;
+}
+function onHelperLine(line) {
+  let m;
+  try {
+    m = JSON.parse(line);
+  } catch {
+    return;
+  }
+  if (m.type === 'media') {
+    const { app: player, title, artist, album, status, position, duration, updatedAt } = m;
+    mediaNow = m.active ? { app: player, title, artist, album, status, position, duration, updatedAt, cover: coverUrl(m.cover) } : null;
+    send('media', mediaNow);
+  } else if (m.type === 'volume') send('volume', (volumeNow = { level: m.level, muted: !!m.muted }));
+  else if (m.type === 'error') console.error('helper:', m.message);
+}
+ipcMain.handle('media-get', () => ({ media: mediaNow, volume: volumeNow }));
+ipcMain.on('media-cmd', (_e, cmd, value) => {
+  const line = mediaCommand(cmd, value);
+  if (line && helper) helper.stdin.write(`${line}\n`);
+});
+
+// --- shelf (Ablage): copies in userData/shelf, the list in userData/shelf.json (not under modules/: module-set must not reach it).
+// The renderer names items by id only; every path is shelfFile(shelfDir, name) for a name that is really in the folder.
+const shelfDir = path.join(app.getPath('userData'), 'shelf');
+const shelfIndex = path.join(app.getPath('userData'), 'shelf.json');
+let shelf = null; // [{ id, name } | { id, text }], oldest first; read on first use
+let shelfQueue = Promise.resolve();
+const shelfDo = (fn) => (shelfQueue = shelfQueue.catch(() => {}).then(fn)); // one change at a time: free names and the 2 GB stay right
+// The folder is the truth for files: gone ones drop out, unknown ones (list lost, Nikki stopped mid-drop) are adopted.
+// An unreadable list throws here, so nothing ever writes over it (H2).
+function shelfItems() {
+  shelf ??= (() => {
+    const saved = readJson(shelfIndex, (moved) => warn(`Die Liste der Ablage war beschädigt und liegt jetzt unter\n${moved}\nDie Dateien selbst sind noch da.`));
+    return (Array.isArray(saved?.items) ? saved.items : []).filter((i) => typeof i?.id === 'string' && (typeof i.text === 'string' || typeof i.name === 'string'));
+  })();
+  fs.mkdirSync(shelfDir, { recursive: true });
+  const files = fs.readdirSync(shelfDir, { withFileTypes: true }).filter((d) => d.isFile()).map((d) => d.name);
+  shelf = shelf.filter((i) => typeof i.text === 'string' || files.includes(i.name));
+  for (const name of files) if (!shelf.some((i) => i.name === name)) shelf.push({ id: crypto.randomUUID(), name });
+  return shelf;
+}
+let shelfSaveFailed = false;
+function shelfSave() {
+  try {
+    writeJsonAtomic(shelfIndex, { items: shelf });
+    shelfSaveFailed = false;
+  } catch (e) {
+    console.error(shelfIndex, e);
+    if (!shelfSaveFailed) warn(`Nikki kann die Liste der Ablage nicht speichern: ${e.code ?? e.message}`);
+    shelfSaveFailed = true;
+  }
+}
+const thumbs = new Map(); // file -> Promise<data URL | ''>; copies never change, so one look per file
+const thumb = (file) => {
+  if (!thumbs.has(file)) thumbs.set(file, nativeImage.createThumbnailFromPath(file, { width: 96, height: 96 }).then((img) => (img.isEmpty() ? '' : img.toDataURL()), () => ''));
+  return thumbs.get(file);
+};
+const sizeOf = (file) => {
+  try {
+    return fs.statSync(file).size;
+  } catch {
+    return 0;
+  }
+};
+// what the renderer sees: [{ id, name, size (text), path?, thumb?, text? }]
+const shelfList = () =>
+  Promise.all(
+    shelfItems().map(async (i) => {
+      if (typeof i.text === 'string') return { id: i.id, text: i.text, name: i.text.replace(/\s+/g, ' ').trim().slice(0, 60), size: 'Text' };
+      const file = shelfFile(shelfDir, i.name);
+      return { id: i.id, name: i.name, path: file, size: formatSize(sizeOf(file)), thumb: await thumb(file) };
+    }),
+  );
+ipcMain.handle('shelf-list', () => shelfDo(shelfList));
+ipcMain.handle('shelf-add', (_e, paths) =>
+  shelfDo(async () => {
+    const items = shelfItems();
+    const errors = [];
+    const files = [];
+    for (const src of (Array.isArray(paths) ? paths : []).slice(0, 200)) {
+      if (typeof src !== 'string' || !path.isAbsolute(src)) continue;
+      // dragged out of the shelf and dropped back onto the island: it is here already
+      if (path.dirname(path.resolve(src)).toLowerCase() === shelfDir.toLowerCase()) continue;
+      const name = path.basename(src);
+      try {
+        const st = await fs.promises.stat(src);
+        if (st.isFile()) files.push({ src, name, size: st.size });
+        else errors.push(`„${name}“ ist ein Ordner. Die Ablage nimmt nur Dateien.`);
+      } catch (e) {
+        errors.push(`„${name}“ kann Nikki nicht lesen (${e.code ?? e.message}).`);
+      }
+    }
+    const names = items.filter((i) => i.name).map((i) => i.name);
+    const used = names.reduce((sum, n) => sum + sizeOf(shelfFile(shelfDir, n)), 0);
+    const plan = planAdd(files, used, names);
+    for (const f of plan.ok) {
+      const dest = shelfFile(shelfDir, f.name);
+      try {
+        await fs.promises.copyFile(f.src, dest, fs.constants.COPYFILE_EXCL);
+        items.push({ id: crypto.randomUUID(), name: f.name });
+      } catch (e) {
+        if (e.code !== 'EEXIST') fs.rmSync(dest, { force: true }); // no half copy left behind (disk full)
+        errors.push(`„${f.name}“ kam nicht in die Ablage (${e.code ?? e.message}).`);
+      }
+    }
+    shelfSave();
+    return { items: await shelfList(), errors: [...errors, ...plan.errors] };
+  }),
+);
+ipcMain.handle('shelf-add-text', (_e, text) =>
+  shelfDo(async () => {
+    const t = String(text ?? '').trim().slice(0, 20000);
+    if (t) {
+      shelfItems().push({ id: crypto.randomUUID(), text: t });
+      shelfSave();
+    }
+    return { items: await shelfList(), errors: [] };
+  }),
+);
+ipcMain.handle('shelf-clear', () =>
+  shelfDo(async () => {
+    const errors = [];
+    const kept = [];
+    for (const i of shelfItems()) {
+      if (typeof i.text === 'string') continue;
+      try {
+        await fs.promises.rm(shelfFile(shelfDir, i.name), { force: true });
+      } catch (e) {
+        kept.push(i);
+        errors.push(`„${i.name}“ ist noch offen und bleibt liegen (${e.code ?? e.message}).`);
+      }
+    }
+    shelf = kept;
+    thumbs.clear();
+    shelfSave();
+    return { items: await shelfList(), errors };
+  }),
+);
+// double click: the copy in the shelf opens in its app; '' or why not
+ipcMain.handle('shelf-open', (_e, id) => {
+  const i = shelfItems().find((x) => x.id === id && typeof x.name === 'string');
+  return i ? shell.openPath(shelfFile(shelfDir, i.name)) : 'nicht gefunden';
+});
+// Dragging out hands Windows the copies (copy, not move): the shelf keeps them, a cancelled drag loses nothing.
+let dragIcon;
+ipcMain.on('shelf-drag', (e, ids) => {
+  const files = shelfItems()
+    .filter((i) => typeof i.name === 'string' && Array.isArray(ids) && ids.includes(i.id))
+    .map((i) => shelfFile(shelfDir, i.name));
+  dragIcon ??= nativeImage.createFromPath(path.join(dir, 'assets', 'icon.png')).resize({ width: 32, height: 32 });
+  if (files.length) e.sender.startDrag({ file: files[0], files, icon: dragIcon });
+});
+
 ipcMain.on('toast', (_e, text) => notify(String(text ?? '').slice(0, 200), true));
 ipcMain.on('open-external', (_e, url) => /^https?:\/\//i.test(url) && shell.openExternal(url));
 ipcMain.on('stop', () => agent.stop());
@@ -706,6 +949,8 @@ app.whenReady().then(() => {
   watchFullscreen();
   feedPointer();
   startHookServer();
+  syncHelper();
+  applyAwake(); // switched on by hand last time
   // a watcher that is slow to start (Add-Type) must not keep the island away for long
   setTimeout(() => fullscreen === null && setFullscreen(false), 3000);
   findClaude();
@@ -736,6 +981,7 @@ app.on('will-quit', () => {
   clearInterval(pointerTimer);
   pointerTimer = null;
   agent.abort(); // no claude.exe left running on its own (M5)
+  stopHelper();
   relay.cancelAll(); // waiting terminal hooks fall back to their own dialog
   try {
     fullscreenWatcher?.stdout?.removeAllListeners('data');

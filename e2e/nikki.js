@@ -32,6 +32,7 @@ export async function launch({ state, settings, realHome = false } = {}) {
   // started like the user would: no nested Claude Code session, no API key, no node mode
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(CLAUDECODE|CLAUDE_CODE_|ANTHROPIC_|ELECTRON_RUN_AS_NODE)/.test(k)));
   env.NIKKI_USER_DATA = userData;
+  env.NIKKI_NO_HELPER = '1'; // no NikkiHelper.exe: the user's real media session and volume stay out of every run
   if (home) {
     env.HOME = env.USERPROFILE = home;
     // Claude counts as installed on every machine; the offline tests replace it before anything would run it

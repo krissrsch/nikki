@@ -28,6 +28,18 @@ contextBridge.exposeInMainWorld('companion', {
   moduleGet: (id) => ipcRenderer.invoke('module-get', id),
   moduleSet: (id, data) => ipcRenderer.invoke('module-set', id, data),
   toast: (text) => ipcRenderer.send('toast', text), // Windows toast even while the island can be seen
+  // music: what Windows plays and the volume, from helper/NikkiHelper.exe while the music module is on
+  mediaGet: () => ipcRenderer.invoke('media-get'), // { media: { title, artist, app, status, position, duration, updatedAt, cover } | null, volume: { level, muted } | null }
+  media: (cmd, value) => ipcRenderer.send('media-cmd', cmd, value), // toggle | next | prev | mute | unmute | volume (0-100)
+  onMedia: on('media'),
+  onVolume: on('volume'),
+  // shelf: copies in userData/shelf; the renderer names items by id, main does every file operation
+  shelfList: () => ipcRenderer.invoke('shelf-list'), // [{ id, name, size, path?, thumb?, text? }]
+  shelfAdd: (paths) => ipcRenderer.invoke('shelf-add', paths), // { items, errors }
+  shelfAddText: (text) => ipcRenderer.invoke('shelf-add-text', text), // { items, errors }
+  shelfClear: () => ipcRenderer.invoke('shelf-clear'), // { items, errors }
+  shelfOpen: (id) => ipcRenderer.invoke('shelf-open', id), // '' or why not
+  shelfDrag: (ids) => ipcRenderer.send('shelf-drag', ids), // start dragging these files out of the island
   openExternal: (url) => ipcRenderer.send('open-external', url),
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
   onTerminal: on('terminal'),
