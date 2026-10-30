@@ -139,7 +139,7 @@ describe('Nikki die Katze', () => {
   test('Start-Intro: sie kommt aus der Notch, landet auf ihrem Platz; ein Klick auf die Notch beendet es sofort', async () => {
     nikki = await launch({ state: { intro: true } });
     const { page } = nikki;
-    await page.waitForFunction(() => !document.getElementById('introCat'), null, { timeout: 3000 }); // nothing stays behind
+    await page.waitForFunction(() => !document.getElementById('introStage'), null, { timeout: 3000 }); // nothing stays behind
     assert.equal(await page.$eval('.catRest', (e) => getComputedStyle(e).visibility), 'visible');
     assert.equal(await page.$eval('.catRest', (e) => e.dataset.type), 'sit');
     assert.equal(await page.getAttribute('#glow', 'data-glow'), '');
@@ -150,12 +150,13 @@ describe('Nikki die Katze', () => {
       island.classList.add('boot');
       window.run = startUp();
     });
-    await page.waitForSelector('#introCat', { state: 'attached' });
-    await page.waitForFunction(() => getComputedStyle(document.getElementById('introCat')).zIndex === '0');
-    await page.waitForTimeout(1500);
+    await page.waitForFunction(() => document.getElementById('island').classList.contains('greeting'));
+    await page.waitForTimeout(900);
+    assert.equal(await page.$eval('#island', (e) => e.offsetWidth), 640, 'die Begrüßung läuft im Banner der Insel');
     await page.click('#notch');
     await page.evaluate(() => window.run);
-    assert.equal(await page.locator('#introCat').count(), 0);
+    assert.equal(await page.locator('#introStage').count(), 0);
+    assert.equal(await page.$eval('#island', (e) => e.classList.contains('greeting')), false);
     assert.equal(await page.$eval('.catRest', (e) => getComputedStyle(e).visibility), 'visible');
     assert.deepEqual(nikki.errors, []);
   });
