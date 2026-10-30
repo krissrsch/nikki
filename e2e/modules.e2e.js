@@ -26,10 +26,10 @@ async function dropText(text) {
 }
 
 describe('Module aus Phase 3', () => {
-  test('Musik: ohne Helfer ein sauberer Leerzustand; Wiedergabe zeigt Seite, Kachel und tanzende Notch', async () => {
+  test('Musik: ohne Helfer ein sauberer Leerzustand; Wiedergabe zeigt Seite und Kachel, die Notch tanzt mit blauer Kante', async () => {
     nikki = await launch();
     const { page, app } = nikki;
-    const tile = page.locator('#homeTiles .modTile', { has: page.locator('button.tileHead', { hasText: 'Musik' }) });
+    const tile = page.locator('#homeTiles [data-tile="music"]');
     assert.match(await tile.textContent(), /Gerade still/);
     await page.click('#tabs .tab[data-view="music"]');
     await page.waitForSelector('.mod-music .musicEmpty');
@@ -58,15 +58,16 @@ describe('Module aus Phase 3', () => {
     await page.waitForTimeout(200);
     assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Weiter');
 
+    assert.equal(await tile.locator('.musicTileTitle').textContent(), 'Testlied');
+    assert.equal(await tile.locator('.tileSub').textContent(), 'Nikki · Spotify');
+
+    // closed: no title beside the eyes, they dance, the edge turns music blue
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.getElementById('island').dataset.mood === 'music');
-    assert.equal(await page.textContent('#glanceL'), 'Testlied');
-    assert.equal(await page.locator('#glanceR .g-bar').count(), 4, 'Visualizer');
-    // a volume change from outside shows for 2 s (ours a moment ago does not count)
-    await page.waitForTimeout(1600);
-    await fromMain('volume', { level: 70, muted: false });
-    await page.waitForFunction(() => document.getElementById('glanceL').textContent === '70 %');
-    await page.waitForFunction(() => document.getElementById('island').dataset.mood === 'music', null, { timeout: 4000 });
+    assert.equal(await page.getAttribute('#glow', 'data-glow'), 'music');
+    assert.equal(await page.evaluate(() => document.getElementById('notch').textContent.includes('Testlied')), false);
+    await fromMain('media', { app: 'Spotify.exe', title: 'Testlied', artist: 'Nikki', status: 'paused', position: 14, duration: 200, updatedAt: Date.now(), cover: '' });
+    await page.waitForFunction(() => document.getElementById('glow').dataset.glow === '', null, { timeout: 4000 });
     assert.deepEqual(nikki.errors, []);
   });
 
@@ -88,11 +89,11 @@ describe('Module aus Phase 3', () => {
     assert.deepEqual(fs.readdirSync(shelf).sort(), ['notiz (2).txt', 'notiz.txt']);
     assert.equal(fs.readFileSync(path.join(shelf, 'notiz.txt'), 'utf8'), 'hallo');
     assert.equal(fs.readFileSync(path.join(src, 'notiz.txt'), 'utf8'), 'hallo', 'das Original bleibt');
-    // added behind the page's back: opening it again reads the folder, the Home tile follows
+    // added behind the page's back: opening it again reads the folder; the shelf has no Home tile
     await page.click('#tabs .tab[data-view="home"]');
+    assert.equal(await page.locator('#homeTiles [data-tile="shelf"]').count(), 0);
     await page.click('#tabs .tab[data-view="shelf"]');
     await page.waitForSelector('.shelfItem:has-text("notiz (2).txt")');
-    assert.match(await page.textContent('#homeTiles'), /3 Einträge/);
 
     await page.click('.shelfItem:has-text("notiz.txt")');
     assert.equal(await page.getAttribute('.shelfItem:has-text("notiz.txt")', 'aria-pressed'), 'true');

@@ -126,14 +126,15 @@ describe('Nikki offline', () => {
     const { page } = nikki;
     const tabs = () => page.$$eval('#moduleTabs .tab', (b) => b.map((x) => x.dataset.view));
     assert.deepEqual(await tabs(), ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer']);
-    assert.equal(await page.locator('#homeTiles .tile').count(), 7, 'Claude + sechs Module');
+    assert.equal(await page.locator('#homeTiles .tile').count(), 4, 'Claude, Musik, Wetter, Kalender');
     await page.click('#tabs .tab[data-view="settings"]');
-    await page.click('#mod-timer');
-    await page.waitForFunction(() => !document.querySelector('#moduleTabs .tab[data-view="timer"]'));
-    assert.equal(await page.locator('#homeTiles .tile').count(), 6);
-    assert.deepEqual(nikki.state().modules.find((m) => m.id === 'timer'), { id: 'timer', on: false });
-    await page.click('#mod-timer');
-    await page.waitForSelector('#moduleTabs .tab[data-view="timer"]');
+    await page.click('#mod-calendar');
+    await page.waitForFunction(() => !document.querySelector('#moduleTabs .tab[data-view="calendar"]'));
+    assert.equal(await page.locator('#homeTiles .tile').count(), 3, 'its tile goes with it');
+    assert.deepEqual(nikki.state().modules.find((m) => m.id === 'calendar'), { id: 'calendar', on: false });
+    await page.click('#mod-calendar');
+    await page.waitForSelector('#moduleTabs .tab[data-view="calendar"]');
+    assert.equal(await page.locator('#homeTiles .tile').count(), 4);
 
     await nikki.fakeClaude();
     await page.click('#tabs .tab[data-view="todo"]');

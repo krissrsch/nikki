@@ -44,8 +44,7 @@ describe('Zwischenablage', () => {
     await page.waitForSelector(`.clipRow:first-child .clipText:text-is("${SECOND}")`);
     assert.equal(await page.locator('.clipText', { hasText: 'geheim' }).count(), 0, 'vom Passwort-Manager markiert');
     assert.equal(fs.existsSync(file), false, 'nur im Speicher');
-    const tile = page.locator('#homeTiles .modTile', { has: page.locator('button.tileHead', { hasText: 'Zwischenablage' }) });
-    assert.match(await tile.textContent(), new RegExp(`2 Einträge.*${SECOND}.*${FIRST}`));
+    assert.match(await page.textContent('.mod-clipboard .shelfInfo'), /2 Einträge/);
 
     // click copies again (recorded, see above) and moves it up
     await app.evaluate(({ clipboard }) => {
