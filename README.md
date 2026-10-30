@@ -19,6 +19,8 @@ Die Insel sitzt oben mittig. Zugeklappt zeigt sie nur Nikkis Augen; was los ist,
 - Nikki, gezeichnet nach der echten Katze: lebt in der Insel, hat 19 Ausdrücke, reagiert auf Claude und Musik, springt beim Tabwechsel mit, lässt sich an jeden Platz ziehen und schaut zugeklappt hinter der Notch hervor
 - Die zugeklappte Notch lässt sich ziehen, auch auf einen anderen Bildschirm; sie federt zurück in die Mitte
 - Discord (optional, eigene Discord-App nötig): wer mit dir im Sprachkanal ist
+- Spracheingabe (optional): Taste halten und sprechen, lokal erkannt. Befehle beginnen mit „Hey Nikki“
+- Allgemeiner Chat: Fragen an Claude ohne Projekt
 - Eigenes Einstellungsfenster mit Seitenleiste (Zahnrad in der Insel oder Tray)
 - Hotkey frei belegbar, Autostart, Töne, Leuchten an/aus und Stärke. Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
 

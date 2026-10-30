@@ -1,9 +1,11 @@
 # Nikki 1.3
 
-Nikki sieht jetzt aus wie die echte Nikki, schaut hinter der Notch hervor und zeigt dir, wer mit dir im Discord sitzt.
+Nikki hört jetzt zu, sieht aus wie die echte Nikki, schaut hinter der Notch hervor und zeigt dir, wer mit dir im Discord sitzt.
 
 ## Neu
 
+- **Spracheingabe.** Taste halten, sprechen, loslassen. „Hey Nikki, …“ beantwortet Fragen im allgemeinen Chat, „Hey Nikki, sag Claude, …“ geht ins gewählte Projekt, „Hey Nikki, führe den Webhook Team aus mit …“ an deinen Discord-Webhook. Die Erkennung läuft lokal auf deinem PC. Beim ersten Einschalten lädt Nikki einmalig etwa 150 MB. Unten mittig zeigt eine kleine Kapsel Nikki und deine Stimme.
+- **Allgemeiner Chat.** Fragen ohne Projekt: Im Chat steht „Allgemein“ jetzt ganz oben im Projektmenü.
 - **Die echte Nikki.** Neu gezeichnet nach der echten Katze: weiß mit grau-brauner Kappe und Blesse, bernsteinfarbene Augen, grauer Sattel, geringelter Schwanz. Sie sitzt, steht, schläft eingerollt, wedelt, steppt zur Musik und knetet beim Arbeiten.
 - **Sie schaut hinter der Notch hervor.** Ihr Kopf kommt an einer Ecke raus, wenn du mit der Maus darüberfährst, wenn sie dich braucht und ab und zu einfach so. Die Augen der Notch bleiben, wie sie sind.
 - **Notch verschieben.** Zieh die zugeklappte Notch an der Kante entlang oder auf einen anderen Bildschirm. Beim Loslassen federt sie in die Mitte zurück, der Bildschirm wird gemerkt.
