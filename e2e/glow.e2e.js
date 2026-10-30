@@ -134,6 +134,24 @@ describe('Notch und Glow', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Nikki schaut hinter der Notch hervor: wenn sie gebraucht wird, an einer Seite, nie bei offener Insel', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    await close();
+    const out = () => page.evaluate(() => document.getElementById('notchPeek').hasAttribute('data-on'));
+    assert.equal(await out(), false);
+    await nikki.status({ state: 'needsYou', text: 'Nikki will OK!' });
+    await until(out, 'sie schaut raus');
+    const side = await page.getAttribute('#notchPeek', 'data-side');
+    assert.ok(['L', 'R'].includes(side));
+    assert.equal(await page.getAttribute('#island', 'data-peek'), side, 'das Schnurrhaar dieser Seite macht Platz');
+    assert.equal(await page.$eval('#eyes', (e) => getComputedStyle(e).display), 'block', 'die Augen der Notch bleiben');
+    await page.click('#notch');
+    await until(async () => !(await out()), 'offen: weg');
+    assert.equal(await page.getAttribute('#island', 'data-peek'), null);
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Mikrofon im Spektrum: ab Werk aus, gespeichert, aus mit dem Leuchten', async () => {
     nikki = await launch();
     const s = await nikki.settings('notch');

@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 // classic renderer script: the pure part runs in a sandbox, the stage needs a DOM (e2e/cat.e2e.js)
 const src = readFileSync(new URL('./cat.js', import.meta.url), 'utf8');
-const cat = vm.runInNewContext(`${src}\n({ catClamp, CAT_MOODS, CAT_LOOK, CAT_IDLE, catMoodFor, catCss, catSvg, catDefs, catSpot, catOffset })`);
+const cat = vm.runInNewContext(`${src}\n({ catClamp, CAT_MOODS, CAT_LOOK, CAT_IDLE, catMoodFor, catCss, catSvg, catDefs, catSpot, catOffset, catHeadSvg, catPeekShow })`);
 
 test('alle 19 Stimmungen haben Aussehen, Beschriftung und Bewegung', () => {
   assert.equal(cat.CAT_MOODS.length, 19);
@@ -16,6 +16,16 @@ test('alle 19 Stimmungen haben Aussehen, Beschriftung und Bewegung', () => {
     assert.ok(l.eye && l.mouth && l.body, m);
   }
   assert.deepEqual(Object.keys(cat.CAT_LOOK).sort(), [...cat.CAT_MOODS].sort());
+});
+
+test('hinter der Notch: Kopf ohne Körper; sie bleibt draußen, wenn sie gebraucht wird, und kommt kurz, wenn etwas fertig ist', () => {
+  const head = cat.catHeadSvg();
+  assert.ok(head.includes('c-head') && !head.includes('c-torso'));
+  assert.equal(cat.catPeekShow({ mood: 'need', last: 'need', hover: false }), true);
+  assert.equal(cat.catPeekShow({ mood: 'done', last: 'idle', hover: false }), true);
+  assert.equal(cat.catPeekShow({ mood: 'done', last: 'done', hover: false }), false);
+  assert.equal(cat.catPeekShow({ mood: 'idle', last: 'idle', hover: true }), true);
+  assert.equal(cat.catPeekShow({ mood: 'idle', last: 'idle', hover: false }), false);
 });
 
 test('der Leerlauf nutzt nur bekannte Stimmungen und schläft irgendwann ein', () => {

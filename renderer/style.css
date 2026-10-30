@@ -68,9 +68,11 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
     translate 0.34s var(--ease-out);
 }
 :root[data-drag='on'] #island,
-:root[data-drag='on'] #glow { transition: none; }
+:root[data-drag='on'] #glow,
+:root[data-drag='on'] #notchPeek { transition: none; }
 :root[data-drag='back'] #island,
-:root[data-drag='back'] #glow { transition: translate 0.45s cubic-bezier(0.3, 1.45, 0.45, 1); }
+:root[data-drag='back'] #glow,
+:root[data-drag='back'] #notchPeek { transition: translate 0.45s cubic-bezier(0.3, 1.45, 0.45, 1); }
 #island.open { width: 720px; border-radius: 0 0 28px 28px; box-shadow: 0 16px 40px rgb(0 0 0 / 0.5); }
 #island.boot { opacity: 0; translate: -50% -18px; }
 .instant,
@@ -149,6 +151,29 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 /* ---------- glow (canvas Glow): a narrow light edge along the notch, no wide glow. Colour per state, off while idle and while the island is open.
    Only states with motion animate: needs you and error breathe, a reflex travels (fast: needs you, slow: working), done lights up once. ---------- */
 /* the clip keeps the 10000 px wide line from making the page scrollable sideways */
+/* her head comes out from behind the notch, past one corner; the notch's whisker on that side makes room for her own */
+#notchPeek { position: absolute; top: 0; left: 50%; width: 110px; height: 60px; translate: calc(-50% + var(--dragX, 0px)) 0; pointer-events: none; }
+#island.open ~ #notchPeek { display: none; }
+.peekCat {
+  position: absolute;
+  top: -5px;
+  left: 100%;
+  width: 52px;
+  height: 52px;
+  margin-left: -22px;
+  opacity: 0;
+  transform: translateX(-28px);
+  transform-origin: 50% 90%;
+  transition: transform 0.28s var(--ease-out), opacity 0.14s linear 0.14s;
+}
+#notchPeek[data-on] .peekCat { opacity: 1; transform: rotate(8deg); transition: transform 0.5s cubic-bezier(0.3, 1.5, 0.5, 1), opacity 0.1s linear; }
+#notchPeek[data-side='L'] .peekCat { left: auto; right: 100%; margin: 0 -22px 0 0; scale: -1 1; }
+.peekCat .cat.catHead .c-head { transform: none; transition: none; }
+#notchPeek .cat[data-mood='music'] { animation: peekBop 0.46s ease-in-out infinite alternate; }
+@keyframes peekBop { to { translate: 0 2px; } }
+#island .wh { transition: opacity 0.2s var(--ease-out); }
+#island[data-peek='R'] .whR,
+#island[data-peek='L'] .whL { opacity: 0; }
 #glowClip { position: absolute; top: 0; left: 0; width: 100%; height: 120px; overflow: hidden; pointer-events: none; }
 #glow {
   position: absolute;
