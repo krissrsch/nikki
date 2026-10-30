@@ -985,6 +985,64 @@ button.tileHead { flex: none; padding: 0; border: 0; background: none; text-alig
 .timerPresets .btn[aria-pressed='true'] { background: var(--raised-hover); color: var(--accent); }
 .timerActions .btn { height: 32px; padding: 0 16px; }
 
+/* Musik: cover 124 left; title, artist · app, progress, controls 36/44/36 and volume 140 right */
+.musicPage { display: flex; align-items: center; gap: 18px; }
+.musicCover { display: grid; flex: none; place-items: center; width: 124px; height: 124px; border-radius: 16px; background: var(--raised); color: var(--muted); object-fit: cover; }
+.musicCover.small { width: 44px; height: 44px; border-radius: 10px; }
+.musicCover.tile { width: 40px; height: 40px; border-radius: 8px; }
+.musicCover.none .ti { width: 40%; height: 40%; }
+.musicMain { display: flex; flex: 1; flex-direction: column; gap: 14px; min-width: 0; }
+.musicHead { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.musicTitle { overflow: hidden; font-size: 18px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.musicSub { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.musicBar { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.musicTrack { display: block; flex: 1; height: 4px; overflow: hidden; border-radius: 2px; background: var(--raised-hover); }
+.musicTrack.thin { height: 3px; }
+.musicFill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--text); }
+.musicCtrl { display: flex; align-items: center; gap: 8px; }
+.mBtn { display: grid; flex: none; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--raised); color: var(--text); transition: background-color 0.15s ease, scale 0.12s var(--ease-out); }
+.mBtn.play { width: 44px; height: 44px; background: var(--text); color: #000; }
+.mBtn.play.small { width: 28px; height: 28px; }
+.mBtn:active { scale: 0.95; }
+.mi { width: 14px; height: 14px; fill: currentColor; }
+.mBtn.play .mi { width: 16px; height: 16px; }
+.mBtn.small .mi { width: 11px; height: 11px; }
+.mBtn.mute { width: 30px; height: 30px; background: transparent; color: var(--muted); }
+.mBtn.mute[aria-pressed='true'] { color: var(--bad); }
+.musicVolume { display: flex; flex: none; align-items: center; gap: 6px; }
+.musicVol { width: 140px; margin: 0; }
+.musicVol.muted { opacity: 0.45; }
+.musicEmpty { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; background: var(--card); }
+.musicEmpty .musicTitle { font-size: 15px; }
+.musicEmpty .musicSub { font-size: 12px; white-space: normal; }
+.musicRow { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.musicTileTitle { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) {
+  .mBtn:not(.play):hover { background: var(--raised-hover); color: var(--text); }
+  .mBtn.play:hover { background: #fff; }
+}
+
+/* Ablage: small tiles, 8 per row, selection as an accent ring */
+.mod-shelf { gap: 10px; }
+.shelfBar { display: flex; align-items: center; gap: 8px; }
+.shelfInfo { flex: 1; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.shelfMsg { margin: 0; color: var(--bad); font-size: 12px; }
+.btn.bad { color: var(--bad); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.shelfGrid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; max-height: 372px; overflow-y: auto; }
+.shelfItem { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 6px; border: 2px solid transparent; border-radius: 12px; background: var(--card); color: var(--text); transition: border-color 0.12s ease, scale 0.12s var(--ease-out); }
+.shelfItem[aria-pressed='true'] { border-color: var(--accent); }
+.shelfItem:active { scale: 0.97; }
+.shelfThumb { display: grid; flex: none; place-items: center; width: 44px; height: 44px; overflow: hidden; border-radius: 8px; background: var(--raised); color: var(--muted); font-size: 11px; font-weight: 600; }
+.shelfThumb img { width: 100%; height: 100%; object-fit: cover; }
+.shelfName { max-width: 100%; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.shelfEmpty { display: grid; place-items: center; height: 86px; border: 2px dashed var(--raised-hover); border-radius: 12px; color: var(--muted); font-size: 13px; }
+.shelfRow { display: flex; gap: 8px; }
+.shelfRow .shelfThumb { width: 36px; height: 36px; }
+@media (hover: hover) and (pointer: fine) {
+  .shelfItem:hover { background: var(--raised); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* keep fades and colour, drop movement: the notch holds still, the island jumps to its size */
   .cat *,

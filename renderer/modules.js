@@ -1,9 +1,10 @@
 // Module registry. Each renderer/modules/<id>.js registers itself here; app.js shows the ones switched on in the settings.
 // Classic script (globals) like glance.js. A module file keeps its internals in a function scope: all scripts share one global scope.
-// def: { id, title, icon, page(el, ctx), tile?(el, ctx), glance?(ctx), start?(ctx), stop?() }
+// def: { id, title, icon, page(el, ctx), tile?(el, ctx), glance?(ctx), start?(ctx), stop?(), drop?({ paths, text }) }
 //   icon: SVG markup from the module's own code, never user content (it goes in via innerHTML)
 //   page: renders the module page into el, every time it is shown · tile: renders its Home tile into el (a .tile)
 //   glance: inputs for glance() in the closed notch, e.g. { event } or { timer } · start/stop: load data, run timers while it is on
+//   drop: takes files or text dropped on the island while the chat tab is not open (the shelf); its page opens first
 const NikkiModules = new Map();
 function registerModule(def) {
   NikkiModules.set(def.id, def);

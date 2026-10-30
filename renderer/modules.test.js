@@ -5,16 +5,16 @@ import vm from 'node:vm';
 
 // classic renderer scripts share one global scope: run them in one sandbox, in index.html order, and take the pure parts
 const ctx = vm.createContext({});
-for (const f of ['modules.js', 'modules/calendar.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js']) {
+for (const f of ['modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js']) {
   vm.runInContext(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
-const g = vm.runInContext('({ NikkiModules, moduleList, calDayKey, calMonth, calOnDay, calUpcoming, calDue, todoShown, notesWhen, timerLeft, timerText })', ctx);
+const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, calDayKey, calMonth, calOnDay, calUpcoming, calDue, todoShown, notesWhen, timerLeft, timerText })', ctx);
 // objects from the sandbox have another Object.prototype: compare plain copies
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const MIN = 60 * 1000;
 
-test('registry: the four modules register with page and tile, and no globals collide', () => {
-  assert.deepEqual([...g.NikkiModules.keys()], ['calendar', 'todo', 'notes', 'timer']);
+test('registry: the modules register with page and tile, in tab order, and no globals collide', () => {
+  assert.deepEqual([...g.NikkiModules.keys()], ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer']);
   for (const m of g.NikkiModules.values()) {
     assert.equal(typeof m.page, 'function', m.id);
     assert.equal(typeof m.tile, 'function', m.id);
@@ -93,4 +93,24 @@ test('timer: time left running, paused and fresh; mm:ss rounds up', () => {
   assert.equal(g.timerText(18 * MIN + 30_001), '18:31');
   assert.equal(g.timerText(1), '00:01');
   assert.equal(g.timerText(0), '00:00');
+});
+
+test('music: position runs on while playing, stops at the end, holds while paused', () => {
+  const now = 1_800_000_000_000;
+  const m = { status: 'playing', position: 72, duration: 220, updatedAt: now - 5000 };
+  assert.equal(g.musicPos(m, now), 77);
+  assert.equal(g.musicPos({ ...m, status: 'paused' }, now), 72);
+  assert.equal(g.musicPos({ ...m, updatedAt: now - 600_000 }, now), 220, 'never past the end');
+  assert.equal(g.musicPos({ ...m, updatedAt: 0 }, now), 72, 'no snapshot time: no guessing');
+  assert.equal(g.musicPos({ ...m, duration: 0 }, now), 77, 'a stream without length runs on');
+  assert.equal(g.musicPos({ ...m, updatedAt: now + 9000 }, now), 63, 'a clock ahead counts back, not below zero');
+  assert.equal(g.musicTime(0), '0:00');
+  assert.equal(g.musicTime(7.9), '0:07');
+  assert.equal(g.musicTime(220), '3:40');
+  assert.equal(g.musicTime(3723), '1:02:03');
+  assert.equal(g.musicApp('Spotify.exe'), 'Spotify');
+  assert.equal(g.musicApp('SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify'), 'Spotify');
+  assert.equal(g.musicApp('MSEdge'), 'Edge');
+  assert.equal(g.musicApp(String.raw`C:\Tools\foobar2000.exe`), 'foobar2000');
+  assert.equal(g.musicApp(''), '');
 });
