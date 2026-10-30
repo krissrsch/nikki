@@ -136,6 +136,30 @@ describe('Nikki die Katze', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Start-Intro: sie kommt aus der Notch, landet auf ihrem Platz; ein Klick auf die Notch beendet es sofort', async () => {
+    nikki = await launch({ state: { intro: true } });
+    const { page } = nikki;
+    await page.waitForFunction(() => !document.getElementById('introCat'), null, { timeout: 3000 }); // nothing stays behind
+    assert.equal(await page.$eval('.catRest', (e) => getComputedStyle(e).visibility), 'visible');
+    assert.equal(await page.$eval('.catRest', (e) => e.dataset.type), 'sit');
+    assert.equal(await page.getAttribute('#glow', 'data-glow'), '');
+    // noch einmal von vorn, mittendrin geöffnet
+    await page.click('#tabs', { position: { x: 500, y: 17 } });
+    await page.waitForFunction(() => !document.getElementById('island').classList.contains('open'));
+    await page.evaluate(() => {
+      island.classList.add('boot');
+      window.run = startUp();
+    });
+    await page.waitForSelector('#introCat', { state: 'attached' });
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('introCat')).zIndex === '0');
+    await page.waitForTimeout(1500);
+    await page.click('#notch');
+    await page.evaluate(() => window.run);
+    assert.equal(await page.locator('#introCat').count(), 0);
+    assert.equal(await page.$eval('.catRest', (e) => getComputedStyle(e).visibility), 'visible');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('die Lichtkante läuft über den ganzen Bildschirm: das Fenster ist so breit wie die Anzeige', async () => {
     nikki = await launch();
     const { app } = nikki;

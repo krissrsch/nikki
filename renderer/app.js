@@ -53,6 +53,7 @@ async function rememberLastChat(id) {
 }
 let view = 'home';
 let cat = null; // Nikki the cat (cat.js), created once the page exists
+let introRunning = false; // the start paints the notch itself
 const VIEWS = { home: 'viewHome', chat: 'viewChat' }; // + one per module switched on
 
 function setView(name) {
@@ -206,6 +207,7 @@ const glowEl = $('glow');
 const spectrum = createSpectrum($('specBars'), () => renderGlance());
 const showSpectrum = () => spectrum.show(!open && settings.glow !== false && !reduceMotion);
 function renderGlance() {
+  if (introRunning) return;
   const s = shown();
   const fromModules = {}; // { music } from the music module
   for (const [id, ctx] of live) Object.assign(fromModules, NikkiModules.get(id).glance?.(ctx));
@@ -1384,6 +1386,19 @@ api.onPermissionCancel((id) => {
   if (!perms.length && lastStatus.state === 'needsYou') show({ state: 'working', text: 'Nikki macht weiter…' });
 });
 
+// fades in from above and opens on Home; with the intro Nikki arrives first (settings: Start-Intro)
+async function startUp() {
+  if (settings.intro === false || reduceMotion) {
+    island.classList.remove('boot');
+    setOpen(true);
+    return play('hello');
+  }
+  introRunning = true;
+  await playIntro({ island, glow: glowEl, clip: $('glowClip'), notch: $('notch'), cat, say: play, open: () => setOpen(true) });
+  introRunning = false;
+  renderState();
+}
+
 (async () => {
   setView('home');
   const state = await api.getState();
@@ -1408,9 +1423,7 @@ api.onPermissionCancel((id) => {
 
   // main keeps the window hidden while a fullscreen app runs: say hello once it can be seen
   while (document.visibilityState !== 'visible') await new Promise((r) => document.addEventListener('visibilitychange', r, { once: true }));
-  island.classList.remove('boot'); // fades in from above, then opens on Home
-  setOpen(true);
-  play('hello');
+  await startUp();
 
   if (!claudeFound) {
     show({ state: 'error', text: 'Nikki findet Claude nicht.' });

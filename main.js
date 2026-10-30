@@ -79,6 +79,7 @@ let store = {
   glow: true, // light edge around the closed notch, spectrum with music
   glowLevel: 'normal', // dezent | normal | kraeftig
   catJump: true, // Nikki jumps through the tab icons when the page changes
+  intro: true, // she arrives with a small show when Nikki starts
   weatherCity: '', // Home weather tile; '' = none yet
   weather: null, // last answer for weatherCity, see fetchWeather()
 };
@@ -371,6 +372,7 @@ const settings = async () => ({
   keepAwake: !!store.keepAwake,
   glow: store.glow !== false,
   catJump: store.catJump !== false,
+  intro: store.intro !== false,
   glowLevel: GLOW_LEVELS.includes(store.glowLevel) ? store.glowLevel : 'normal',
   weatherCity: typeof store.weatherCity === 'string' ? store.weatherCity : '',
 });
@@ -422,6 +424,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     store.keepAwake = !!value;
     applyAwake();
   } else if (key === 'catJump') store.catJump = !!value;
+  else if (key === 'intro') store.intro = !!value;
   else if (key === 'catPlaces') win?.webContents.send('cat-reset'); // her places live in the island's renderer
   else if (key === 'glow') {
     store.glow = !!value;
