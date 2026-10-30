@@ -1394,7 +1394,7 @@ async function startUp() {
     return play('hello');
   }
   introRunning = true;
-  await playIntro({ island, glow: glowEl, clip: $('glowClip'), notch: $('notch'), cat, say: play, open: () => setOpen(true) });
+  await playIntro({ island, glow: glowEl, clip: $('glowClip'), cat, say: play, open: () => setOpen(true) });
   introRunning = false;
   renderState();
 }
