@@ -1,0 +1,28 @@
+/* The voice capsule at the bottom of the screen: never catches the mouse, no focus (main). */
+html,
+body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+body { display: flex; align-items: flex-end; justify-content: center; font: 500 13px 'Segoe UI', system-ui, sans-serif; color: #f4f4f2; }
+#pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  height: 44px;
+  margin-bottom: 4px;
+  padding: 0 16px 0 8px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 22px;
+  background: rgb(0 0 0 / 0.94);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.4);
+  animation: pillIn 0.26s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+#pill[hidden] { display: none; }
+@keyframes pillIn { from { opacity: 0; transform: translateY(8px) scale(0.92); } }
+#pillCat { width: 34px; height: 34px; flex: none; }
+#pillDots { display: flex; align-items: center; gap: 3px; height: 24px; }
+#pillDots[hidden] { display: none; }
+#pillDots i { display: block; width: 3.5px; height: 4px; border-radius: 2px; background: #7ff0c8; }
+#pillText { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#pillText[hidden] { display: none; }
+#pill[data-tone='bad'] #pillText { color: #ff8a8a; }
+@media (prefers-reduced-motion: reduce) { #pill { animation: none; } }

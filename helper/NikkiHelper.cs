@@ -1,7 +1,7 @@
 // Nikki's Windows helper: long-running, talks JSON lines over stdio.
 // stdout: {"type":"ready"} | {"type":"media",...} | {"type":"volume","level":0-100,"muted":bool} | {"type":"error","message":...}
 //         | {"type":"spectrum","bands":[12 numbers 0-1]} (~30/s while something sounds, see Spectrum)
-// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off | mic on | mic off
+// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off | mic on | mic off | ptt <virtual keys, comma separated> | ptt off | rec start <wav path> | rec stop
 // NikkiHelper.exe --spectrum-test: checks the analysis on a test tone and silence, exit code 0 when it is right
 // Built with the C# 5 compiler that ships with Windows (see build.cmd): no C# 6+ syntax, and WinRT
 // async calls are waited on directly because .NET Framework's await bridge does not bind to the system .winmd files.
@@ -86,6 +86,21 @@ class NikkiHelper
         if (line == "mic on" || line == "mic off")
         {
             Spectrum.Mic.Set(line == "mic on");
+            return;
+        }
+        if (line.StartsWith("ptt "))
+        {
+            Ptt.Set(line.Substring(4));
+            return;
+        }
+        if (line.StartsWith("rec start "))
+        {
+            Recorder.Start(line.Substring(10));
+            return;
+        }
+        if (line == "rec stop")
+        {
+            Recorder.Stop();
             return;
         }
         if (line.StartsWith("volume "))
@@ -317,6 +332,116 @@ static class Volume
     }
 }
 
+// Push to talk: polls the keys instead of hooking the keyboard, so no key press ever passes through Nikki. Says {"type":"ptt","down":true|false} on change.
+static class Ptt
+{
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+    static volatile int[] keys;
+    static Thread thread;
+
+    public static void Set(string list)
+    {
+        var next = new List<int>();
+        foreach (var k in list.Split(','))
+        {
+            int v;
+            if (int.TryParse(k, out v) && v > 0 && v < 256) next.Add(v);
+        }
+        keys = next.Count > 0 ? next.ToArray() : null;
+        if (thread != null || keys == null) return;
+        thread = new Thread(Loop);
+        thread.IsBackground = true;
+        thread.Start();
+    }
+
+    static void Loop()
+    {
+        bool down = false;
+        while (true)
+        {
+            Thread.Sleep(25);
+            var now = keys;
+            bool held = now != null;
+            if (held) foreach (int k in now) held &= (GetAsyncKeyState(k) & 0x8000) != 0;
+            if (held == down) continue;
+            down = held;
+            NikkiHelper.Emit("{\"type\":\"ptt\",\"down\":" + (down ? "true" : "false") + "}");
+        }
+    }
+}
+
+// The voice as a 16 kHz mono WAV for whisper: the microphone's samples between "rec start" and "rec stop", averaged down. Says {"type":"rec","ms":n} when it is done.
+static class Recorder
+{
+    const int Rate = 16000;
+    static readonly object gate = new object();
+    static BinaryWriter file;
+    static int samples;
+    static double sum, weight;
+
+    public static bool Active { get { return file != null; } }
+
+    public static void Start(string path)
+    {
+        lock (gate)
+        {
+            Close();
+            file = new BinaryWriter(File.Create(path));
+            file.Write(new byte[44]);
+            samples = 0;
+            sum = weight = 0;
+        }
+    }
+
+    public static void Add(float sample, int rate)
+    {
+        lock (gate)
+        {
+            if (file == null) return;
+            sum += sample;
+            weight += Rate / (double)rate;
+            if (weight < 1) return;
+            double value = sum * (Rate / (double)rate);
+            sum = 0;
+            weight -= 1;
+            file.Write((short)Math.Max(-32768, Math.Min(32767, value * 32767)));
+            samples++;
+        }
+    }
+
+    public static void Stop()
+    {
+        int ms;
+        lock (gate)
+        {
+            ms = samples * 1000 / Rate;
+            Close();
+        }
+        NikkiHelper.Emit("{\"type\":\"rec\",\"ms\":" + ms + "}");
+    }
+
+    static void Close()
+    {
+        if (file == null) return;
+        int bytes = samples * 2;
+        file.Seek(0, SeekOrigin.Begin);
+        file.Write(Encoding.ASCII.GetBytes("RIFF"));
+        file.Write(36 + bytes);
+        file.Write(Encoding.ASCII.GetBytes("WAVEfmt "));
+        file.Write(16);
+        file.Write((short)1);
+        file.Write((short)1);
+        file.Write(Rate);
+        file.Write(Rate * 2);
+        file.Write((short)2);
+        file.Write((short)16);
+        file.Write(Encoding.ASCII.GetBytes("data"));
+        file.Write(bytes);
+        file.Dispose();
+        file = null;
+    }
+}
+
 // Spectrum of what the default playback device plays, for the glow under the closed notch: WASAPI loopback in shared mode,
 // only between "spectrum on" and "spectrum off". 1024-point FFT with a Hann window, 12 log bands 40 Hz-12 kHz, 0-1 against a peak
 // that follows the loudest band at once and falls 3 dB a second (quiet and loud music both fill the bars), fast up, slow down.
@@ -468,6 +593,7 @@ class Spectrum
                         float sum = 0;
                         if (!silent) for (int ch = 0; ch < channels; ch++) sum += Sample(buf, f * block + ch * bytes, bytes, isFloat);
                         ring[pos] = sum / channels;
+                        if (flow == 1) Recorder.Add(ring[pos], rate);
                         pos = (pos + 1) % N;
                     }
                     fresh += (int)frames;
@@ -629,6 +755,10 @@ class Spectrum
             var sb = new StringBuilder("{\"type\":\"spectrum\",\"bands\":[");
             for (int b = 0; b < Bands; b++) sb.Append(b > 0 ? "," : "").Append(Math.Max(Output.sent[b], Mic.sent[b]).ToString("0.00", CultureInfo.InvariantCulture));
             NikkiHelper.Emit(sb.Append("]}").ToString());
+            if (this != Mic || !Recorder.Active) return;
+            var voice = new StringBuilder("{\"type\":\"voice\",\"bands\":[");
+            for (int b = 0; b < Bands; b++) voice.Append(b > 0 ? "," : "").Append(v[b].ToString("0.00", CultureInfo.InvariantCulture));
+            NikkiHelper.Emit(voice.Append("]}").ToString());
         }
     }
 

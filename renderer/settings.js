@@ -12,6 +12,7 @@ const PAGES = [
   ['modules', 'Module', '<path d="M12 3 3 8l9 5 9-5z" /><path d="m3 13 9 5 9-5" />', 'box'],
   ['claude', 'Claude', '<path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" />', 'work'],
   ['discord', 'Discord', DISCORD_MARK, 'listen'],
+  ['voice', 'Sprache', '<rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" />', 'listen'],
   ['nikki', 'Nikki', '<path d="M5 20V8l3-4 2 3h4l2-3 3 4v12z" /><path d="M9.5 12v1M14.5 12v1" />', 'wave'],
   ['keys', 'Tastenkürzel', '<rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />', 'think'],
 ];
@@ -40,12 +41,38 @@ $('sideList').replaceChildren(
   }),
 );
 
+const KEYS = {
+  hotkey: { btn: $('setHotkey'), msg: $('hotkeyMsg'), tell: (k) => `Nikki hört jetzt auf ${k}.`, tip: 'Esc bricht ab.' },
+  closeKey: { btn: $('setCloseKey'), msg: $('closeKeyMsg'), tell: (k) => `${k} schließt Nikki, solange die Insel offen ist.`, tip: 'Esc belegt Esc. Rücktaste löscht.' },
+  voiceKey: { btn: $('setVoiceKey'), msg: $('voiceKeyMsg'), tell: (k) => `Halte ${k} zum Sprechen.`, tip: 'Esc bricht ab.' },
+};
+function renderHooks(names) {
+  $('hookList').replaceChildren(...names.map((name) => {
+    const row = document.createElement('div');
+    row.className = 'setRow';
+    const label = document.createElement('span');
+    label.textContent = name;
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn';
+    del.textContent = 'Entfernen';
+    del.addEventListener('click', () => setSetting('hookRemove', name));
+    row.append(label, del);
+    return row;
+  }));
+}
+
 function applySettings(s) {
   settings = s;
   $('setAutostart').checked = s.autostart;
   $('setAutostart').disabled = !s.autostartAvailable;
   $('autostartHint').hidden = s.autostartAvailable;
-  for (const key of ['hotkey', 'closeKey']) if (capturing?.key !== key) $(key === 'hotkey' ? 'setHotkey' : 'setCloseKey').textContent = hotkeyLabel(s[key]);
+  for (const key of ['hotkey', 'closeKey', 'voiceKey']) if (capturing?.key !== key) KEYS[key].btn.textContent = hotkeyLabel(s[key]);
+  $('setVoice').checked = s.voice;
+  const setup = s.voiceSetup;
+  $('voiceMsg').textContent = setup.state === 'loading' ? `Lädt die Erkennung, ${setup.percent} %` : setup.state === 'error' ? 'Das Laden hat nicht geklappt. Schalte sie aus und wieder ein.' : s.voice ? 'Bereit' : 'Beim Einschalten lädt Nikki einmalig etwa 150 MB';
+  $('voiceMsg').classList.toggle('bad', setup.state === 'error');
+  renderHooks(s.voiceHooks);
   $('setSound').checked = !s.muted;
   $('setAwake').checked = s.keepAwake;
   $('setSleep').value = s.sleepMin;
@@ -96,6 +123,14 @@ $('setDiscordSecret').addEventListener('change', (e) => {
   e.target.value = '';
 });
 $('setDiscordJoin').addEventListener('change', (e) => setSetting('discordJoin', e.target.checked));
+$('setVoice').addEventListener('change', (e) => setSetting('voice', e.target.checked));
+$('hookAdd').addEventListener('click', async () => {
+  const s = await api.settingsSet('hookAdd', { name: $('hookName').value, url: $('hookUrl').value });
+  applySettings(s);
+  $('hookMsg').textContent = s.error === 'nocrypt' ? 'Windows kann die Adresse hier nicht verschlüsseln.' : s.error ? 'Name oder Adresse stimmen nicht.' : '';
+  $('hookMsg').classList.toggle('bad', !!s.error);
+  if (!s.error) $('hookName').value = $('hookUrl').value = '';
+});
 $('discordPortal').addEventListener('click', () => api.openExternal('https://discord.com/developers/applications'));
 
 // ---- modules: order and on/off
@@ -128,10 +163,6 @@ function moveModule(list, i, d) {
 }
 
 // ---- keys: click, then press the new combo; main keeps the old one when the new one is taken
-const KEYS = {
-  hotkey: { btn: $('setHotkey'), msg: $('hotkeyMsg'), tell: (k) => `Nikki hört jetzt auf ${k}.`, tip: 'Esc bricht ab.' },
-  closeKey: { btn: $('setCloseKey'), msg: $('closeKeyMsg'), tell: (k) => `${k} schließt Nikki, solange die Insel offen ist.`, tip: 'Esc belegt Esc. Rücktaste löscht.' },
-};
 let capturing = null; // the entry of KEYS being set
 const keyMsg = (entry, text, bad = false) => {
   entry.msg.textContent = text;

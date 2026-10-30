@@ -63,7 +63,7 @@ Coucous eigene Sounds fallen aus, sie stehen unter Urheberrecht von Louis Raill�
 
 | Was | Warum | Aufwand |
 |---|---|---|
-| Sprache: Push-to-Talk, später lokal „Hey Nikki“ | in Phase 3 geplant, noch nicht gebaut | L |
+| Sprache: Push-to-Talk gebaut am 2026-10-30, Plan in `sprache.plan.md`; später lokal „Hey Nikki“ | Whisper auf echter Hardware noch ungeprüft | L |
 | Discord: wer im eigenen Sprachkanal ist, als eigener Bereich, über lokales RPC (eigene App im Developer Portal, ohne Discord-Freigabe bis 50 Tester). Webhooks später mit der Spracheingabe | gebaut am 2026-10-30, Plan in `discord.plan.md`, mit echter App noch nicht geprüft | M |
 | Liedtexte im Musik-Reiter | geplant, Quelle und Lizenz müssen geklärt werden | M |
 | Kalender mit Google oder Outlook verbinden | heute nur lokal, viele haben ihre Termine dort | L |

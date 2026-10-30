@@ -183,6 +183,39 @@ describe('Notch und Glow', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Sprache: hören schlägt alles; frag Claude geht direkt, sonst ins Feld; Webhooks nur verschlüsselt und nur Discord', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    await close();
+    await nikki.status({ state: 'needsYou', text: 'x' });
+    await fromMain('voice', true);
+    await until(async () => (await glow()) === 'voice', 'Voice über Freigabe');
+    await fromMain('voice', false);
+    await until(async () => (await glow()) === 'need', 'wieder die Freigabe');
+
+    await fromMain('voice-text', { kind: 'text', text: 'Hallo Nikki' });
+    await until(async () => (await page.inputValue('#prompt')) === 'Hallo Nikki', 'im Chat-Feld, nicht gesendet');
+    await page.fill('#prompt', '');
+    await nikki.fakeClaude();
+    await fromMain('voice-text', { kind: 'claude', text: 'Wie spät ist es?' });
+    await page.waitForTimeout(300);
+    assert.equal(await nikki.app.evaluate(() => globalThis.e2e.starts.length), 0, 'ohne Projekt geht nichts raus');
+
+    const s = await nikki.settings('discord');
+    await s.fill('#hookName', 'Team');
+    await s.fill('#hookUrl', 'https://example.com/hook');
+    await s.click('#hookAdd');
+    await until(async () => /stimmen nicht/.test(await s.textContent('#hookMsg')), 'fremde Adresse abgelehnt');
+    await s.fill('#hookUrl', 'https://discord.com/api/webhooks/123/geheim-token');
+    await s.click('#hookAdd');
+    await until(async () => /Team/.test(await s.textContent('#hookList')), 'in der Liste');
+    assert.ok(!JSON.stringify(nikki.state()).includes('geheim-token'), 'nicht im Klartext');
+    await s.click('.sideBtn[data-page="voice"]');
+    assert.equal(await s.isChecked('#setVoice'), false, 'ab Werk aus, nichts wird geladen');
+    assert.equal(await s.textContent('#setVoiceKey'), 'Strg+Alt+V');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Mikrofon im Spektrum: ab Werk aus, gespeichert, aus mit dem Leuchten', async () => {
     nikki = await launch();
     const s = await nikki.settings('notch');
