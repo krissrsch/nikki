@@ -19,6 +19,9 @@ Während des Laufs erscheint die Insel kurz oben am Bildschirm. Läuft eine Voll
 | | B2: Nach einem Projektwechsel geht keine fremde Session-ID an Claude, der alte Chat bleibt unverändert |
 | | B6: Enter im leeren Feld stoppt nichts, auch nicht bei offener Freigabe-Karte; der Stop-Knopf stoppt |
 | | Module: in den Settings aus- und wieder einschalten ändert Tabs und Kacheln ohne Neustart; ein To-do landet in `userData/modules/todo.json`; „An Chat“ füllt nur das Eingabefeld |
+| `modules.e2e.js` | Musik ohne Helfer: Leerzustand ohne Knöpfe; Wiedergabe (vom Test als Event aus main geschickt) füllt Seite und Kachel, Knöpfe und Slider schicken nur erlaubte Befehle, die zugeklappte Notch tanzt mit Cover und Visualizer, eine Lautstärke-Änderung von außen zeigt sich 2 s |
+| | Ablage: ein Text-Drop auf Home öffnet die Ablage mit Text-Karte, dieselbe Datei zweimal landet als `notiz.txt` und `notiz (2).txt` in `userData/shelf`, Auswahl + „An Chat anhängen“ füllt nur das Eingabefeld, ein Drop im Chat-Tab bleibt draußen, „Alles leeren“ mit Rückfrage leert Ordner und Liste |
+| | Wachhalten: der Schalter in den Settings startet und beendet den powerSaveBlocker (im Test nur aufgezeichnet) |
 | `relay.e2e.js` | Terminal-Rückkanal über das echte `hook.cjs`: Der Start schreibt den wartenden PermissionRequest-Hook (`--wait`, timeout 120), „Immer“ in der Insel geht als allow mit `updatedPermissions` zurück, ein Stop der Session räumt die Karte ab, eine vorgemerkte Nachricht kommt genau einmal per `--stop` als `block` zurück |
 | `claude.e2e.js` (nur mit `NIKKI_E2E_CLAUDE=1`) | Prompt, Freigabe erlauben (`node -e`), Freigabe ablehnen (`git init`), B4: Senden direkt nach „fertig“, B5: Stop ohne Diagnose-Text |
 
@@ -29,6 +32,7 @@ Im Standardlauf ersetzt `fakeClaude()` (in `nikki.js`) die IPCs `start` und `sto
 - Jeder Start bekommt einen frischen Temp-Ordner als userData (`NIKKI_USER_DATA` und `--user-data-dir`). Fixtures werden dort als `state.json` abgelegt.
 - Im Standardlauf zeigen `HOME` und `USERPROFILE` auf einen Temp-Ordner. Die Hooks sind in einem frischen Stand aus. Nur `relay.e2e.js` schaltet sie ein, und zwar in der `settings.json` dieses Temp-Homes. Die echte `~/.claude/settings.json` wird nie geschrieben.
 - Der Claude-Lauf braucht das echte Home, weil dort der Login liegt. Er arbeitet in einem Temp-Projekt und löscht danach dessen Transkripte unter `~/.claude/projects/`.
+- `NikkiHelper.exe` startet in keinem Lauf (`NIKKI_NO_HELPER`): Die echte Wiedergabe und die Lautstärke bleiben unberührt.
 - Alle Temp-Ordner (`%TEMP%\nikki-e2e-*`) werden nach jedem Test gelöscht.
 
 ## Gegenprobe
