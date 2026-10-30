@@ -68,7 +68,7 @@
                   </g>
                 </g>
                 <g class="bubble"><rect x="56" y="-5" width="12" height="12" rx="4.5" /><text x="62" y="4.2">!</text></g>
-                <g class="zzz"><text x="57" y="7">z</text><text x="62.5" y="0">z</text></g>
+                <g class="zzz"><text x="57" y="14">z</text><text x="62.5" y="8">z</text></g>
               </svg>
             </div>
             </div>
@@ -111,7 +111,7 @@
             </div>
             <div class="homeCopy">
               <p id="homeTitle" class="homeTitle"><span class="liveDot"></span><span id="homeTitleText">Claude</span></p>
-              <p id="homeSub" class="meta">Nikki wartet… · Agent wählen.</p>
+              <p id="homeSub" class="meta">Nikki wartet…</p>
               <div class="projectWrap">
                 <button id="projectBtn" type="button" aria-haspopup="menu" aria-expanded="false">
                   <span id="projectName">Projekt wählen</span>
@@ -119,16 +119,18 @@
                 </button>
                 <div id="projectMenu" class="menu" role="menu" hidden></div>
               </div>
+              <div class="modelWrap">
+                <button id="modelBtn" class="meta" type="button" title="Modell wählen" aria-haspopup="menu" aria-expanded="false">
+                  <span>Modell · <span id="modelName">Standard</span></span>
+                  <svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5" /></svg>
+                </button>
+                <div id="modelMenu" class="menu" role="menu" hidden></div>
+              </div>
               <p id="cardBranch" class="meta" hidden>
                 <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="3.5" r="1.7" /><circle cx="4.5" cy="12.5" r="1.7" /><circle cx="11.5" cy="5" r="1.7" /><path d="M4.5 5.2v5.6M11.5 6.7c0 3-3.6 2.4-6.4 4.4" /></svg>
                 <span id="cardBranchName"></span>
               </p>
             </div>
-          </div>
-          <div class="card homeAgents">
-            <div id="agentGrid" role="listbox" aria-label="Agenten und Anbindungen"></div>
-            <div id="integMenu" class="menu integMenu" role="menu" hidden></div>
-            <div id="modelMenu" class="menu modelMenuHome" role="menu" hidden></div>
           </div>
         </section>
 
@@ -153,7 +155,7 @@
                 <div id="answer" aria-live="polite"></div>
               </div>
               <form id="composer">
-                <textarea id="prompt" rows="1" placeholder="Was soll ich tun?" aria-label="Aufgabe"></textarea>
+                <textarea id="prompt" rows="1" placeholder="Was soll Claude tun?" aria-label="Aufgabe"></textarea>
                 <button id="go" type="submit" aria-label="Senden">
                   <svg class="icon send" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3.5M3.8 7.5 8 3.3l4.2 4.2" /></svg>
                   <svg class="icon stopIcon" viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="4.5" width="7" height="7" rx="1.5" /></svg>
@@ -168,6 +170,7 @@
     <script src="../node_modules/gsap/dist/gsap.min.js"></script>
     <script src="../node_modules/marked/lib/marked.umd.js"></script>
     <script src="../node_modules/dompurify/dist/purify.min.js"></script>
+    <script src="markdown-text.js"></script>
     <script src="companion.js"></script>
     <script src="app.js"></script>
   </body>

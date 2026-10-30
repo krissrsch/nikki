@@ -91,14 +91,12 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 #island.spawning #sessionPills,
 #island.spawning #barActions,
 #island.spawning .homeCopy,
-#island.spawning .homeAgents,
 #island.settling #nav,
 #island.settling #pill,
 #island.settling #branch,
 #island.settling #sessionPills,
 #island.settling #barActions,
-#island.settling .homeCopy,
-#island.settling .homeAgents {
+#island.settling .homeCopy {
   opacity: 0;
   pointer-events: none;
 }
@@ -111,7 +109,6 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 #island.spawning #viewHome {
   grid-template-columns: 1fr;
 }
-#island.spawning .homeAgents { visibility: hidden; height: 0; overflow: hidden; padding: 0; margin: 0; }
 #island.spawning .homeStatus {
   grid-template-columns: 1fr;
   justify-items: center;
@@ -132,8 +129,7 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 .card {
   transition: background-color 0.45s var(--ease-out);
 }
-.homeCopy,
-.homeAgents {
+.homeCopy {
   transition: opacity 0.45s var(--ease-out);
 }
 .instant,
@@ -287,7 +283,9 @@ body[data-view='home'] #island.open #statusText { max-width: 140px; }
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease, scale 0.12s var(--ease-out);
 }
-#chatsBtn:disabled { opacity: 0.5; cursor: default; }
+#chatsBtn:disabled,
+#modelBtn:disabled,
+#go:disabled { opacity: 0.5; cursor: default; }
 #chatsBtn[aria-expanded='true'] { color: var(--text); }
 #chatsBtn .chev {
   flex: none;
@@ -343,11 +341,11 @@ body[data-view='home'] #newBtn { display: none; }
   transition: height 0.26s var(--ease-drawer), padding 0.26s var(--ease-drawer), opacity 0.1s ease-out;
 }
 #island.open #panel {
-  height: 228px; /* fits Home (Nikki + agent grid) without clipping */
+  height: 228px; /* fits the chat (thread + composer) without clipping */
   max-height: 228px;
   padding: 0 8px 8px;
   opacity: 1;
-  overflow: visible; /* integ/model menus can peek above */
+  overflow: visible; /* menus can peek past the cards */
   transition: height 0.26s var(--ease-drawer), padding 0.26s var(--ease-drawer), opacity 0.16s var(--ease-out) 0.06s;
 }
 
@@ -360,7 +358,7 @@ body[data-view='home'] #newBtn { display: none; }
 }
 .view[hidden] { display: none; }
 #viewHome {
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 1fr;
   align-items: stretch;
   overflow: visible;
 }
@@ -400,7 +398,7 @@ body[data-view='home'] #newBtn { display: none; }
 #island.open #stage { opacity: 0; pointer-events: none; min-width: 0; flex: 0.01; }
 #island.open #walker { pointer-events: none; }
 
-/* home: Nikki + copy | agent pills */
+/* home: Nikki + project, model and branch */
 .homeStatus {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -437,77 +435,6 @@ body[data-view='home'] #newBtn { display: none; }
 }
 [data-state='needsYou'] .liveDot { background: var(--warn); box-shadow: 0 0 0 3px rgb(255 200 97 / 0.2); }
 [data-state='error'] .liveDot { background: var(--bad); box-shadow: 0 0 0 3px rgb(255 138 138 / 0.2); }
-.homeAgents {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  min-height: 0;
-  padding: 8px;
-  overflow: visible;
-}
-#agentGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  width: 100%;
-  align-content: stretch;
-  min-height: 0;
-}
-.agentPill {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 0;
-  height: 100%;
-  padding: 10px 8px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--raised);
-  color: var(--text);
-  text-align: center;
-  cursor: pointer;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease, scale 0.12s var(--ease-out);
-}
-.agentPill:active { scale: 0.98; }
-.agentPill[aria-selected='true'] { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--agent) 70%, white); }
-.agentPill[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
-.agentPill .iconWrap {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--agent) 22%, transparent);
-  color: var(--agent);
-}
-.agentPill .agentIcon {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-}
-.agentPill .agentIcon path[stroke] {
-  fill: none;
-  stroke: currentColor;
-}
-.agentPill .label { font: 650 12.5px/1.2 system-ui, sans-serif; }
-.agentPill .sub {
-  color: var(--faint);
-  font-size: 10.5px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.agentPill .modelChip {
-  margin-top: 0;
-  width: 100%;
-  text-align: center;
-}
-@media (hover: hover) and (pointer: fine) {
-  .agentPill:hover:not([aria-disabled='true']) { background: var(--raised-hover); }
-}
 
 /* chat left: Nikki + status under her — model lives on Home */
 .side {
@@ -606,8 +533,6 @@ body[data-view='home'] #newBtn { display: none; }
 .chatsMenu .chatDelete .icon { width: 13px; height: 13px; }
 .chatsMenu .chatRename:hover { background: var(--raised-hover); color: var(--text); }
 .chatsMenu .chatDelete:hover { background: var(--raised-hover); color: var(--bad); }
-.agentPill[data-agent='cursor'] .iconWrap,
-.agentPill[data-agent='cursor'] .agentIcon { color: var(--text); }
 .chatsMenu .chatNameInput {
   width: 100%;
   margin: 0;
@@ -644,60 +569,11 @@ body[data-view='home'] #newBtn { display: none; }
 @media (hover: hover) and (pointer: fine) {
   #projectBtn:hover { background: var(--raised); }
 }
-.modelMenuHome {
-  right: 8px;
-  left: auto;
-  top: auto !important;
-  bottom: calc(50% + 6px);
-  width: 260px;
-  max-height: 220px;
-  overflow-y: auto;
-  z-index: 9;
-  transform-origin: bottom right;
-}
-.agentPill .modelChip {
-  margin-top: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--faint);
-  font: 600 10.5px/1.2 system-ui, sans-serif;
-  cursor: pointer;
-  text-align: center;
-  width: 100%;
-}
-.agentPill .modelChip:hover { color: var(--text); }
-.modelRow {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  width: 100%;
-}
-.modelRow .pick {
-  flex: 1;
-  min-width: 0;
-  justify-content: flex-start;
-}
-.modelRow .star {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--faint);
-  cursor: pointer;
-}
-.modelRow .star .icon { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.modelRow .star[aria-pressed='true'] { color: var(--warn); }
-.modelRow .star[aria-pressed='true'] .icon { fill: currentColor; stroke: currentColor; }
-@media (hover: hover) and (pointer: fine) {
-  .modelRow .star:hover { background: var(--raised-hover); color: var(--warn); }
-}
-.modelWrap .menu hr.favSep { margin: 4px 6px; border: 0; border-top: 1px solid var(--raised-hover); }
+.modelWrap { position: relative; }
+/* opens upward: below the button the window ends and would clip it */
+.modelWrap .menu { top: auto; bottom: calc(100% + 4px); max-height: none; transform-origin: bottom left; }
+#modelBtn[aria-expanded='true'] .chev { rotate: 180deg; }
+#modelBtn .chev { transition: rotate 0.2s var(--ease-out); }
 #modelBtn {
   margin: -2px 0 -2px -4px;
   padding: 2px 4px;
@@ -737,29 +613,6 @@ body[data-view='home'] #newBtn { display: none; }
 }
 .menu[hidden] { display: none; }
 /* after .menu so max-height/overflow win — two fixed options, no scrollbar */
-.menu.integMenu {
-  top: auto !important;
-  left: auto;
-  right: 8px;
-  bottom: calc(50% + 6px);
-  width: 210px;
-  max-height: none;
-  overflow: visible;
-  z-index: 8;
-  transform-origin: bottom right;
-}
-.integMenu button {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 8px 10px;
-}
-.integMenu button .hint {
-  display: block;
-  color: var(--faint);
-  font-size: 11px;
-  font-weight: 400;
-}
 @starting-style {
   .menu { opacity: 0; scale: 0.96; }
 }
@@ -852,6 +705,7 @@ body[data-view='home'] #newBtn { display: none; }
   gap: 8px;
 }
 #thread:empty { display: none; }
+.threadHint { justify-content: center; font-size: 11px; }
 .msg {
   margin: 0;
   line-height: 1.5;

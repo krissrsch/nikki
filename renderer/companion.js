@@ -306,7 +306,7 @@ window.createCompanion = function ({ walker, stage, island, mode = 'bar', pinned
     wait = gsap.delayedCall(1.6, wander);
   }
 
-  // ---- input: cursor (screen-wide, from main) and pokes
+  // ---- input: mouse pointer (screen-wide, from main) and pokes
   const lookX = gsap.quickTo(look, 'x', { duration: 0.4, ease: 'power3.out' });
   const lookY = gsap.quickTo(look, 'y', { duration: 0.4, ease: 'power3.out' });
   function lookAt(px, py) {
