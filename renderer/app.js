@@ -519,7 +519,7 @@ function setAnswer(text, kind = '', { stream = false, detail = '' } = {}) {
   }
   delete answer.dataset.stream;
   delete answer.dataset.streamHtml;
-  if (kind) answer.textContent = prepareMd(raw);
+  if (kind) answer.textContent = kind === 'error' ? raw : prepareMd(raw); // an error stays as written: no paragraph per sentence
   else answer.innerHTML = md(raw);
   if (detail && detail.trim() !== raw.trim()) {
     const more = Object.assign(document.createElement('details'), { className: 'errDetail' });
