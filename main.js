@@ -14,6 +14,11 @@ import { onHook, sweep } from './lib/terminal.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 
+// Own data folder for dev starts (B3) and for tests (NIKKI_USER_DATA): neither may touch the installed app's chats or hooks.
+// Must run before anything asks for userData.
+if (process.env.NIKKI_USER_DATA) app.setPath('userData', path.resolve(process.env.NIKKI_USER_DATA));
+else if (!app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'Nikki-dev'));
+
 // Serve the app from app://bundle/ so fetch() works for the Rive file and wasm (Chromium blocks fetch on file://).
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 function serveApp(req) {
@@ -21,7 +26,23 @@ function serveApp(req) {
   if (!file.startsWith(dir + path.sep) || !fs.existsSync(file)) return new Response('not found', { status: 404 });
   return net.fetch(pathToFileURL(file).toString());
 }
-const claudePath = path.join(os.homedir(), '.local', 'bin', 'claude.exe');
+// Claude Code CLI: the native installer's path, else what `where claude` finds (npm, WinGet) (M11).
+// Looked up once, not on every get-state (B15); looked up again only while it is missing.
+const nativeClaude = path.join(os.homedir(), '.local', 'bin', 'claude.exe');
+let claudeLookup = null;
+function findClaude(again = false) {
+  if (claudeLookup && !again) return claudeLookup;
+  claudeLookup = fs.existsSync(nativeClaude)
+    ? Promise.resolve(nativeClaude)
+    : new Promise((resolve) =>
+        execFile('where.exe', ['claude'], { windowsHide: true, timeout: 3000 }, (err, out) => {
+          const hits = err ? [] : String(out).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+          // shortcut: a claude.cmd (npm) goes to the SDK as is, not verified; resolve it to its .exe if that ever fails.
+          resolve(hits.find((p) => /\.exe$/i.test(p)) || hits[0] || null);
+        }),
+      );
+  return claudeLookup;
+}
 const WIDTH = 760; // expanded island width; height stays compact
 const HEIGHT = 320; // fixed open island (panel 228px + bar + shadow)
 
@@ -88,10 +109,19 @@ const send = (channel, data) => {
 };
 
 // --- toast while the island can't be seen (hidden via tray or behind a fullscreen app); the renderer plays the sound
+const toasts = new Set();
 function notify(body) {
   if (!alive() || win.isVisible() || !Notification.isSupported()) return;
   const n = new Notification({ title: body, silent: true }); // Windows already shows the app name above it (B16)
-  n.on('click', showNow);
+  // held until it is done: a collected Notification takes its click handler with it (N5)
+  toasts.add(n);
+  const drop = () => toasts.delete(n);
+  n.on('click', () => {
+    drop();
+    showNow();
+  });
+  n.on('close', drop);
+  n.on('failed', drop);
   n.show();
 }
 
@@ -137,7 +167,6 @@ function askPermission(req, signal) {
 let activeCwd = null;
 
 const agent = createClaudeAgent({
-  claudePath,
   askPermission,
   onStatus: (s) => {
     send('status', s);
@@ -169,8 +198,15 @@ function createWindow() {
     hasShadow: false,
     skipTaskbar: true,
     alwaysOnTop: true,
+    show: false, // applyVisibility() shows it without taking focus, once it is clear no fullscreen app is in front (B9)
     // sounds must play without a click: the chime is the point when the island is hidden
-    webPreferences: { preload: path.join(dir, 'preload.cjs'), autoplayPolicy: 'no-user-gesture-required' },
+    // paintWhenInitiallyHidden: false keeps document.visibilityState 'hidden' until shown; the renderer waits for it before the intro
+    webPreferences: { preload: path.join(dir, 'preload.cjs'), autoplayPolicy: 'no-user-gesture-required', paintWhenInitiallyHidden: false },
+  });
+  // a crashed renderer (GPU): load it again, and nothing waits for an answer it can no longer give (N11)
+  win.webContents.on('render-process-gone', (_e, details) => {
+    for (const finish of [...pending.values()]) finish({ answer: 'deny' });
+    if (!quitting && details.reason !== 'clean-exit') win.webContents.reload();
   });
   // clear timers before will-quit — destroy races the pointer tick otherwise
   win.on('closed', () => {
@@ -189,21 +225,15 @@ function createWindow() {
 
 // --- visibility: hidden by the user (tray) or while a fullscreen app (game, video) is in front
 let userHidden = false;
-let fullscreen = false;
-// first launch: stay visible through the intro even over a fullscreen game (otherwise GSAP freezes + menu appears late)
-let bootHold = true;
+// null until the watcher first answers: started over a game, Nikki stays hidden and takes no focus till it ends (B9)
+let fullscreen = null;
 function applyVisibility() {
   if (!alive()) return;
   try {
-    const show = !userHidden && (bootHold || !fullscreen);
+    const show = !userHidden && fullscreen === false;
     if (show && !win.isVisible()) win.showInactive();
     if (!show && win.isVisible()) win.hide();
   } catch {}
-}
-function endBootHold() {
-  if (!bootHold) return;
-  bootHold = false;
-  applyVisibility();
 }
 function showNow() {
   if (!alive()) return;
@@ -221,19 +251,35 @@ function showNow() {
 }
 
 // Asks Windows itself whether a fullscreen app runs (SHQueryUserNotificationState), once a second.
-// 2 = busy/fullscreen, 3 = D3D fullscreen, 4 = presentation mode. Exits on its own once the app is gone.
+// 2 = busy/fullscreen, 3 = D3D fullscreen, 4 = presentation mode, 7 = Store app fullscreen. Exits on its own once the app is gone.
 const FULLSCREEN_PS = `Add-Type -Namespace W -Name N -MemberDefinition '[DllImport("shell32.dll")] public static extern int SHQueryUserNotificationState(out int s);'
 while (Get-Process -Id ${process.pid} -ErrorAction SilentlyContinue) { $s = 0; [void][W.N]::SHQueryUserNotificationState([ref]$s); [Console]::WriteLine($s); Start-Sleep -Milliseconds 1000 }`;
 let fullscreenWatcher;
+let watcherDelay = 1000;
+function setFullscreen(on) {
+  if (on === fullscreen) return;
+  fullscreen = on;
+  applyVisibility();
+}
 function watchFullscreen() {
-  fullscreenWatcher = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', FULLSCREEN_PS], { windowsHide: true });
-  fullscreenWatcher.stdout.on('data', (d) => {
+  if (quitting) return;
+  const ps = (fullscreenWatcher = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', FULLSCREEN_PS], { windowsHide: true }));
+  ps.stdout.on('data', (d) => {
     if (quitting) return;
-    const busy = ['2', '3', '4'].includes(d.toString().trim().split(/\s+/).pop());
-    if (busy === fullscreen) return;
-    fullscreen = busy;
-    applyVisibility();
+    watcherDelay = 1000;
+    setFullscreen(['2', '3', '4', '7'].includes(d.toString().trim().split(/\s+/).pop()));
   });
+  // a dead watcher (blocked PowerShell, killed) must not leave the island hidden for good: assume no fullscreen, retry later (M9)
+  let gone = false;
+  const restart = () => {
+    if (gone || quitting) return;
+    gone = true;
+    setFullscreen(false);
+    setTimeout(watchFullscreen, watcherDelay);
+    watcherDelay = Math.min(watcherDelay * 2, 60 * 1000);
+  };
+  ps.on('error', restart);
+  ps.on('exit', restart);
 }
 
 // --- mouse pointer position (window-relative) for the companion's eyes; only while visible and only on change
@@ -268,17 +314,17 @@ ipcMain.handle('branch', (_e, cwd) =>
 );
 
 ipcMain.on('click-through', (_e, on) => alive() && win.setIgnoreMouseEvents(on, { forward: true }));
-ipcMain.on('focus', () => alive() && win.focus());
-ipcMain.on('boot-done', () => endBootHold());
+// never steal focus from a fullscreen app or while hidden (B9)
+ipcMain.on('focus', () => alive() && win.isVisible() && fullscreen === false && win.focus());
 ipcMain.on('set-muted', (_e, muted) => {
   store.muted = !!muted;
   save();
   send('muted', store.muted);
   createTray();
 });
-ipcMain.handle('get-state', () => ({
+ipcMain.handle('get-state', async () => ({
   ...store,
-  claudeFound: fs.existsSync(claudePath),
+  claudeFound: !!(await findClaude()),
   terminal: [...terminal.values()],
 }));
 ipcMain.handle('toggle-favorite', (_e, { modelId }) => {
@@ -334,14 +380,15 @@ ipcMain.handle('pick-folder', async () => {
   addProject(r.filePaths[0]);
   return r.filePaths[0];
 });
-ipcMain.handle('start', (_e, { prompt, cwd, newSession, plan, model, sessionId }) => {
-  if (agent.busy() || !prompt.trim() || !cwd || !fs.existsSync(cwd) || !fs.existsSync(claudePath)) return false;
+ipcMain.handle('start', async (_e, { prompt, cwd, newSession, plan, model, sessionId }) => {
+  const claudePath = (await findClaude()) ?? (await findClaude(true));
+  if (agent.busy() || !prompt.trim() || !cwd || !fs.existsSync(cwd) || !claudePath) return false;
   activeCwd = cwd;
   addProject(cwd);
   setModel(cwd, model);
   save();
   // only the chat's own session: no fallback to whatever ran last in this project (N9)
-  return agent.start(prompt, cwd, newSession ? undefined : sessionId || undefined, { plan, model: model ?? undefined });
+  return agent.start(prompt, cwd, newSession ? undefined : sessionId || undefined, { plan, model: model ?? undefined, claudePath });
 });
 ipcMain.on('open-external', (_e, url) => /^https?:\/\//i.test(url) && shell.openExternal(url));
 ipcMain.on('stop', () => agent.stop());
@@ -496,6 +543,8 @@ function createTray() {
           if (!alive()) return;
           userHidden = win.isVisible();
           applyVisibility();
+          // hidden by a fullscreen app, not by the user: an explicit click shows it anyway, like the hotkey (N6)
+          if (!userHidden && !win.isVisible()) showNow();
         },
       },
       { type: 'separator' },
@@ -532,8 +581,9 @@ app.whenReady().then(() => {
   watchFullscreen();
   feedPointer();
   startHookServer();
-  // safety: if the renderer never signals, still allow fullscreen-hide after the intro window
-  setTimeout(endBootHold, 5000);
+  // a watcher that is slow to start (Add-Type) must not keep the island away for long
+  setTimeout(() => fullscreen === null && setFullscreen(false), 3000);
+  findClaude();
   // a display that went away or changed: put the island back on the display it overlaps most (or the nearest)
   const replace = () => alive() && place(screen.getDisplayMatching(win.getBounds()));
   screen.on('display-removed', replace);

@@ -15,12 +15,11 @@ contextBridge.exposeInMainWorld('companion', {
   start: (prompt, cwd, { newSession, plan, model, sessionId }) =>
     ipcRenderer.invoke('start', { prompt, cwd, newSession, plan, model, sessionId }),
   stop: () => ipcRenderer.send('stop'),
-  // answer: { answer: 'allow' | 'always' | 'deny', picks?: string[][], message?: string }
+  // answer: { answer: 'allow' | 'always' | 'deny', picks?: string[][], message?: string, interrupt?: boolean }
   answerPermission: (id, answer) => ipcRenderer.send('permission-answer', { id, ...answer }),
   setClickThrough: (on) => ipcRenderer.send('click-through', on),
   setMuted: (muted) => ipcRenderer.send('set-muted', muted),
   focus: () => ipcRenderer.send('focus'),
-  bootDone: () => ipcRenderer.send('boot-done'),
   openExternal: (url) => ipcRenderer.send('open-external', url),
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
   onTerminal: on('terminal'),

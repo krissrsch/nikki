@@ -8,12 +8,13 @@ const STOPPED = { state: 'idle', text: 'Nikki stoppte.' };
 
 // Every turn ends with exactly one closing status (done | error | idle), whatever the CLI does (H4).
 // query is injectable for tests; killAfterMs: how long stop() waits for interrupt() before it aborts the CLI.
-export function createClaudeAgent({ claudePath, onStatus, onSession, askPermission, query = sdkQuery, killAfterMs = 3000 }) {
+// start(prompt, cwd, resume, { plan, model, claudePath }): claudePath is looked up by main (native, npm or WinGet install).
+export function createClaudeAgent({ onStatus, onSession, askPermission, query = sdkQuery, killAfterMs = 3000 }) {
   let run = null; // the turn whose CLI is still running: { q, abort, stopped, finished, timer }
   let queued = null; // a prompt sent after "done" while that CLI was still exiting (B4); it starts right after
   let warned = false;
 
-  async function go(prompt, cwd, resume, { plan = false, model } = {}) {
+  async function go(prompt, cwd, resume, { plan = false, model, claudePath } = {}) {
     const r = (run = { q: null, abort: new AbortController(), stopped: false, finished: false, timer: null });
     const close = (s) => {
       if (r.finished) return;
