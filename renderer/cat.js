@@ -1,4 +1,4 @@
-// Nikki the cat (canvas Blob/Sprung): a white blob with cat ears and whiskers, 19 moods, and a stage that moves her through the island.
+// Nikki the cat: the white cat with black spots from Nikki 1.0 (body in profile, face to the viewer), 19 moods, and a stage that moves her through the island.
 // Classic script (globals) like glance.js. Pure part first (tables, markup, CSS: cat.css is generated from here, see scripts/build-cat-css.mjs),
 // the DOM part (createCatStage) at the end. The CSP allows no inline styles: everything is classes and attributes.
 
@@ -13,17 +13,17 @@ const CAT_LOOK = {
   think: { eye: 'pill', mouth: 'cat', body: 'sway 3s ease-in-out infinite', eyes: 'thinkEyes 2.4s ease-in-out infinite', extra: 'think', label: 'Nikki denkt nach' },
   listen: { eye: 'tall', mouth: 'cat', body: 'nod 1.6s ease-in-out infinite', perk: true, extra: 'arcs', label: 'Nikki hört zu' },
   need: { eye: 'round', mouth: 'o', body: 'ping 1.6s ease-in-out infinite', perk: true, extra: 'bang', label: 'Nikki braucht dich' },
-  surprised: { eye: 'big', mouth: 'open', body: 'pop 2.2s ease-out infinite', perk: true, extra: 'bang', label: 'Nikki ist überrascht' },
-  done: { eye: 'happy', mouth: 'smile', body: 'hop 1.8s cubic-bezier(.23,1,.32,1) infinite', extra: 'spark', blush: '.55', label: 'Nikki ist fertig' },
+  surprised: { pose: 'stand', eye: 'big', mouth: 'open', body: 'pop 2.2s ease-out infinite', perk: true, extra: 'bang', label: 'Nikki ist überrascht' },
+  done: { pose: 'stand', eye: 'happy', mouth: 'smile', body: 'hop 1.8s cubic-bezier(.23,1,.32,1) infinite', extra: 'spark', blush: '.55', label: 'Nikki ist fertig' },
   purr: { eye: 'happy', mouth: 'smile', body: 'vib .12s linear infinite', extra: 'spark', blush: '.55', label: 'Nikki schnurrt' },
-  music: { eye: 'happy', mouth: 'smile', body: 'dance .9s ease-in-out infinite', extra: 'notes', whisk: true, label: 'Nikki tanzt' },
+  music: { pose: 'stand', eye: 'happy', mouth: 'smile', body: 'dance .9s ease-in-out infinite', extra: 'notes', whisk: true, label: 'Nikki tanzt' },
   wave: { eye: 'happy', mouth: 'smile', body: 'bob 3s ease-in-out infinite', blink: 'blink 4.6s infinite', extra: 'wave', label: 'Nikki winkt' },
-  error: { eye: 'squint', mouth: 'frown', body: 'shake .7s ease-in-out infinite', extra: 'err sweat', blush: '.55', label: 'Nikki hat einen Fehler' },
+  error: { pose: 'stand', eye: 'squint', mouth: 'frown', body: 'shake .7s ease-in-out infinite', extra: 'err sweat', blush: '.55', label: 'Nikki hat einen Fehler' },
   sad: { eye: 'sad', mouth: 'frown', body: 'sway 4.5s ease-in-out infinite', droop: true, extra: 'tear', blush: '.2', label: 'Nikki ist traurig' },
   dizzy: { eye: 'spiral', mouth: 'o', body: 'wobble 1.1s ease-in-out infinite', extra: 'sweat', label: 'Nikki ist schwindelig' },
   yawn: { eye: 'closed', mouth: 'yawn', body: 'breathe 3.2s ease-in-out infinite', label: 'Nikki gähnt' },
-  sleep: { eye: 'closed', mouth: 'cat', body: 'breathe 3.6s ease-in-out infinite', droop: true, extra: 'zz', label: 'Nikki schläft' },
-  box: { eye: 'pill', mouth: 'cat', body: 'bob 3.4s ease-in-out infinite', blink: 'blink 4.6s infinite', extra: 'box', label: 'Nikki sitzt in der Kiste' },
+  sleep: { pose: 'loaf', eye: 'closed', mouth: 'cat', body: 'breathe 3.6s ease-in-out infinite', droop: true, extra: 'zz', label: 'Nikki schläft' },
+  box: { pose: 'loaf', eye: 'pill', mouth: 'cat', body: 'bob 3.4s ease-in-out infinite', blink: 'blink 4.6s infinite', extra: 'box', label: 'Nikki sitzt in der Kiste' },
   love: { eye: 'heart', mouth: 'smile', body: 'heartBeat 1.4s ease-in-out infinite', extra: 'spark', blush: '.55', label: 'Nikki ist verliebt' },
 };
 
@@ -36,78 +36,104 @@ function catMoodFor(glow) {
 }
 const CAT_TIMED = { done: 3600, error: 4200 };
 
+// body poses from 1.0, in its 64 x 56 units; a mood without pose sits, 'stand' is the drawing as it is
+const CAT_POSES = {
+  sit: {
+    torso: 'rotate(-10deg)',
+    head: 'translate(-1.75px, -4.05px)',
+    lb1: 'scaleY(0.3)',
+    lb2: 'scaleY(0.3)',
+    lf1: 'translate(-0.8px, -6.25px) scaleY(1.57)',
+    lf2: 'translate(-0.9px, -7.3px) scaleY(1.66)',
+    tail: 'translate(-1px, 0) rotate(22deg)',
+  },
+  loaf: {
+    torso: 'translateY(4.5px)',
+    head: 'translate(-1px, 5px) rotate(4deg)',
+    lb1: 'scaleY(0.12)',
+    lb2: 'scaleY(0.12)',
+    lf1: 'scaleY(0.12)',
+    lf2: 'scaleY(0.12)',
+    tail: 'translate(7px, 5px) rotate(108deg)',
+  },
+};
+
 const CAT_EYES = ['pill', 'tall', 'round', 'big', 'happy', 'closed', 'sad', 'squint', 'heart', 'spiral'];
 const CAT_MOUTHS = ['cat', 'smile', 'open', 'frown', 'yawn', 'o'];
 const CAT_EXTRAS = ['sweat', 'tear', 'zz', 'notes', 'bang', 'err', 'think', 'arcs', 'spark', 'wave', 'box'];
 
-// shared <defs> (gradients, clip, eye shapes); once per document, referenced by every cat
+// shared <defs> (eye shapes); once per document, referenced by every cat
 function catDefs() {
   return `<svg class="catDefs" width="0" height="0" aria-hidden="true" focusable="false"><defs>
-<linearGradient id="nbBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ebe8e3"/></linearGradient>
-<linearGradient id="nbWL" gradientUnits="userSpaceOnUse" x1="20" y1="0" x2="-8" y2="0"><stop offset="0" stop-color="#f4f4f2" stop-opacity="0.85"/><stop offset="1" stop-color="#f4f4f2" stop-opacity="0.15"/></linearGradient>
-<linearGradient id="nbWR" gradientUnits="userSpaceOnUse" x1="100" y1="0" x2="128" y2="0"><stop offset="0" stop-color="#f4f4f2" stop-opacity="0.85"/><stop offset="1" stop-color="#f4f4f2" stop-opacity="0.15"/></linearGradient>
-<clipPath id="nbClip"><path d="M18 62 C18 34 38 22 60 22 C82 22 102 34 102 62 C102 88 84 100 60 100 C36 100 18 88 18 62 Z"/></clipPath>
-<g id="nbPill"><rect x="-4" y="-7" width="8" height="14" rx="4" fill="#2b2622"/><circle cx="1" cy="-3" r="1.4" fill="#fff"/></g>
-<g id="nbTall"><rect x="-4.5" y="-10" width="9" height="20" rx="4.5" fill="#2b2622"/><circle cx="1" cy="-5" r="1.6" fill="#fff"/></g>
-<g id="nbRound"><circle r="6.5" fill="#2b2622"/><circle cx="2" cy="-2.5" r="2" fill="#fff"/></g>
-<g id="nbBig"><circle r="8.5" fill="#2b2622"/><circle cx="2.4" cy="-3" r="2.7" fill="#fff"/><circle cx="-2.6" cy="3" r="1.2" fill="#fff" opacity=".8"/></g>
-<g id="nbHappy"><path d="M-7 3 Q0 -7 7 3" fill="none" stroke="#2b2622" stroke-width="2.6" stroke-linecap="round"/></g>
-<g id="nbClosed"><path d="M-7 -1 Q0 6 7 -1" fill="none" stroke="#2b2622" stroke-width="2.4" stroke-linecap="round"/></g>
-<g id="nbSad"><rect x="-4" y="-6" width="8" height="12" rx="4" fill="#2b2622" transform="rotate(8)"/><circle cx="1" cy="-2" r="1.3" fill="#fff"/><path d="M-8 -11 L5 -7" stroke="#2b2622" stroke-width="1.8" stroke-linecap="round"/></g>
-<g id="nbSquint"><path d="M-6 -6 L5 0 L-6 6" fill="none" stroke="#2b2622" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></g>
+<g id="nbPill"><ellipse rx="6.6" ry="8.3" fill="#1e1a24"/><circle cx="2.4" cy="-3.2" r="2.8" fill="#fff"/></g>
+<g id="nbTall"><ellipse rx="6.8" ry="10.5" fill="#1e1a24"/><circle cx="2.4" cy="-5" r="2.8" fill="#fff"/></g>
+<g id="nbRound"><circle r="7.5" fill="#1e1a24"/><circle cx="2.4" cy="-2.8" r="2.6" fill="#fff"/></g>
+<g id="nbBig"><circle r="9" fill="#1e1a24"/><circle cx="2.6" cy="-3.2" r="3" fill="#fff"/><circle cx="-2.8" cy="3.2" r="1.3" fill="#fff" opacity=".8"/></g>
+<g id="nbHappy"><path d="M-7 3 Q0 -7 7 3" fill="none" stroke="#1e1a24" stroke-width="4" stroke-linecap="round"/></g>
+<g id="nbClosed"><path d="M-7 -1 Q0 6 7 -1" fill="none" stroke="#1e1a24" stroke-width="4" stroke-linecap="round"/></g>
+<g id="nbSad"><ellipse rx="5.6" ry="7" fill="#1e1a24" transform="rotate(8)"/><circle cx="1.6" cy="-2.4" r="2" fill="#fff"/><path d="M-8 -12 L5 -8" stroke="#1e1a24" stroke-width="3" stroke-linecap="round"/></g>
+<g id="nbSquint"><path d="M-6 -6 L5 0 L-6 6" fill="none" stroke="#1e1a24" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></g>
 <g id="nbHeart"><path d="M0 5 C-9 -1 -6 -9 0 -4 C6 -9 9 -1 0 5Z" fill="#ff7f98"/></g>
-<g id="nbSpiral"><path d="M0 0 m-5 0 a5 5 0 1 1 10 0 a3.5 3.5 0 1 1 -7 0 a2 2 0 1 1 4 0" fill="none" stroke="#2b2622" stroke-width="1.7" stroke-linecap="round"/></g>
+<g id="nbSpiral"><path d="M0 0 m-5 0 a5 5 0 1 1 10 0 a3.5 3.5 0 1 1 -7 0 a2 2 0 1 1 4 0" fill="none" stroke="#1e1a24" stroke-width="2.6" stroke-linecap="round"/></g>
 </defs></svg>`;
 }
 
 // one cat; the look is chosen by data-mood on the svg (cat.css)
 function catSvg() {
-  const pair = (id, flip) => `<use href="#${id}" transform="translate(44 58)"/><use href="#${id}" transform="translate(76 58)${flip ? ' scale(-1 1)' : ''}"/>`;
+  const at = (x) => `translate(${x} 27)`;
+  const pair = (id, flip) => `<use href="#${id}" transform="${at(37)} scale(.47)"/><use href="#${id}" transform="${at(47)} scale(${flip ? '-.47 .47' : '.47'})"/>`;
   const eyes = [
     ['pill', `<g class="fb c-blink">${pair('nbPill')}</g>`], ['tall', pair('nbTall')], ['round', pair('nbRound')], ['big', pair('nbBig')], ['happy', pair('nbHappy')],
     ['closed', pair('nbClosed')], ['sad', pair('nbSad', true)], ['squint', pair('nbSquint', true)],
-    ['heart', `<g class="fb c-beat"><use href="#nbHeart" transform="translate(44 58)"/></g><g class="fb c-beat"><use href="#nbHeart" transform="translate(76 58)"/></g>`],
-    ['spiral', `<g class="fb c-spin"><use href="#nbSpiral" transform="translate(44 58)"/></g><g class="fb c-spinR"><use href="#nbSpiral" transform="translate(76 58)"/></g>`],
+    ['heart', `<g class="fb c-beat"><use href="#nbHeart" transform="${at(37)} scale(.47)"/></g><g class="fb c-beat"><use href="#nbHeart" transform="${at(47)} scale(.47)"/></g>`],
+    ['spiral', `<g class="fb c-spin"><use href="#nbSpiral" transform="${at(37)} scale(.47)"/></g><g class="fb c-spinR"><use href="#nbSpiral" transform="${at(47)} scale(.47)"/></g>`],
   ].map(([k, m]) => `<g class="ce ce-${k}">${m}</g>`).join('');
-  const whisk = (side, d, g) => `<g class="fb c-wh${side}"><g class="c-wd" fill="none" stroke="url(#${g})" stroke-width="1.1" stroke-linecap="round">${d.map((p) => `<path d="${p}"/>`).join('')}</g></g>`;
+  const whisk = (side, d) => `<g class="fb c-wh${side}"><g class="c-wd" fill="none" stroke="#a9a49c" stroke-width="1" stroke-linecap="round">${d.map((p) => `<path d="${p}"/>`).join('')}</g></g>`;
   const mouths = {
-    cat: '<path d="M54.5 72 Q57.3 75 60 72 Q62.7 75 65.5 72" fill="none" stroke="#7b6f67" stroke-width="1.5" stroke-linecap="round"/>',
-    smile: '<path d="M53 71.5 Q60 79 67 71.5" fill="none" stroke="#7b6f67" stroke-width="1.8" stroke-linecap="round"/>',
-    open: '<ellipse cx="60" cy="75" rx="3.4" ry="4.2" fill="#8c4a52"/><ellipse cx="60" cy="77" rx="2" ry="1.6" fill="#f09aa6"/>',
-    frown: '<path d="M54.5 76 Q60 71 65.5 76" fill="none" stroke="#7b6f67" stroke-width="1.8" stroke-linecap="round"/>',
-    yawn: '<g class="fbt c-yawn"><ellipse cx="60" cy="77" rx="6" ry="7.5" fill="#8c4a52"/><ellipse cx="60" cy="80.5" rx="3.6" ry="2.6" fill="#f09aa6"/></g>',
-    o: '<ellipse cx="60" cy="73.5" rx="2.2" ry="2.6" fill="#8c4a52"/>',
+    cat: '<path d="M54.5 72 Q57.3 75 60 72 Q62.7 75 65.5 72" fill="none" stroke="#2a2430" stroke-width="2.4" stroke-linecap="round"/>',
+    smile: '<path d="M53 71.5 Q60 79 67 71.5" fill="none" stroke="#2a2430" stroke-width="2.4" stroke-linecap="round"/>',
+    open: '<ellipse cx="60" cy="75" rx="3.4" ry="4.2" fill="#3a2430"/><ellipse cx="60" cy="77" rx="2" ry="1.6" fill="#f08ca4"/>',
+    frown: '<path d="M54.5 76 Q60 71 65.5 76" fill="none" stroke="#2a2430" stroke-width="2.4" stroke-linecap="round"/>',
+    yawn: '<g class="fbt c-yawn"><ellipse cx="60" cy="76" rx="5.5" ry="6.5" fill="#3a2430"/><ellipse cx="60" cy="79" rx="3.4" ry="2.4" fill="#f08ca4"/></g>',
+    o: '<ellipse cx="60" cy="73.5" rx="2.2" ry="2.6" fill="#3a2430"/>',
   };
   const font = 'font-family="Segoe UI, system-ui, sans-serif"';
   const extras = {
-    sweat: '<g class="fb c-drop"><path d="M90 40 Q94 47 90 50 Q86 47 90 40 Z" fill="#9fd4ff"/></g>',
-    tear: '<g class="fb c-tear"><path d="M38 66 Q41 72 38 75 Q35 72 38 66 Z" fill="#9fd4ff"/></g>',
-    zz: `<text class="fb c-z1" x="96" y="26" font-size="12" font-weight="700" fill="#a3a3ad" ${font}>z</text><text class="fb c-z2" x="96" y="26" font-size="9" font-weight="700" fill="#a3a3ad" ${font}>z</text>`,
-    notes: `<text class="fb c-n1" x="100" y="40" font-size="15" fill="#c9d9ff" font-family="Segoe UI Symbol, Segoe UI, sans-serif">♪</text><text class="fb c-n2" x="8" y="44" font-size="13" fill="#c9d9ff" font-family="Segoe UI Symbol, Segoe UI, sans-serif">♫</text>`,
-    bang: '<g class="fb c-ping"><rect x="88" y="-2" width="14" height="16" rx="5" fill="#ffc861"/><rect x="94.2" y="2" width="2.6" height="6" rx="1.3" fill="#3a2a05"/><circle cx="95.5" cy="11" r="1.5" fill="#3a2a05"/></g>',
-    err: '<g class="fb c-ping"><rect x="88" y="-2" width="14" height="16" rx="5" fill="#ff8a8a"/><path d="M92.5 3 L98.5 9 M98.5 3 L92.5 9" stroke="#3a0a0a" stroke-width="1.8" stroke-linecap="round"/></g>',
-    think: '<circle class="c-d1" cx="92" cy="14" r="2" fill="#a3a3ad"/><circle class="c-d2" cx="100" cy="8" r="2.6" fill="#a3a3ad"/><circle class="c-d3" cx="110" cy="3" r="3.2" fill="#a3a3ad"/>',
-    arcs: '<g fill="none" stroke="#7ff0c8" stroke-width="1.8" stroke-linecap="round"><path class="fb c-a1" d="M110 50 Q116 58 110 66"/><path class="fb c-a2" d="M116 44 Q126 58 116 72"/><path class="fb c-a3" d="M10 50 Q4 58 10 66"/><path class="fb c-a4" d="M4 44 Q-6 58 4 72"/></g>',
-    spark: '<g fill="#ffe9a8"><path class="fb c-s1" d="M14 24 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z"/><path class="fb c-s2" d="M104 30 l1.6 4 4 1.6 -4 1.6 -1.6 4 -1.6 -4 -4 -1.6 4 -1.6z"/><path class="fb c-s3" d="M110 78 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2z"/></g>',
-    wave: '<g class="c-arm"><path d="M98 82 Q112 78 114 62" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/><circle cx="114" cy="60" r="6.5" fill="#ffffff"/><circle cx="112.5" cy="59" r="1.1" fill="#f3a1aa"/><circle cx="116" cy="59" r="1.1" fill="#f3a1aa"/><circle cx="114.2" cy="62.6" r="1.4" fill="#f3a1aa"/></g>',
+    sweat: '<g class="fb c-drop"><path d="M108 34 Q112 41 108 44 Q104 41 108 34 Z" fill="#9fd4ff"/></g>',
+    tear: '<g class="fb c-tear"><path d="M66 68 Q69 74 66 77 Q63 74 66 68 Z" fill="#9fd4ff"/></g>',
+    zz: `<text class="fb c-z1" x="106" y="20" font-size="12" font-weight="700" fill="#a3a3ad" ${font}>z</text><text class="fb c-z2" x="106" y="20" font-size="9" font-weight="700" fill="#a3a3ad" ${font}>z</text>`,
+    notes: `<text class="fb c-n1" x="108" y="34" font-size="15" fill="#c9d9ff" font-family="Segoe UI Symbol, Segoe UI, sans-serif">♪</text><text class="fb c-n2" x="30" y="44" font-size="13" fill="#c9d9ff" font-family="Segoe UI Symbol, Segoe UI, sans-serif">♫</text>`,
+    bang: '<g class="fb c-ping"><rect x="104" y="-2" width="14" height="16" rx="5" fill="#ffc861"/><rect x="110.2" y="2" width="2.6" height="6" rx="1.3" fill="#3a2a05"/><circle cx="111.5" cy="11" r="1.5" fill="#3a2a05"/></g>',
+    err: '<g class="fb c-ping"><rect x="104" y="-2" width="14" height="16" rx="5" fill="#ff8a8a"/><path d="M108.5 3 L114.5 9 M114.5 3 L108.5 9" stroke="#3a0a0a" stroke-width="1.8" stroke-linecap="round"/></g>',
+    think: '<circle class="c-d1" cx="104" cy="14" r="2" fill="#a3a3ad"/><circle class="c-d2" cx="112" cy="8" r="2.6" fill="#a3a3ad"/><circle class="c-d3" cx="120" cy="3" r="3.2" fill="#a3a3ad"/>',
+    arcs: '<g fill="none" stroke="#7ff0c8" stroke-width="1.8" stroke-linecap="round"><path class="fb c-a1" d="M114 52 Q120 60 114 68"/><path class="fb c-a2" d="M120 46 Q130 60 120 74"/><path class="fb c-a3" d="M46 52 Q40 60 46 68"/><path class="fb c-a4" d="M40 46 Q30 60 40 74"/></g>',
+    spark: '<g fill="#ffe9a8"><path class="fb c-s1" d="M28 24 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z"/><path class="fb c-s2" d="M112 24 l1.6 4 4 1.6 -4 1.6 -1.6 4 -1.6 -4 -4 -1.6 4 -1.6z"/><path class="fb c-s3" d="M114 84 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2z"/></g>',
+    wave: '<g class="c-arm"><path d="M98 82 Q112 78 114 62" fill="none" stroke="#fbfaf7" stroke-width="10" stroke-linecap="round"/><circle cx="114" cy="60" r="6.5" fill="#fbfaf7"/><circle cx="112.5" cy="59" r="1.1" fill="#f3a1aa"/><circle cx="116" cy="59" r="1.1" fill="#f3a1aa"/><circle cx="114.2" cy="62.6" r="1.4" fill="#f3a1aa"/></g>',
     box: '<g class="fb c-peek"><path d="M10 84 L110 84 L106 110 Q106 114 102 114 L18 114 Q14 114 14 110 Z" fill="#b98a5a"/><path d="M10 84 L110 84 L108 90 L12 90 Z" fill="#cfa06c"/><rect x="46" y="96" width="28" height="6" rx="3" fill="#8f673c" opacity=".7"/></g>',
   };
   // signs that sit on the body are drawn inside it, the rest (z, notes, arcs, spark, wave) around it
   const onBody = ['sweat', 'tear'];
   const x = (list) => list.map((k) => `<g class="cx cx-${k}">${extras[k]}</g>`).join('');
+  const leg = (name, step, rx, w, fill) => `<g class="c-${name}"><g class="${step}"><rect x="${rx}" y="43" width="${w}" height="11" rx="${w / 2}" fill="${fill}"/></g></g>`;
+  // the drawing is 1.0's, in its 64 x 56 units
   return `<svg class="cat" data-mood="idle" viewBox="-8 -4 136 120" role="img" aria-label="Nikki ist wach">
-<g class="fbb c-body">
-<g class="fb c-earL"><path d="M24 44 L26 10 L52 30 Z" fill="#ffffff"/><path d="M30 38 L31 19 L45 30 Z" fill="#f3b3ba"/></g>
-<g class="fb c-earR"><path d="M96 44 L94 10 L68 30 Z" fill="#ffffff"/><path d="M90 38 L89 19 L75 30 Z" fill="#f3b3ba"/></g>
-<path d="M18 62 C18 34 38 22 60 22 C82 22 102 34 102 62 C102 88 84 100 60 100 C36 100 18 88 18 62 Z" fill="url(#nbBody)"/>
-<g clip-path="url(#nbClip)" opacity="0.5" stroke="#8f857c" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M54 24 L55 33"/><path d="M60 22 L60 35"/><path d="M66 24 L65 33"/><path d="M30 38 L38 41"/><path d="M90 38 L82 41"/></g>
-<ellipse class="c-blush" cx="30" cy="70" rx="6" ry="3.6" fill="#f3a1aa"/><ellipse class="c-blush" cx="90" cy="70" rx="6" ry="3.6" fill="#f3a1aa"/>
-${whisk('L', ['M20 66 Q8 63 -6 58', 'M20 70 Q8 70 -6 71', 'M20 74 Q8 77 -6 84'], 'nbWL')}${whisk('R', ['M100 66 Q112 63 126 58', 'M100 70 Q112 70 126 71', 'M100 74 Q112 77 126 84'], 'nbWR')}
+<g class="fbb c-body"><g transform="translate(2 12) scale(1.8)">
+${leg('lb2', 'c-leg2', 22, 6, '#d9d5ce')}${leg('lf2', 'c-leg1', 36, 6, '#d9d5ce')}
+<g class="c-tail"><g class="c-sway"><path d="M15 40 C8 38 5.5 31 7.5 24" fill="none" stroke="#fbfaf7" stroke-width="5.6" stroke-linecap="round"/><circle cx="7.6" cy="24.4" r="3" fill="#1b1b20"/></g></g>
+<g class="c-torso"><ellipse cx="26" cy="41" rx="13" ry="8.5" fill="#fbfaf7"/><ellipse cx="22" cy="37.5" rx="6" ry="4.2" fill="#1b1b20"/></g>
+${leg('lb1', 'c-leg1', 16, 6.2, '#fbfaf7')}${leg('lf1', 'c-leg2', 30, 6.2, '#fbfaf7')}
+<g class="c-head">
+<g class="c-earL"><path d="M29.5 21 L31 4.5 L40.5 12.5 Z" fill="#fbfaf7"/><path d="M32.4 17.5 L33.1 9.6 L37.8 13.4 Z" fill="#f4a8b8"/></g>
+<g class="c-earR"><path d="M44.5 11.5 L54 4 L56.5 20 Z" fill="#fbfaf7"/><path d="M47.6 12.4 L52.4 8.6 L53.6 16.6 Z" fill="#f4a8b8"/></g>
+<ellipse cx="42" cy="27" rx="15" ry="13" fill="#fbfaf7"/>
+<ellipse cx="33.5" cy="19.5" rx="5.2" ry="4.2" fill="#1b1b20"/>
+<ellipse class="c-blush" cx="33.5" cy="32" rx="2.8" ry="1.7" fill="#f7b3c2"/><ellipse class="c-blush" cx="50.5" cy="32" rx="2.8" ry="1.7" fill="#f7b3c2"/>
+${whisk('L', ['M29.5 31 L25 30.2', 'M29.5 33.6 L25 34.4'])}${whisk('R', ['M54.5 31 L59 30.2', 'M54.5 33.6 L59 34.4'])}
 <g class="fb c-eyes">${eyes}</g>
-<path d="M58 66.5 L62 66.5 L60 69 Z" fill="#f09aa6" stroke="#f09aa6" stroke-width="1" stroke-linejoin="round"/>
-${CAT_MOUTHS.map((k) => `<g class="cm cm-${k}">${mouths[k]}</g>`).join('')}
-${x(onBody)}
+<path d="M40.4 31.3 h3.2 l-1.6 1.8 z" fill="#ec8aa0"/>
+<g transform="translate(42 33.6) scale(.55) translate(-60 -72)">${CAT_MOUTHS.map((k) => `<g class="cm cm-${k}">${mouths[k]}</g>`).join('')}</g>
 </g>
+</g>${x(onBody)}</g>
 ${x(['zz', 'notes', 'bang', 'err', 'think', 'arcs', 'spark', 'wave', 'box'])}
 </svg>`;
 }
@@ -124,13 +150,24 @@ function catCss() {
 .cat .fb { transform-box: fill-box; transform-origin: center; }
 .cat .fbb { transform-box: fill-box; transform-origin: 50% 100%; }
 .cat .fbt { transform-box: fill-box; transform-origin: 50% 0; }
-.cat .c-earL { transform-origin: 40px 30px; }
-.cat .c-earR { transform-origin: 80px 30px; }
-.cat .c-whL { transform-origin: 20px 70px; }
-.cat .c-whR { transform-origin: 100px 70px; }
+.cat .c-torso, .cat .c-head, .cat .c-tail, .cat .c-sway, .cat .c-earL, .cat .c-earR, .cat .c-lb1, .cat .c-lb2, .cat .c-lf1, .cat .c-lf2 { transform-box: view-box; }
+.cat .c-torso, .cat .c-head, .cat .c-tail, .cat .c-lb1, .cat .c-lb2, .cat .c-lf1, .cat .c-lf2 { transition: transform 0.35s ease-in-out; }
+.cat .c-torso { transform-origin: 14px 46px; }
+.cat .c-head { transform-origin: 38px 38px; }
+.cat .c-tail, .cat .c-sway { transform-origin: 15px 40px; }
+.cat .c-sway { animation: ct-tail 2.8s ease-in-out infinite; }
+.cat .c-lb1 { transform-origin: 19.1px 43px; }
+.cat .c-lb2 { transform-origin: 25px 43px; }
+.cat .c-lf1 { transform-origin: 33.1px 43px; }
+.cat .c-lf2 { transform-origin: 39px 43px; }
+.cat .c-leg1, .cat .c-leg2 { transform-box: fill-box; transform-origin: 50% 0; }
+.cat .c-earL { transform-origin: 35px 17px; }
+.cat .c-earR { transform-origin: 50px 14px; }
+.cat .c-whL { transform-origin: 100% 50%; }
+.cat .c-whR { transform-origin: 0 50%; }
 .cat .c-arm { transform-box: fill-box; transform-origin: 98px 82px; animation: ct-waveArm 0.7s ease-in-out infinite; }
 .cat .ce, .cat .cm, .cat .cx { display: none; }
-.cat .c-blush { opacity: 0.28; }
+.cat .c-blush { opacity: 0.4; }
 `;
   for (const k of CAT_EYES) css += rule(pick((l) => l.eye === k), `.ce-${k}`, 'display: inline;');
   for (const k of CAT_MOUTHS) css += rule(pick((l) => l.mouth === k), `.cm-${k}`, 'display: inline;');
@@ -145,7 +182,19 @@ function catCss() {
   const wag = pick((l) => l.perk || l.whisk);
   css += rule(wag, '.c-whL', 'animation: ct-wiggleL 0.45s ease-in-out infinite;');
   css += rule(wag, '.c-whR', 'animation: ct-wiggleR 0.45s ease-in-out infinite;');
-  css += rule(pick((l) => l.droop), '.c-wd', 'transform: translateY(3px);');
+  css += rule(pick((l) => l.droop), '.c-wd', 'transform: translateY(1.5px);');
+  for (const [pose, parts] of Object.entries(CAT_POSES)) {
+    const list = pick((l) => (l.pose ?? 'sit') === pose);
+    for (const [part, t] of Object.entries(parts)) css += rule(list, `.c-${part}`, `transform: ${t};`);
+  }
+  css += `.cat[data-mood='music'] .c-sway { animation-duration: 0.9s; }
+.cat[data-mood='music'] .c-leg1 { animation: ct-step 0.9s ease-in-out infinite; }
+.cat[data-mood='music'] .c-leg2 { animation: ct-step 0.9s ease-in-out -0.45s infinite; }
+.cat[data-mood='work'] .c-lf1 .c-leg2 { animation: ct-knead 0.72s ease-in-out infinite; }
+.cat[data-mood='work'] .c-lf2 .c-leg1 { animation: ct-knead 0.72s ease-in-out -0.36s infinite; }
+.cat[data-mood='need'] .c-sway { animation-duration: 0.9s; }
+.cat[data-mood='sleep'] .c-sway { animation-duration: 8s; }
+`;
   for (const m of pick((l) => l.eyes)) css += `.cat[data-mood='${m}'] .c-eyes { animation: ${a(CAT_LOOK[m].eyes)}; }\n`;
   for (const m of pick((l) => l.blink)) css += `.cat[data-mood='${m}'] .c-blink { animation: ${a(CAT_LOOK[m].blink)}; }\n`;
   for (const b of ['.55', '.2']) css += rule(pick((l) => l.blush === b), '.c-blush', `opacity: ${b};`);
@@ -184,9 +233,12 @@ function catCss() {
     wobble: '0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}',
     pop: '0%,70%,100%{transform:scale(1,1)}78%{transform:scale(1.1,.92)}88%{transform:scale(.95,1.08)}',
     blink: '0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.1)}',
-    lookA: '0%,12%,100%{transform:translateX(0)}28%,48%{transform:translateX(3.5px)}64%,84%{transform:translateX(-3.5px)}',
-    scan: '0%,100%{transform:translateX(-3px)}50%{transform:translateX(3px)}',
-    thinkEyes: '0%,100%{transform:translate(2px,-3px)}50%{transform:translate(3px,-3.5px)}',
+    lookA: '0%,12%,100%{transform:translateX(0)}28%,48%{transform:translateX(1.4px)}64%,84%{transform:translateX(-1.4px)}',
+    scan: '0%,100%{transform:translateX(-1.2px)}50%{transform:translateX(1.2px)}',
+    thinkEyes: '0%,100%{transform:translate(.8px,-1.2px)}50%{transform:translate(1.2px,-1.4px)}',
+    tail: '0%,100%{transform:rotate(-6deg)}50%{transform:rotate(8deg)}',
+    step: '0%,100%{transform:rotate(14deg)}50%{transform:rotate(-14deg)}',
+    knead: '0%,100%{transform:translateY(0)}50%{transform:translateY(-1.6px)}',
     earTwitchL: '0%,86%,100%{transform:rotate(0)}90%{transform:rotate(-9deg)}94%{transform:rotate(3deg)}',
     earTwitchR: '0%,70%,100%{transform:rotate(0)}74%{transform:rotate(9deg)}78%{transform:rotate(-3deg)}',
     earPerk: '0%,100%{transform:rotate(0)}50%{transform:rotate(-7deg)}',

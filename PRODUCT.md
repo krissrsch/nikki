@@ -41,7 +41,7 @@ Unlike Coucou (which monitors many agents as notch pills and often needs an API 
 
 ## Brand Commitments
 
-- Own mascot **Nikki**: a soft white tabby blob with cat ears and whiskers, 19 expressions. She lives in the open island, reacts to Claude and music, jumps along with the tabs and can be dragged to any place.
+- Own mascot **Nikki**: a white cat with black spots, 19 expressions. She lives in the open island, reacts to Claude and music, jumps along with the tabs and can be dragged to any place.
 - The user likes Coucou's look and motion (soft, minimal mascot; clean black notch UI) as a style reference, not a template.
 
 ## Product Principles

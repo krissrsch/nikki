@@ -51,7 +51,7 @@ test('das Markup trägt Augen, Münder und Zeichen für jede Stimmung und keine 
     for (const x of (l.extra ?? '').split(' ').filter(Boolean)) assert.ok(svg.includes(`cx-${x}"`), `${m}: ${x}`);
   }
   assert.ok(!/ style=/.test(svg));
-  for (const id of ['nbBody', 'nbWL', 'nbWR', 'nbClip', 'nbPill', 'nbSpiral']) assert.ok(cat.catDefs().includes(`id="${id}"`), id);
+  for (const id of ['nbPill', 'nbSpiral']) assert.ok(cat.catDefs().includes(`id="${id}"`), id);
   for (const [, id] of svg.matchAll(/href="#(nb\w+)"/g)) assert.ok(cat.catDefs().includes(`id="${id}"`), id);
 });
 
