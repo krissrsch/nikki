@@ -9,6 +9,7 @@ import readline from 'node:readline';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createClaudeAgent } from './backends/claude.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
+import { friendlyError } from './lib/errors.js';
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
 import { mediaCommand } from './lib/media.js';
@@ -182,6 +183,8 @@ let activeCwd = null;
 const agent = createClaudeAgent({
   askPermission,
   onStatus: (s) => {
+    // the CLI's own words (often English) go along as the detail; the island says it in German
+    if (s.state === 'error' && 'answer' in s) s = { ...s, answer: friendlyError(s.answer), detail: String(s.answer ?? '') };
     send('status', s);
     agentWorking = !['done', 'error', 'idle'].includes(s.state);
     applyAwake();

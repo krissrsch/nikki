@@ -348,7 +348,7 @@ function show(s) {
     } else {
       // errors and setup hints: show in the pane, never in chat history (N2)
       if (busy) turnFinalized = true;
-      setAnswer(s.answer, s.state === 'error' ? 'error' : '');
+      setAnswer(s.answer, s.state === 'error' ? 'error' : '', { detail: s.detail });
     }
   }
   if (s.state === 'done' || s.state === 'error' || s.state === 'idle') {
@@ -496,7 +496,8 @@ function paintStream(raw) {
   answer.innerHTML = html;
   scrollChatToEnd();
 }
-function setAnswer(text, kind = '', { stream = false } = {}) {
+// detail: what the CLI said itself (main puts an error in German words), behind a collapsed "Details"
+function setAnswer(text, kind = '', { stream = false, detail = '' } = {}) {
   if (kind !== 'empty') delete answer.dataset.observed;
   const raw = String(text ?? '');
   if (stream) {
@@ -520,6 +521,11 @@ function setAnswer(text, kind = '', { stream = false } = {}) {
   delete answer.dataset.streamHtml;
   if (kind) answer.textContent = prepareMd(raw);
   else answer.innerHTML = md(raw);
+  if (detail && detail.trim() !== raw.trim()) {
+    const more = Object.assign(document.createElement('details'), { className: 'errDetail' });
+    more.append(Object.assign(document.createElement('summary'), { textContent: 'Details' }), Object.assign(document.createElement('pre'), { textContent: detail }));
+    answer.append(more);
+  }
   answer.className = kind || 'md';
   answer.hidden = !raw.trim() && kind !== 'empty';
   if (raw.trim() && kind !== 'empty') scrollChatToEnd();
@@ -540,14 +546,17 @@ function setEmptyAnswer() {
     'empty',
   );
 }
-function beginChatTurn(userText, cwd) {
+// ended: the turn closed before start() returned (the CLI could not even run); its error is on screen and stays
+function beginChatTurn(userText, cwd, ended = false) {
   if (!chatId) chatId = newChatId();
   chatCwd = cwd;
-  turnFinalized = false;
+  turnFinalized = ended;
   chatMessages.push({ role: 'user', text: userText, at: Date.now() });
   renderThread();
-  setAnswer('');
-  answer.hidden = true;
+  if (!ended) {
+    setAnswer('');
+    answer.hidden = true;
+  }
   syncChatsBtn();
 }
 function finalizeAssistant(text) {
@@ -941,6 +950,7 @@ async function start() {
     console.error(e);
     return false;
   });
+  const ended = !busy; // an error or stop status came in while main was starting
   if (!started) {
     setBusy(false);
     show({ state: 'error', text: 'Nikki kommt nicht los.' });
@@ -954,7 +964,7 @@ async function start() {
     chatMessages = [];
     chatSessionId = null;
   }
-  beginChatTurn(text, cwd);
+  beginChatTurn(text, cwd, ended);
   setNewSession(false);
   setPlan(false);
   promptEl.value = '';
