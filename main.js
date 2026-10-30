@@ -270,6 +270,7 @@ function applyVisibility() {
     if (show && !win.isVisible()) win.showInactive();
     if (!show && win.isVisible()) win.hide();
   } catch {}
+  syncSpectrum();
 }
 // view: the page the island opens on (tray "Einstellungen"), else it keeps the last one
 function showNow(view) {
@@ -391,8 +392,10 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   } else if (key === 'keepAwake') {
     store.keepAwake = !!value;
     applyAwake();
-  } else if (key === 'glow') store.glow = !!value;
-  else if (key === 'glowLevel' && GLOW_LEVELS.includes(value)) store.glowLevel = value;
+  } else if (key === 'glow') {
+    store.glow = !!value;
+    syncSpectrum();
+  } else if (key === 'glowLevel' && GLOW_LEVELS.includes(value)) store.glowLevel = value;
   save();
   return { ...(await settings()), error };
 });
@@ -525,6 +528,8 @@ function startHelper() {
   const p = (helper = spawn(helperExe, [], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }));
   p.stdin.on('error', () => {}); // a command sent while it dies must not take main down (EPIPE)
   readline.createInterface({ input: p.stdout, crlfDelay: Infinity }).on('line', onHelperLine);
+  spectrumSent = null; // a new helper starts with its spectrum off
+  syncSpectrum();
   let gone = false;
   const restart = () => {
     if (gone) return;
@@ -535,6 +540,7 @@ function startHelper() {
       mediaNow = volumeNow = null;
       send('media', null);
       send('volume', null);
+      sendSpectrum(null);
     }
     if (p.stopped || !musicOn()) return;
     // a helper that ran a while starts over quickly; one that dies at once waits longer each time
@@ -574,7 +580,31 @@ function onHelperLine(line) {
     mediaNow = m.active ? { app: player, title, artist, album, status, position, duration, updatedAt, cover: coverUrl(m.cover) } : null;
     send('media', mediaNow);
   } else if (m.type === 'volume') send('volume', (volumeNow = { level: m.level, muted: !!m.muted }));
+  else if (m.type === 'spectrum' && Array.isArray(m.bands) && m.bands.length === 12) sendSpectrum(m.bands.map((v) => Math.min(1, Math.max(0, Number(v) || 0))));
   else if (m.type === 'error') console.error('helper:', m.message);
+}
+// --- spectrum for the glow: the helper listens to what plays (WASAPI loopback) only while someone can see it:
+// glow on, music module on (the helper runs only then), the island not hidden
+let spectrumSent = null; // 'on' | 'off', last told to this helper
+function syncSpectrum() {
+  if (!helper) return;
+  const want = store.glow !== false && alive() && win.isVisible() ? 'on' : 'off';
+  if (want === spectrumSent) return;
+  spectrumSent = want;
+  helper.stdin.write(`spectrum ${want}\n`);
+  if (want === 'off') sendSpectrum(null);
+}
+// at most one frame per 30 ms to the renderer, always the latest (the helper's last zeros must arrive)
+let spectrumLast = 0;
+let spectrumTimer = null;
+let spectrumNext = null;
+function sendSpectrum(bands) {
+  spectrumNext = bands;
+  spectrumTimer ??= setTimeout(() => {
+    spectrumTimer = null;
+    spectrumLast = Date.now();
+    send('spectrum', spectrumNext);
+  }, Math.max(0, 30 - (Date.now() - spectrumLast)));
 }
 ipcMain.handle('media-get', () => ({ media: mediaNow, volume: volumeNow }));
 ipcMain.on('media-cmd', (_e, cmd, value) => {
