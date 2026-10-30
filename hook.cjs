@@ -25,6 +25,7 @@ function slim(raw) {
     cwd: cut(raw?.cwd, 1000),
     tool_name: cut(raw?.tool_name, 200),
     notification_type: cut(raw?.notification_type, 60),
+    last_assistant_message: cut(raw?.last_assistant_message, 4000), // Stop: Claude's answer, shown under the session in the chat
     tool_input: { file_path: cut(i.file_path, 1000), notebook_path: cut(i.notebook_path, 1000), path: cut(i.path, 1000), command: cut(i.command, 200), questions },
   };
 }
