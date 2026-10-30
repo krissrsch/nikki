@@ -1,10 +1,12 @@
 // Nikki's Windows helper: long-running, talks JSON lines over stdio.
-// stdout: {"type":"ready"} | {"type":"media",...} | {"type":"error","message":...}
-// stdin:  toggle | play | pause | next | prev | seek <seconds>
+// stdout: {"type":"ready"} | {"type":"media",...} | {"type":"volume","level":0-100,"muted":bool} | {"type":"error","message":...}
+// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute
 // Built with the C# 5 compiler that ships with Windows (see build.cmd): no C# 6+ syntax, and WinRT
 // async calls are waited on directly because .NET Framework's await bridge does not bind to the system .winmd files.
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -17,7 +19,7 @@ class NikkiHelper
     static GlobalSystemMediaTransportControlsSessionManager manager;
     static readonly object outLock = new object();
     static readonly object mediaLock = new object();
-    static string lastSent = "";
+    static readonly Dictionary<string, string> lastSent = new Dictionary<string, string>();
     static readonly string coverDir = Path.Combine(Path.GetTempPath(), "nikki-covers");
 
     static void Main(string[] args)
@@ -38,15 +40,17 @@ class NikkiHelper
         Directory.CreateDirectory(coverDir);
         Emit("{\"type\":\"ready\"}");
         Report();
+        ReportVolume();
         if (args.Length > 0 && args[0] == "--once") return;
 
-        // Session events are unreliable across players, so poll; Report only writes on change.
+        // Session and volume events are unreliable across players and devices, so poll; Send only writes on change.
         var poll = new Thread(() =>
         {
             while (true)
             {
                 Thread.Sleep(1000);
                 try { Report(); } catch (Exception e) { Error(e); }
+                try { ReportVolume(); } catch (Exception e) { Error(e); }
             }
         });
         poll.IsBackground = true;
@@ -69,6 +73,19 @@ class NikkiHelper
 
     static void Command(string line)
     {
+        if (line.StartsWith("volume "))
+        {
+            int level;
+            if (int.TryParse(line.Substring(7), out level)) Volume.SetLevel(Math.Max(0, Math.Min(100, level)) / 100f);
+            ReportVolume();
+            return;
+        }
+        if (line == "mute" || line == "unmute")
+        {
+            Volume.SetMute(line == "mute");
+            ReportVolume();
+            return;
+        }
         var s = manager.GetCurrentSession();
         if (s == null || line.Length == 0) return;
         if (line == "toggle") Wait(s.TryTogglePlayPauseAsync());
@@ -123,6 +140,14 @@ class NikkiHelper
         }
     }
 
+    static void ReportVolume()
+    {
+        float level;
+        bool muted;
+        if (!Volume.Get(out level, out muted)) return;
+        Send("{\"type\":\"volume\",\"level\":" + (int)Math.Round(level * 100) + ",\"muted\":" + (muted ? "true" : "false") + "}");
+    }
+
     static string SaveCover(IRandomAccessStreamReference thumb, string key)
     {
         string name;
@@ -151,10 +176,13 @@ class NikkiHelper
 
     static void Send(string json)
     {
+        // Dedupe per message type ("media", "volume"): the type is the first field.
+        string type = json.Substring(0, Math.Min(json.Length, 18));
         lock (outLock)
         {
-            if (json == lastSent) return;
-            lastSent = json;
+            string prev;
+            if (lastSent.TryGetValue(type, out prev) && prev == json) return;
+            lastSent[type] = json;
         }
         Emit(json);
     }
@@ -185,5 +213,76 @@ class NikkiHelper
             else sb.Append(c);
         }
         return sb.Append('"').ToString();
+    }
+}
+
+// Master volume of the default playback device via Core Audio (IAudioEndpointVolume).
+static class Volume
+{
+    [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
+    class MMDeviceEnumerator { }
+
+    [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IMMDeviceEnumerator
+    {
+        [PreserveSig] int EnumAudioEndpoints(int dataFlow, int stateMask, out IntPtr devices);
+        [PreserveSig] int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice device);
+    }
+
+    [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IMMDevice
+    {
+        [PreserveSig] int Activate(ref Guid iid, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object iface);
+    }
+
+    [ComImport, Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioEndpointVolume
+    {
+        [PreserveSig] int RegisterControlChangeNotify(IntPtr notify);
+        [PreserveSig] int UnregisterControlChangeNotify(IntPtr notify);
+        [PreserveSig] int GetChannelCount(out uint count);
+        [PreserveSig] int SetMasterVolumeLevel(float levelDb, ref Guid context);
+        [PreserveSig] int SetMasterVolumeLevelScalar(float level, ref Guid context);
+        [PreserveSig] int GetMasterVolumeLevel(out float levelDb);
+        [PreserveSig] int GetMasterVolumeLevelScalar(out float level);
+        [PreserveSig] int SetChannelVolumeLevel(uint channel, float levelDb, ref Guid context);
+        [PreserveSig] int SetChannelVolumeLevelScalar(uint channel, float level, ref Guid context);
+        [PreserveSig] int GetChannelVolumeLevel(uint channel, out float levelDb);
+        [PreserveSig] int GetChannelVolumeLevelScalar(uint channel, out float level);
+        [PreserveSig] int SetMute([MarshalAs(UnmanagedType.Bool)] bool mute, ref Guid context);
+        [PreserveSig] int GetMute([MarshalAs(UnmanagedType.Bool)] out bool mute);
+    }
+
+    // The default device can change (headphones), so it is looked up on every call.
+    static IAudioEndpointVolume Endpoint()
+    {
+        var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+        IMMDevice device;
+        if (enumerator.GetDefaultAudioEndpoint(0 /* eRender */, 1 /* eMultimedia */, out device) != 0 || device == null) return null;
+        Guid iid = typeof(IAudioEndpointVolume).GUID;
+        object iface;
+        if (device.Activate(ref iid, 23 /* CLSCTX_ALL */, IntPtr.Zero, out iface) != 0) return null;
+        return iface as IAudioEndpointVolume;
+    }
+
+    public static bool Get(out float level, out bool muted)
+    {
+        level = 0; muted = false;
+        var ep = Endpoint();
+        return ep != null && ep.GetMasterVolumeLevelScalar(out level) == 0 && ep.GetMute(out muted) == 0;
+    }
+
+    public static void SetLevel(float level)
+    {
+        var ep = Endpoint();
+        Guid ctx = Guid.Empty;
+        if (ep != null) ep.SetMasterVolumeLevelScalar(level, ref ctx);
+    }
+
+    public static void SetMute(bool mute)
+    {
+        var ep = Endpoint();
+        Guid ctx = Guid.Empty;
+        if (ep != null) ep.SetMute(mute, ref ctx);
     }
 }
