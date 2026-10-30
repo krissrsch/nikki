@@ -8,8 +8,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "dist": "electron-builder --win",
-    "pack": "electron-builder --win --dir",
+    "dist": "helper\\build.cmd && electron-builder --win",
+    "pack": "helper\\build.cmd && electron-builder --win --dir",
     "release": "npm run dist && gh release create \"v%npm_package_version%\" Nikki-Setup.exe --title \"Nikki %npm_package_version%\" --generate-notes",
     "e2e": "node --test --test-concurrency=1 e2e/*.e2e.js"
   },
@@ -40,7 +40,9 @@
       "!.cursor/**",
       "!.mcp.json",
       "!.agentos-task.md",
-      "!helper/**"
+      "!helper/*.cs",
+      "!helper/*.cmd",
+      "!helper/.gitignore"
     ],
     "win": {
       "target": "nsis",
