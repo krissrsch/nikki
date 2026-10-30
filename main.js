@@ -10,6 +10,7 @@ import { createClaudeAgent } from './backends/claude.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
+import { createRelay } from './lib/relay.js';
 import { onHook, sweep } from './lib/terminal.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -61,6 +62,7 @@ let store = {
   lastChatId: null,
   muted: false,
   hooks: false,
+  relay: true, // with hooks on: permissions of terminal sessions are answered in the island, messages can be queued
   hotkey: null, // null: the first free default
   sleepMin: 5, // minutes without activity until Nikki falls asleep in the notch
   showBranch: true,
@@ -328,6 +330,7 @@ const settings = async () => ({
   muted: !!store.muted,
   sleepMin: store.sleepMin,
   hooks: !!store.hooks,
+  relay: store.relay !== false,
   claudePath: await findClaude(),
   showBranch: store.showBranch !== false,
 });
@@ -339,6 +342,11 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   else if (key === 'muted') store.muted = !!value;
   else if (key === 'sleepMin') store.sleepMin = Math.min(120, Math.max(1, Math.round(Number(value)) || 5));
   else if (key === 'hooks') await setHooks(!!value);
+  else if (key === 'relay') {
+    store.relay = !!value;
+    if (store.hooks) await setHooks(true); // rewrite our hooks with or without the waiting ones
+    if (!store.relay) relay.cancelAll();
+  }
   else if (key === 'showBranch') store.showBranch = !!value;
   save();
   return { ...(await settings()), error };
@@ -427,6 +435,7 @@ function setTerminal(sessions, changed) {
   send('terminal', { sessions: [...terminal.values()], changed });
 }
 function onHookEvent(e) {
+  relay.onEvent(e);
   const { sessions, changed } = onHook(terminal, e, Date.now());
   setTerminal(sessions, changed);
   const where = path.basename(String(e.cwd ?? ''));
@@ -435,6 +444,55 @@ function onHookEvent(e) {
 }
 // a terminal closed without SessionEnd, or an old "fertig", must not need a new event to go away (M4)
 setInterval(() => setTerminal(sweep(terminal, Date.now())), 60 * 1000).unref();
+// --- answering terminal sessions from the island (hook.cjs --wait / --stop), see lib/relay.js
+const relay = createRelay();
+// A terminal PermissionRequest shows the same card as our own sessions; the hook waits on the open HTTP request.
+function askTerminal(e, res) {
+  onHookEvent(e); // status + toast as for any observed event
+  const id = nextId++;
+  const { id: rid } = relay.wait(e, (reply) => {
+    pending.delete(id);
+    if (reply) res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(reply));
+    else {
+      if (!res.writableEnded) res.writeHead(204).end();
+      send('permission-cancel', id); // answered in the terminal, timed out, or the hook went away
+    }
+  });
+  // the hook gave up (its 110 s) or Claude Code killed it: drop the card, the terminal decides
+  res.on('close', () => relay.answer(rid, null));
+  pending.set(id, ({ answer, picks, message }) =>
+    relay.answer(rid, answer === 'deny' ? { answer: 'deny', message } : { answer: answer === 'always' ? 'always' : 'allow', picks }),
+  );
+  send('permission-request', {
+    id,
+    origin: 'terminal',
+    sessionId: e.session_id,
+    cwd: e.cwd,
+    toolName: e.tool_name,
+    input: e.tool_input ?? {},
+    canAlways: !!e.can_always,
+  });
+  userHidden = false;
+  applyVisibility();
+}
+// Messages for a terminal session that still works: handed to Claude by the Stop hook when its turn ends.
+const queued = new Map(); // session_id → text
+function takeQueued(sid) {
+  const msg = queued.get(String(sid));
+  queued.delete(String(sid));
+  if (msg) send('queued', { sessionId: String(sid), text: null });
+  return msg || null;
+}
+ipcMain.handle('queue-message', (_e, { sessionId, text }) => {
+  const t = String(text ?? '').trim();
+  if (!sessionId || !t || !store.hooks || store.relay === false) return false;
+  queued.set(String(sessionId), queued.has(String(sessionId)) ? `${queued.get(String(sessionId))}
+
+${t}` : t);
+  send('queued', { sessionId: String(sessionId), text: queued.get(String(sessionId)) });
+  return true;
+});
+
 let hookServer;
 function startHookServer() {
   hookServer = http.createServer((req, res) => {
@@ -446,10 +504,18 @@ function startHookServer() {
       if (body.length > 1e6) req.destroy(); // hook input is small; never buffer without limit
     });
     req.on('end', () => {
-      res.end();
-      if (quitting) return;
+      let e = null;
       try {
-        onHookEvent(JSON.parse(body));
+        e = JSON.parse(body);
+      } catch {}
+      if (req.url === '/hook/wait' && e && !quitting && store.relay !== false) return askTerminal(e, res);
+      if (req.url === '/hook/stop' && e && !quitting) {
+        const msg = takeQueued(e.session_id);
+        res.writeHead(msg ? 200 : 204, { 'content-type': 'application/json' }).end(msg ? JSON.stringify({ message: msg }) : undefined);
+      } else res.writeHead(204).end();
+      if (quitting || !e) return;
+      try {
+        onHookEvent(e);
       } catch {}
     });
   });
@@ -508,7 +574,7 @@ async function refreshHooks() {
     return;
   }
   const node = await findNode();
-  if (node) writeHooks((s) => withHooks(s, hookCommand(node)));
+  if (node) writeHooks((s) => withHooks(s, hookCommand(node), { relay: store.relay !== false }));
 }
 
 async function setHooks(on) {
@@ -516,10 +582,12 @@ async function setHooks(on) {
   if (on && !node) {
     dialog.showErrorBox('Nikki', 'Für Terminal-Sessions braucht es Node.js (der Befehl „node“ wurde nicht gefunden).');
     on = false;
-  } else if (!writeHooks((s) => (on ? withHooks(s, hookCommand(node)) : withoutHooks(s)))) on = store.hooks;
+  } else if (!writeHooks((s) => (on ? withHooks(s, hookCommand(node), { relay: store.relay !== false }) : withoutHooks(s)))) on = store.hooks;
   store.hooks = on;
   save();
   if (!on) {
+    relay.cancelAll();
+    queued.clear();
     terminal = new Map();
     send('terminal', { sessions: [] });
   }
@@ -630,6 +698,7 @@ app.on('will-quit', () => {
   clearInterval(pointerTimer);
   pointerTimer = null;
   agent.abort(); // no claude.exe left running on its own (M5)
+  relay.cancelAll(); // waiting terminal hooks fall back to their own dialog
   try {
     fullscreenWatcher?.stdout?.removeAllListeners('data');
     fullscreenWatcher?.kill();

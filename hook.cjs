@@ -15,7 +15,8 @@ function slim(raw) {
   const questions = Array.isArray(i.questions)
     ? i.questions.slice(0, 4).map((q) => ({
         question: cut(q?.question, 200),
-        options: (Array.isArray(q?.options) ? q.options : []).slice(0, 6).map((o) => ({ label: cut(o?.label, 80) })),
+        // labels stay whole enough to be sent back as the answer
+        options: (Array.isArray(q?.options) ? q.options : []).slice(0, 6).map((o) => ({ label: cut(o?.label, 200) })),
       }))
     : undefined;
   return {
@@ -28,14 +29,18 @@ function slim(raw) {
   };
 }
 // The island's answer → Claude Code's PermissionRequest decision, or null (stay silent, the terminal decides).
-// reply: { answer: 'allow' | 'always' | 'deny', message?, answers?: { [question]: label } }
+// reply: { answer: 'allow' | 'always' | 'deny', message?, picks?: string[][] (one label list per question) }
 function decision(raw, reply) {
   const out = (d) => ({ hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: d } });
   if (reply?.answer === 'deny') return out({ behavior: 'deny', message: String(reply.message || 'Abgelehnt in Nikki.') });
   if (reply?.answer !== 'allow' && reply?.answer !== 'always') return null;
   const d = { behavior: 'allow' };
-  // a question's picks travel back inside the tool input, next to the questions they answer
-  if (reply.answers && typeof reply.answers === 'object') d.updatedInput = { ...(raw?.tool_input ?? {}), answers: reply.answers };
+  // a question's picks travel back inside the tool input, keyed by the full question text (the island only saw it cut)
+  if (Array.isArray(reply.picks)) {
+    const questions = Array.isArray(raw?.tool_input?.questions) ? raw.tool_input.questions : [];
+    const answers = Object.fromEntries(questions.map((q, i) => [q?.question, (Array.isArray(reply.picks[i]) ? reply.picks[i] : []).join(', ')]));
+    d.updatedInput = { ...(raw?.tool_input ?? {}), answers };
+  }
   if (reply.answer === 'always' && Array.isArray(raw?.permission_suggestions) && raw.permission_suggestions.length)
     d.updatedPermissions = raw.permission_suggestions;
   return out(d);

@@ -140,6 +140,8 @@ let turnFinalized = false;
 const RANK = { needsYou: 3, working: 2, thinking: 2, done: 1 }; // done briefly owns the island for chime/status
 // our own task comes first; while it rests, a focused or most urgent observed session gets the island
 function shown() {
+  const p = perms[0];
+  if (p?.origin === 'terminal' && !busy) return { state: 'needsYou', text: `${folderName(p.cwd)}: ${p.toolName === 'AskUserQuestion' ? 'Frage' : p.toolName === 'ExitPlanMode' ? 'Plan' : 'Freigabe'}`, cwd: p.cwd, observed: true };
   if (busy || perms.length) return lastStatus;
   // folder lives on the session pill — don't repeat it in the status text
   if (focusSession) {
@@ -794,6 +796,8 @@ function closeMenu() {
 
 // chat header: our own project chip first (active unless a terminal session is pinned), then the observed sessions
 function renderSessionPills() {
+  const pinnedT = focusSession && terminal.find((t) => t.id === focusSession);
+  promptEl.placeholder = pinnedT ? `Nachricht an ${folderName(pinnedT.cwd)} vormerken…` : 'Was soll Claude tun?';
   $('ownDot').dataset.state = ownState();
   $('projectBtn').setAttribute('aria-pressed', String(!focusSession));
   const box = $('sessionPills');
@@ -871,8 +875,24 @@ async function pickFolder() {
 }
 
 // ---- run
+// A pinned terminal session gets the text when its turn ends (Stop hook); an idle one has no turn to end.
+async function queueForTerminal(text) {
+  const t = terminal.find((x) => x.id === focusSession);
+  if (!t) return;
+  if (!['working', 'thinking', 'needsYou'].includes(t.state)) {
+    setStepLine(`${folderName(t.cwd)} ist gerade fertig. Antworte im Terminal; vormerken geht, solange Claude dort arbeitet.`);
+    return;
+  }
+  if (!(await api.queueMessage(t.id, text))) {
+    setStepLine('Vormerken geht nur mit „Terminal-Sessions beobachten“ und „Freigaben in Nikki beantworten“.');
+    return;
+  }
+  promptEl.value = '';
+  setStepLine(`Vorgemerkt für ${folderName(t.cwd)}: Claude bekommt es, sobald der Zug fertig ist.`);
+}
 async function start() {
   const text = promptEl.value.trim();
+  if (text && focusSession) return queueForTerminal(text);
   if (!text || busy) return;
   const cwd = current || (await pickFolder());
   if (!cwd) return;
@@ -978,14 +998,14 @@ function renderPerm() {
   if (r.toolName === 'AskUserQuestion') return renderQuestion(r);
   body.classList.remove('choiceRow');
   if (r.toolName === 'ExitPlanMode') return renderPlan(r);
-  $('permTitle').textContent = r.title ?? `${r.toolName} ausführen?`;
+  $('permTitle').textContent = (r.origin === 'terminal' ? `${folderName(r.cwd)} · Terminal: ` : '') + (r.title ?? `${r.toolName} ausführen?`);
   const code = document.createElement('code');
   code.className = 'detail';
   code.textContent = detail(r.input);
   body.replaceChildren(code);
   $('permActions').replaceChildren(
     button('Erlauben', 'primary', () => answerPerm({ answer: 'allow' })),
-    button('Immer', 'soft', () => answerPerm({ answer: 'always' })),
+    ...(r.origin === 'terminal' && !r.canAlways ? [] : [button('Immer', 'soft', () => answerPerm({ answer: 'always' }))]),
     button('Ablehnen', 'danger', () => answerPerm({ answer: 'deny' })),
   );
 }
@@ -1069,6 +1089,7 @@ function answerPerm(a) {
   if (!r) return;
   api.answerPermission(r.id, a);
   renderPerm();
+  if (r.origin === 'terminal') return renderState();
   if (!perms.length) show({ state: 'working', text: 'Nikki macht weiter…' });
 }
 
@@ -1131,6 +1152,8 @@ function applySettings(s) {
   $('setSound').checked = !s.muted;
   $('setSleep').value = s.sleepMin;
   $('setHooks').checked = s.hooks;
+  $('setRelay').checked = s.relay;
+  $('setRelay').disabled = !s.hooks;
   $('setClaudePath').textContent = s.claudePath || 'nicht gefunden';
   $('setClaudePath').title = s.claudePath || '';
   $('setClaudePath').classList.toggle('bad', !s.claudePath);
@@ -1142,6 +1165,7 @@ $('setAutostart').addEventListener('change', (e) => setSetting('autostart', e.ta
 $('setSound').addEventListener('change', (e) => setSetting('muted', !e.target.checked));
 $('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.target.value)));
 $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));
+$('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
 $('setBranch').addEventListener('change', (e) => setSetting('showBranch', e.target.checked));
 
 // hotkey: click, then press the new combo; main keeps the old one when the new one is taken
@@ -1261,9 +1285,11 @@ api.onTerminal(({ sessions, changed }) => {
 });
 api.onPermissionRequest((r) => {
   perms.push(r);
+  if (r.origin === 'terminal') focusSession = r.sessionId; // the chat header shows whose card this is
   renderPerm();
   setView('chat');
   setOpen(true);
+  if (r.origin === 'terminal') return renderState();
   const text =
     r.toolName === 'AskUserQuestion'
       ? 'Nikki fragt dich!'
@@ -1271,6 +1297,10 @@ api.onPermissionRequest((r) => {
         ? 'Nikki zeigt Plan!'
         : 'Nikki will OK!';
   show({ state: 'needsYou', text });
+});
+api.onQueued?.(({ sessionId, text }) => {
+  const t = terminal.find((x) => x.id === sessionId);
+  if (text === null && t) setStepLine(`Nachricht an ${folderName(t.cwd)} übergeben.`);
 });
 api.onPermissionCancel((id) => {
   perms = perms.filter((p) => p.id !== id);
