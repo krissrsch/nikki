@@ -69,7 +69,7 @@
           <label class="setRow"><span>Client Secret<small>Liegt verschlüsselt nur auf diesem PC</small></span><input id="setDiscordSecret" class="num wide" type="password" maxlength="200" autocomplete="off" /></label>
           <label class="setRow"><span>Hinweis bei Beitritt<small>Eine Meldung, wenn jemand in deinen Kanal kommt</small></span><input id="setDiscordJoin" class="switch" type="checkbox" role="switch" /></label>
         </div>
-        <p class="sLead">Webhooks für die Spracheingabe: „Schreib an Team, …“ schickt nur an Namen aus dieser Liste. Die Adresse findest du in Discord unter Kanal bearbeiten, Integrationen, Webhooks.</p>
+        <p class="sLead">Webhooks für die Spracheingabe: „Hey Nikki, führe den Webhook Team aus mit …“ schickt nur an Namen aus dieser Liste. Die Adresse findest du in Discord unter Kanal bearbeiten, Integrationen, Webhooks.</p>
         <div class="setCard">
           <div id="hookList"></div>
           <div class="setRow"><span>Name<small id="hookMsg" role="status"></small></span><input id="hookName" class="num wide" type="text" maxlength="40" placeholder="Team" spellcheck="false" autocomplete="off" /></div>
@@ -80,7 +80,7 @@
 
       <section class="sPage" data-page="voice" aria-labelledby="pVoice" hidden>
         <h1 id="pVoice">Sprache</h1>
-        <p class="sLead">Taste halten, sprechen, loslassen. „Frag Claude, …“ geht direkt an Claude, „Schreib an Team, …“ an den Webhook dieses Namens, alles andere landet im Chat-Feld. Die Erkennung läuft nur auf diesem PC.</p>
+        <p class="sLead">Taste halten, sprechen, loslassen. Befehle beginnen mit „Hey Nikki“: „Hey Nikki, sag Claude, …“ geht direkt an Claude, „Hey Nikki, führe den Webhook Team aus mit …“ an diesen Webhook. Alles andere landet im Chat-Feld. Die Erkennung läuft nur auf diesem PC.</p>
         <div class="setCard">
           <label class="setRow"><span>Spracheingabe<small id="voiceMsg" role="status"></small></span><input id="setVoice" class="switch" type="checkbox" role="switch" /></label>
           <div class="setRow">
