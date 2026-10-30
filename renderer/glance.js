@@ -5,12 +5,12 @@ const GLANCE_SOON_MS = 15 * 60 * 1000;
 
 // status: needsYou | working | thinking | done | error | idle (own or observed session, whichever the island shows)
 // peek: { icon, text, right?, until } · event: { title, at } · timer: { label, text } while it runs · music: { title, cover?, playing }
-// pin: the item keeps its own right side even when another one follows (which project asks; the countdown)
+// pin: the item keeps its own right side even when another one follows (which project asks; the countdown; a peek's bar)
 function glance({ status = 'idle', text = '', project = '', peek = null, event = null, timer = null, music = null, lastActivity = 0, hover = false, sleepMin = 5, now = Date.now() } = {}) {
   const where = project ? { text: project, tone: 'muted' } : null;
   const items = [];
   if (status === 'needsYou') items.push({ mood: 'need', left: { icon: 'dot', text: text || 'braucht dich', tone: 'warn' }, right: where, pin: true });
-  if (peek && now < peek.until) items.push({ mood: 'awake', left: { icon: peek.icon, text: peek.text }, right: peek.right ?? null });
+  if (peek && now < peek.until) items.push({ mood: 'awake', left: { icon: peek.icon, text: peek.text }, right: peek.right ?? null, pin: !!peek.right }); // the volume bar stays
   if (status === 'working' || status === 'thinking') items.push({ mood: 'work', left: { icon: 'spin', text: 'arbeitet', tone: 'accent' }, right: where });
   if (status === 'done') items.push({ mood: 'done', left: { icon: 'check', text: 'fertig', tone: 'accent' }, right: where });
   if (status === 'error') items.push({ mood: 'awake', left: { icon: 'dot', text: 'stolpert', tone: 'bad' }, right: where });
