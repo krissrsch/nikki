@@ -83,6 +83,19 @@ test('rank: the highest item sets the eyes and the left side, the next one takes
   assert.deepEqual(need.right, { text: 'p', tone: 'muted' });
 });
 
+test('timer: countdown on the right, between appointment and music', () => {
+  const timer = { label: 'Fokus', text: '18:31' };
+  const g = glance({ timer, now: NOW });
+  assert.equal(g.mood, 'awake');
+  assert.deepEqual(g.left, { icon: 'timer', text: 'Fokus' });
+  assert.deepEqual(g.right, { text: '18:31' });
+  assert.deepEqual(glance({ timer, music, now: NOW }).right, { text: '18:31' }, 'beats music and keeps its countdown');
+  assert.equal(glance({ event, timer, now: NOW }).left.icon, 'calendar', 'appointment beats timer');
+  assert.deepEqual(glance({ event, timer, now: NOW }).right, { icon: 'timer', text: '18:31' }, 'countdown still on the right');
+  assert.deepEqual(glance({ status: 'working', project: 'p', timer, now: NOW }).right, { icon: 'timer', text: '18:31' });
+  assert.deepEqual(glance({ status: 'needsYou', project: 'p', timer, now: NOW }).right, { text: 'p', tone: 'muted' });
+});
+
 test('chat dot: needs you > error > done', () => {
   assert.equal(chatDot({}), null);
   assert.equal(chatDot({ needsYou: true, unseen: 'error', terminalDone: true }), 'warn');

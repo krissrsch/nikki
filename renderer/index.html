@@ -46,7 +46,7 @@
               <svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.2-4.4A8 8 0 1 1 21 12z" /></svg>
               <span id="chatDot" class="tabDot" hidden></span>
             </button>
-            <div id="moduleTabs"></div><!-- part 2: tabs of the modules that are switched on -->
+            <div id="moduleTabs"></div><!-- tabs of the modules switched on (app.js) -->
             <span class="grow"></span>
             <button type="button" class="tab" data-view="settings" aria-pressed="false" aria-label="Einstellungen" title="Einstellungen">
               <svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
@@ -110,7 +110,7 @@
               </div>
               <div class="greet"><strong id="greet">Hallo</strong><span id="today"></span></div>
             </div>
-            <div class="tiles">
+            <div class="tiles" id="homeTiles"><!-- Claude first, then one tile per module switched on -->
               <div class="tile">
                 <div class="tileHead">Claude<span id="claudeMeta"></span></div>
                 <div id="claudeSessions" class="tileList"></div>
@@ -190,7 +190,7 @@
                 </section>
                 <section class="setCard" aria-labelledby="setModules">
                   <h2 id="setModules">Module</h2>
-                  <p class="setNote">Bald schaltest du hier Musik, Kalender, Ablage, To-do, Notizen und Timer ein und aus.</p>
+                  <div id="setModuleList"></div>
                 </section>
               </div>
               <div class="setCol">
@@ -216,6 +216,11 @@
     <script src="../node_modules/dompurify/dist/purify.min.js"></script>
     <script src="markdown-text.js"></script>
     <script src="glance.js"></script>
+    <script src="modules.js"></script>
+    <script src="modules/calendar.js"></script>
+    <script src="modules/todo.js"></script>
+    <script src="modules/notes.js"></script>
+    <script src="modules/timer.js"></script>
     <script src="hotkey.js"></script>
     <script src="companion.js"></script>
     <script src="app.js"></script>
