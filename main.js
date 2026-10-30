@@ -869,7 +869,8 @@ function setVoice(state) {
 }
 function voiceDown() {
   if (voiceState !== 'idle' || !helper || !alive()) return;
-  if (!voiceInstalled()) return pillDone('Die Spracheingabe wird noch eingerichtet.', 'bad');
+  if (!store.voice) return pillDone('Spracheingabe ist aus. Schalte sie unter Einstellungen, Sprache ein.', 'bad');
+  if (!voiceInstalled()) return pillDone(voiceSetup.state === 'error' ? 'Einrichten hat nicht geklappt. Schalte sie aus und wieder ein.' : `Wird noch eingerichtet, ${voiceSetup.percent} %`, 'bad');
   fs.rmSync(voiceWav, { force: true });
   setVoice('listening');
   helper.stdin.write(`rec start ${voiceWav}\n`);
@@ -918,10 +919,10 @@ async function voiceAct(said) {
   }
 }
 ipcMain.on('voice-note', (_e, text, bad) => pillDone(String(text ?? '').slice(0, 120), bad ? 'bad' : ''));
-// the helper watches the key only while voice is on and installed
+// the key is watched even while voice is off: a press then says why nothing happens. The microphone only opens when voice is on.
 function syncVoice() {
   if (!helper) return;
-  const want = store.voice && voiceInstalled() ? `ptt ${pttKeys(store.voiceKey)?.join(',') ?? 'off'}` : 'ptt off';
+  const want = `ptt ${pttKeys(store.voiceKey)?.join(',') ?? 'off'}`;
   if (want === pttSent) return;
   pttSent = want;
   helper.stdin.write(`${want}\n`);
