@@ -11,7 +11,7 @@ function setup(script, extra = {}) {
   const statuses = [];
   const calls = [];
   const agent = createClaudeAgent({
-    claudePath: 'claude.exe',
+
     onStatus: (s) => statuses.push(s),
     onSession: () => {},
     askPermission: async () => ({ answer: 'allow' }),
