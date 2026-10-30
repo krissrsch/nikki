@@ -10,7 +10,7 @@ import { createClaudeAgent } from './backends/claude.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
-import { hookToStatus } from './lib/status.js';
+import { onHook, sweep } from './lib/terminal.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -121,8 +121,7 @@ function askPermission(req, signal) {
       { once: true },
     );
     send('permission-request', { id, ...req });
-    userHidden = false;
-    applyVisibility();
+    // toast first: once the island is shown again, notify() sees it visible and stays quiet (B11)
     notify(
       req.toolName === 'AskUserQuestion'
         ? 'Der Agent hat eine Frage an dich.'
@@ -130,6 +129,8 @@ function askPermission(req, signal) {
           ? 'Der Plan wartet auf dich.'
           : 'Der Agent braucht eine Erlaubnis.',
     );
+    userHidden = false;
+    applyVisibility();
   });
 }
 
@@ -349,28 +350,23 @@ ipcMain.on('permission-answer', (_e, { id, ...answer }) => {
 });
 
 // --- terminal sessions: Claude Code hooks POST their events to this local server
-const terminal = new Map(); // session_id -> { id, cwd, state, text, at }
-const STALE_MS = 30 * 60 * 1000; // no event for 30 min: the terminal was probably closed without SessionEnd
+let terminal = new Map(); // session_id -> { id, cwd, state, text, tool?, at }, see lib/terminal.js
 const hookCfgFile = path.join(app.getPath('userData'), 'hook.json');
 const hookToken = crypto.randomBytes(16).toString('hex');
-function onHook(e) {
-  const sid = e?.session_id != null ? String(e.session_id) : '';
-  if (!sid) return;
-  e.session_id = sid;
-  const prev = terminal.get(e.session_id);
-  let s = null;
-  if (e.hook_event_name === 'SessionEnd') terminal.delete(e.session_id);
-  else {
-    s = hookToStatus(e, prev);
-    if (!s) return;
-    terminal.set(e.session_id, { id: e.session_id, cwd: String(e.cwd ?? ''), ...s, at: Date.now() });
-  }
-  for (const [id, t] of terminal) if (Date.now() - t.at > STALE_MS) terminal.delete(id);
-  const changed = s && s.state !== prev?.state ? s.state : undefined; // one chime/toast per prompt, not per event
+function setTerminal(sessions, changed) {
+  if (sessions === terminal) return;
+  terminal = sessions;
   send('terminal', { sessions: [...terminal.values()], changed });
-  if (changed === 'needsYou') notify(`${path.basename(e.cwd)}: ${s.text}`);
-  if (changed === 'done') notify(`Session in ${path.basename(e.cwd)} ist fertig.`);
 }
+function onHookEvent(e) {
+  const { sessions, changed } = onHook(terminal, e, Date.now());
+  setTerminal(sessions, changed);
+  const where = path.basename(String(e.cwd ?? ''));
+  if (changed === 'needsYou') notify(`${where}: ${terminal.get(String(e.session_id))?.text}`);
+  if (changed === 'done') notify(`Session in ${where} ist fertig.`);
+}
+// a terminal closed without SessionEnd, or an old "fertig", must not need a new event to go away (M4)
+setInterval(() => setTerminal(sweep(terminal, Date.now())), 60 * 1000).unref();
 let hookServer;
 function startHookServer() {
   hookServer = http.createServer((req, res) => {
@@ -385,7 +381,7 @@ function startHookServer() {
       res.end();
       if (quitting) return;
       try {
-        onHook(JSON.parse(body));
+        onHookEvent(JSON.parse(body));
       } catch {}
     });
   });
@@ -456,16 +452,32 @@ async function setHooks(on) {
   store.hooks = on;
   save();
   if (!on) {
-    terminal.clear();
+    terminal = new Map();
     send('terminal', { sessions: [] });
   }
   createTray();
 }
 
+// `Nikki.exe --remove-hooks` (run by the uninstaller, installer.nsh): take our hooks out of the user's settings and exit,
+// so no Claude session keeps calling a hook.cjs that is gone (M6). No window, no dialog, no single-instance handoff.
+const removeHooksRequest = process.argv.includes('--remove-hooks');
+if (removeHooksRequest) {
+  for (const [file, mutate] of [
+    [settingsFile, withoutHooks],
+    [cursorHooksFile, withoutCursorHooks],
+  ]) {
+    try {
+      editJson(file, mutate);
+    } catch (e) {
+      console.error(file, e);
+    }
+  }
+}
+
 // A second launch (e.g. double-clicking the .exe again) just opens the island of the running one.
 // `Nikki.exe --quit` (used by Updater.exe) closes the running one cleanly instead.
-const quitRequest = process.argv.includes('--quit');
-const firstInstance = app.requestSingleInstanceLock();
+const quitRequest = process.argv.includes('--quit') || removeHooksRequest;
+const firstInstance = !removeHooksRequest && app.requestSingleInstanceLock();
 if (!firstInstance || quitRequest) app.quit();
 app.on('second-instance', (_e, argv) => (argv.includes('--quit') ? app.quit() : alive() && showNow()));
 
