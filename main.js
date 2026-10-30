@@ -51,7 +51,7 @@ function findClaude(again = false) {
       );
   return claudeLookup;
 }
-const WIDTH = 1200; // open island (720) + its shadow; wider for the glow's hairline along the top edge (renderer #glow)
+const WIDTH = 1200; // open island (720) + its shadow; place() widens the window to the whole display so the glow's hairline runs along the full top edge
 const HEIGHT = 640; // the open island grows with its page up to ~580 (Home with three rows) plus its shadow; the rest lets clicks through
 
 // Usage must run on the user's own subscription, never on an API key or another endpoint that happens to be set (N10).
@@ -78,6 +78,7 @@ let store = {
   clipKeep: false, // clipboard module: keep its history on disk (userData/clipboard.json); off, it lives in memory only
   glow: true, // light edge around the closed notch, spectrum with music
   glowLevel: 'normal', // dezent | normal | kraeftig
+  catJump: true, // Nikki jumps through the tab icons when the page changes
   weatherCity: '', // Home weather tile; '' = none yet
   weather: null, // last answer for weatherCity, see fetchWeather()
 };
@@ -219,7 +220,7 @@ function place(display) {
   if (!alive()) return;
   const { bounds } = display;
   try {
-    win.setBounds({ x: bounds.x + Math.round((bounds.width - WIDTH) / 2), y: bounds.y, width: WIDTH, height: HEIGHT });
+    win.setBounds({ x: bounds.x, y: bounds.y, width: Math.max(WIDTH, bounds.width), height: HEIGHT });
   } catch {}
 }
 
@@ -369,6 +370,7 @@ const settings = async () => ({
   modules: store.modules,
   keepAwake: !!store.keepAwake,
   glow: store.glow !== false,
+  catJump: store.catJump !== false,
   glowLevel: GLOW_LEVELS.includes(store.glowLevel) ? store.glowLevel : 'normal',
   weatherCity: typeof store.weatherCity === 'string' ? store.weatherCity : '',
 });
@@ -393,7 +395,8 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   } else if (key === 'keepAwake') {
     store.keepAwake = !!value;
     applyAwake();
-  } else if (key === 'glow') {
+  } else if (key === 'catJump') store.catJump = !!value;
+  else if (key === 'glow') {
     store.glow = !!value;
     syncSpectrum();
   } else if (key === 'glowLevel' && GLOW_LEVELS.includes(value)) store.glowLevel = value;

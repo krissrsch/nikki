@@ -52,6 +52,7 @@ async function rememberLastChat(id) {
   await api.setLastChat?.(lastChatId);
 }
 let view = 'home';
+let cat = null; // Nikki the cat (cat.js), created once the page exists
 const VIEWS = { home: 'viewHome', chat: 'viewChat', settings: 'viewSettings' }; // + one per module switched on
 
 function setView(name) {
@@ -66,7 +67,14 @@ function setView(name) {
   if (view === 'settings') api.settingsGet().then(applySettings); // autostart or the Claude path may have changed outside
   if (view === 'home') for (const id of live.keys()) renderTile(id); // "in 12 min" and co. are as old as the last look
   if (live.has(view)) NikkiModules.get(view).page($(VIEWS[view]), live.get(view));
+  cat?.setView(view);
   renderState();
+}
+// a tab click: with Nikki's jump she leaves the old page first, the new one shows when she is gone
+function goView(name) {
+  const target = perms.length ? 'chat' : VIEWS[name] ? name : 'home';
+  if (cat) cat.switchTo(target, () => setView(target));
+  else setView(target);
 }
 
 const STATE_LABEL = { needsYou: 'braucht dich', working: 'arbeitet', thinking: 'denkt', done: 'fertig', error: 'Fehler', idle: 'wartet' };
@@ -206,6 +214,7 @@ function renderGlance() {
   island.dataset.mood = g.mood;
   glowEl.dataset.glow = settings.glow === false ? '' : (g.glow ?? '');
   $('notch').setAttribute('aria-label', MOOD_LABEL[g.mood]);
+  cat?.setGlow(g.glow, g.mood === 'sleep');
 }
 setInterval(renderGlance, 10 * 1000); // falling asleep needs no event
 const touch = () => (lastActivity = Date.now());
@@ -359,6 +368,21 @@ function setStepLine(text) {
 }
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ---- Nikki the cat: sits in the Claude tile, peeks over an edge on the other pages, jumps with the tabs
+document.body.insertAdjacentHTML('beforeend', catDefs());
+cat = createCatStage({
+  box: $('panelBox'),
+  tabs: $('tabs'),
+  reduceMotion,
+  canJump: () => settings.catJump !== false,
+  ctx: () => ({ box: $('panelBox'), home: document.querySelector('[data-tile="claude"]'), composer: $('composer'), pageOf: (v) => $(VIEWS[v]) }),
+});
+new ResizeObserver(() => cat.sync()).observe($('panelBox'));
+$('homeTiles').addEventListener('mouseover', (e) => {
+  const tile = e.target.closest('.tile');
+  if (tile && tile !== e.relatedTarget?.closest?.('.tile') && cat.mood() === 'idle') cat.touch('look', 1600);
+});
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 function reveal(el, from) {
   el.animate([{ opacity: 0, ...(!reduceMotion && from) }, { opacity: 1, transform: 'none', filter: 'none' }], { duration: 200, easing: EASE_OUT });
@@ -716,6 +740,7 @@ function setOpen(v, { instant = false, focus = true } = {}) {
     requestAnimationFrame(() => requestAnimationFrame(() => island.classList.remove('instant')));
   }
   island.classList.toggle('open', v);
+  cat?.setActive(v);
   $('notch').setAttribute('aria-expanded', String(v));
   showSpectrum();
   fitIsland();
@@ -1157,11 +1182,17 @@ function renderTerminal() {
 document.addEventListener('dragover', (e) => {
   e.preventDefault();
   island.classList.toggle('drop', !!e.target.closest?.('.hit'));
+  if (island.classList.contains('drop') && open) cat?.touch('box', 0);
 });
-document.addEventListener('dragleave', (e) => !e.relatedTarget && island.classList.remove('drop'));
+document.addEventListener('dragleave', (e) => {
+  if (e.relatedTarget) return;
+  island.classList.remove('drop');
+  cat?.touch(null, 0);
+});
 document.addEventListener('drop', (e) => {
   e.preventDefault();
   island.classList.remove('drop');
+  cat?.touch(null, 0);
   if (!e.target.closest?.('.hit')) return;
   const paths = [...e.dataTransfer.files].map((f) => api.pathForFile(f)).filter(Boolean);
   const dropped = paths.length ? '' : e.dataTransfer.getData('text/plain').trim();
@@ -1186,10 +1217,10 @@ document.addEventListener('drop', (e) => {
 $('notch').addEventListener('click', () => setOpen(true));
 $('tabs').addEventListener('click', (e) => {
   const btn = e.target.closest('.tab');
-  if (btn) setView(btn.dataset.view);
+  if (btn) goView(btn.dataset.view);
   else setOpen(false); // the empty strip closes the island, like the old bar did
 });
-$('toChat').addEventListener('click', () => setView('chat'));
+$('toChat').addEventListener('click', () => goView('chat'));
 $('newBtn').addEventListener('click', () => setNewSession(!newSession));
 $('planBtn').addEventListener('click', () => setPlan(!plan));
 $('projectBtn').addEventListener('click', () => {
@@ -1224,6 +1255,7 @@ function applySettings(s) {
   $('setClaudePath').classList.toggle('bad', !s.claudePath);
   $('setBranch').checked = s.showBranch;
   $('setGlow').checked = s.glow;
+  $('setCatJump').checked = s.catJump;
   $('setGlowLevel').value = s.glowLevel;
   $('setGlowLevel').disabled = !s.glow;
   if (document.activeElement !== $('setCity')) $('setCity').value = s.weatherCity;
@@ -1240,6 +1272,7 @@ $('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.
 $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));
 $('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
 $('setBranch').addEventListener('change', (e) => setSetting('showBranch', e.target.checked));
+$('setCatJump').addEventListener('change', (e) => setSetting('catJump', e.target.checked));
 $('setGlow').addEventListener('change', (e) => setSetting('glow', e.target.checked));
 $('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));
 $('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));
