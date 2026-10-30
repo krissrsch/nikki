@@ -10,6 +10,7 @@ import { createClaudeAgent } from './backends/claude.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
+import { DEFAULT_MODULES, moduleFile, normalizeModules } from './lib/modules.js';
 import { createRelay } from './lib/relay.js';
 import { onHook, sweep } from './lib/terminal.js';
 
@@ -66,6 +67,7 @@ let store = {
   hotkey: null, // null: the first free default
   sleepMin: 5, // minutes without activity until Nikki falls asleep in the notch
   showBranch: true,
+  modules: DEFAULT_MODULES, // [{ id, on }] in tab order, see lib/modules.js
 };
 let storeNotice = null; // shown once the app is ready
 let storeWritable = true; // never overwrite a state.json we could not read: that is how chats got lost (H2)
@@ -77,6 +79,7 @@ try {
   // 1.0 chats from Cursor or Gemini carry a session id Claude does not know
   store.chats = (Array.isArray(store.chats) ? store.chats : []).map((c) => (c?.backend && c.backend !== 'claude' ? { ...c, backend: 'claude', sessionId: null } : c));
   store.lastChatId = store.lastChatId ?? null;
+  store.modules = normalizeModules(store.modules);
   delete store.sessions; // 1.0: last session per project, now only chats carry one (N9)
   delete store.backends;
 } catch (e) {
@@ -114,9 +117,10 @@ const send = (channel, data) => {
 };
 
 // --- toast while the island can't be seen (hidden via tray or behind a fullscreen app); the renderer plays the sound
+// force: also while it can be seen (timer ran out, appointment soon): the closed notch is easy to miss
 const toasts = new Set();
-function notify(body) {
-  if (!alive() || win.isVisible() || !Notification.isSupported()) return;
+function notify(body, force = false) {
+  if (!alive() || (win.isVisible() && !force) || !Notification.isSupported()) return;
   const n = new Notification({ title: body, silent: true }); // Windows already shows the app name above it (B16)
   // held until it is done: a collected Notification takes its click handler with it (N5)
   toasts.add(n);
@@ -333,6 +337,7 @@ const settings = async () => ({
   relay: store.relay !== false,
   claudePath: await findClaude(),
   showBranch: store.showBranch !== false,
+  modules: store.modules,
 });
 ipcMain.handle('settings-get', settings);
 ipcMain.handle('settings-set', async (_e, key, value) => {
@@ -348,6 +353,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     if (!store.relay) relay.cancelAll();
   }
   else if (key === 'showBranch') store.showBranch = !!value;
+  else if (key === 'modules') store.modules = normalizeModules(value, store.modules);
   save();
   return { ...(await settings()), error };
 });
@@ -419,6 +425,38 @@ ipcMain.handle('start', async (_e, { prompt, cwd, newSession, plan, model, sessi
   // only the chat's own session: no fallback to whatever ran last in this project (N9)
   return agent.start(prompt, cwd, newSession ? undefined : sessionId || undefined, { plan, model: model ?? undefined, claudePath });
 });
+// --- module data: userData/modules/<id>.json, written atomically; the id is checked in moduleFile (no path from the renderer)
+const modulesDir = path.join(app.getPath('userData'), 'modules');
+const unreadable = new Set(); // never overwrite module data we could not read (H2)
+const warn = (message) => dialog.showMessageBox({ type: 'warning', title: 'Nikki', message }).catch(() => {});
+ipcMain.handle('module-get', (_e, id) => {
+  const file = moduleFile(modulesDir, id);
+  try {
+    const data = readJson(file, (moved) => warn(`Die Daten von „${id}“ waren beschädigt und liegen jetzt unter\n${moved}\nDas Modul startet leer.`));
+    unreadable.delete(id);
+    return data ?? null;
+  } catch (e) {
+    unreadable.add(id);
+    warn(`Nikki kann ${file} nicht lesen (${e.code ?? e.message}). Bis zum Neustart speichert „${id}“ nichts.`);
+    throw e;
+  }
+});
+const moduleWriteFailed = new Set(); // one message per module and run of failures
+ipcMain.handle('module-set', (_e, id, data) => {
+  const file = moduleFile(modulesDir, id);
+  if (unreadable.has(id)) return false;
+  try {
+    writeJsonAtomic(file, data ?? null);
+    moduleWriteFailed.delete(id);
+    return true;
+  } catch (e) {
+    console.error(file, e);
+    if (!moduleWriteFailed.has(id)) warn(`Nikki kann „${id}“ nicht speichern: ${e.code ?? e.message}`);
+    moduleWriteFailed.add(id);
+    return false;
+  }
+});
+ipcMain.on('toast', (_e, text) => notify(String(text ?? '').slice(0, 200), true));
 ipcMain.on('open-external', (_e, url) => /^https?:\/\//i.test(url) && shell.openExternal(url));
 ipcMain.on('stop', () => agent.stop());
 ipcMain.on('permission-answer', (_e, { id, ...answer }) => {
