@@ -48,7 +48,8 @@ try {
   if (saved && typeof saved === 'object') store = { ...store, ...saved };
   store.projects = Array.isArray(store.projects) ? store.projects : [];
   store.favorites = { claude: store.favorites?.claude ?? [] };
-  store.chats = Array.isArray(store.chats) ? store.chats : [];
+  // 1.0 chats from Cursor or Gemini carry a session id Claude does not know
+  store.chats = (Array.isArray(store.chats) ? store.chats : []).map((c) => (c?.backend && c.backend !== 'claude' ? { ...c, backend: 'claude', sessionId: null } : c));
   store.lastChatId = store.lastChatId ?? null;
   delete store.sessions; // 1.0: last session per project, now only chats carry one (N9)
   delete store.backends;
@@ -89,7 +90,7 @@ const send = (channel, data) => {
 // --- toast while the island can't be seen (hidden via tray or behind a fullscreen app); the renderer plays the sound
 function notify(body) {
   if (!alive() || win.isVisible() || !Notification.isSupported()) return;
-  const n = new Notification({ title: 'Nikki', body, silent: true });
+  const n = new Notification({ title: body, silent: true }); // Windows already shows the app name above it (B16)
   n.on('click', showNow);
   n.show();
 }
@@ -312,7 +313,6 @@ ipcMain.handle('chats-save', (_e, chat) => {
     updatedAt: Date.now(),
   };
   store.chats = [next, ...(store.chats || []).filter((c) => c.id !== next.id)].slice(0, MAX_CHATS);
-  store.lastChatId = next.id;
   save();
   return store.chats;
 });

@@ -16,7 +16,7 @@ function setup(script, extra = {}) {
     onSession: () => {},
     askPermission: async () => ({ answer: 'allow' }),
     query: (args) => {
-      const ctl = { interrupted: false, signal: args.options.abortController.signal, n: calls.length };
+      const ctl = { interrupted: false, signal: args.options.abortController.signal, n: calls.length, options: args.options };
       calls.push(args);
       return Object.assign(script(ctl), { interrupt: async () => void (ctl.interrupted = true) });
     },
@@ -84,6 +84,22 @@ test('stop: interrupt, and the error result that follows reads as stopped withou
   await tick();
   assert.deepEqual(closing(), [{ state: 'idle', text: 'Nikki stoppte.' }]);
   assert.equal(agent.busy(), false);
+});
+
+test('plan denied with interrupt: the tool gets interrupt and the turn ends stopped, not as an error (B7)', async () => {
+  let reply;
+  const { agent, closing } = setup(
+    async function* (ctl) {
+      yield init;
+      reply = await ctl.options.canUseTool('ExitPlanMode', { plan: 'x' }, { signal: new AbortController().signal });
+      yield { type: 'result', subtype: 'error_during_execution', is_error: true, errors: [] };
+    },
+    { askPermission: async () => ({ answer: 'deny', message: 'Nenne sie notiz2.txt', interrupt: true }) },
+  );
+  agent.start('plan', '.', undefined, { plan: true });
+  await tick();
+  assert.deepEqual(reply, { behavior: 'deny', message: 'Nenne sie notiz2.txt', interrupt: true });
+  assert.deepEqual(closing(), [{ state: 'idle', text: 'Nikki stoppte.' }]);
 });
 
 test('stop: a CLI that ignores interrupt is aborted after killAfterMs (M5)', async () => {
