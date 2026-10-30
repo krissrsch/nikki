@@ -11,7 +11,7 @@ const PAGES = [
   ['today', 'Heute', '<rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />', 'look'],
   ['modules', 'Module', '<path d="M12 3 3 8l9 5 9-5z" /><path d="m3 13 9 5 9-5" />', 'box'],
   ['claude', 'Claude', '<path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" />', 'work'],
-  ['discord', 'Discord', '<path d="M4 14v-2a8 8 0 0 1 16 0v2" /><rect x="3" y="14" width="4" height="6" rx="1.5" /><rect x="17" y="14" width="4" height="6" rx="1.5" />', 'listen'],
+  ['discord', 'Discord', DISCORD_MARK, 'listen'],
   ['nikki', 'Nikki', '<path d="M5 20V8l3-4 2 3h4l2-3 3 4v12z" /><path d="M9.5 12v1M14.5 12v1" />', 'wave'],
   ['keys', 'Tastenkürzel', '<rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />', 'think'],
 ];

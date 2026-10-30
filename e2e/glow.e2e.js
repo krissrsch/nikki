@@ -165,7 +165,7 @@ describe('Notch und Glow', () => {
     await until(async () => (await page.locator('.dcRow').count()) === 2, 'Liste');
     assert.match(await page.textContent('.dcHead'), /Lounge.*Server.*2 Personen/s);
     assert.equal(await page.locator('.dcRow .talk').count(), 1);
-    assert.match(await page.textContent('#view-discord'), /stumm.*taub/s);
+    assert.deepEqual(await page.$$eval('.dcState', (s) => s.map((x) => x.title)), ['stumm', 'taub']);
 
     const s = await nikki.settings('discord');
     await s.fill('#setDiscordId', 'keine-zahl');
