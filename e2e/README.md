@@ -18,6 +18,7 @@ Während des Laufs erscheint die Insel kurz oben am Bildschirm. Läuft eine Voll
 | | B1: Code-Block, Inline-Code und Link aus einer gespeicherten Chat-Fixture bleiben unverfälscht |
 | | B2: Nach einem Projektwechsel geht keine fremde Session-ID an Claude, der alte Chat bleibt unverändert |
 | | B6: Enter im leeren Feld stoppt nichts, auch nicht bei offener Freigabe-Karte; der Stop-Knopf stoppt |
+| | Module: in den Settings aus- und wieder einschalten ändert Tabs und Kacheln ohne Neustart; ein To-do landet in `userData/modules/todo.json`; „An Chat“ füllt nur das Eingabefeld |
 | `claude.e2e.js` (nur mit `NIKKI_E2E_CLAUDE=1`) | Prompt, Freigabe erlauben (`node -e`), Freigabe ablehnen (`git init`), B4: Senden direkt nach „fertig“, B5: Stop ohne Diagnose-Text |
 
 Im Standardlauf ersetzt `fakeClaude()` (in `nikki.js`) die IPCs `start` und `stop` im Hauptprozess, und die Tests schicken Status und Freigaben selbst. Die Claude-Tests nutzen Haiku und kurze Prompts, also etwa sechs kleine Läufe über dein Abo.
