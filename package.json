@@ -42,7 +42,8 @@
       "!.agentos-task.md",
       "!helper/*.cs",
       "!helper/*.cmd",
-      "!helper/.gitignore"
+      "!helper/.gitignore",
+      "!helper/*.prev.exe"
     ],
     "win": {
       "target": "nsis",
