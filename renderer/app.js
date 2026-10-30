@@ -1166,6 +1166,7 @@ function applySettings(s) {
   $('autostartHint').hidden = s.autostartAvailable;
   if (!capturing) $('setHotkey').textContent = hotkeyLabel(s.hotkey);
   $('setSound').checked = !s.muted;
+  $('setAwake').checked = s.keepAwake;
   $('setSleep').value = s.sleepMin;
   $('setHooks').checked = s.hooks;
   $('setRelay').checked = s.relay;
@@ -1180,6 +1181,7 @@ function applySettings(s) {
 const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
 $('setAutostart').addEventListener('change', (e) => setSetting('autostart', e.target.checked));
 $('setSound').addEventListener('change', (e) => setSetting('muted', !e.target.checked));
+$('setAwake').addEventListener('change', (e) => setSetting('keepAwake', e.target.checked));
 $('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.target.value)));
 $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));
 $('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
