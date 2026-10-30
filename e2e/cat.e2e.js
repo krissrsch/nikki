@@ -111,11 +111,36 @@ describe('Nikki die Katze', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Einstellungen: eigenes Fenster mit Seitenleiste, jede Seite zeigt nur ihres, ein zweiter Klick öffnet kein zweites Fenster', async () => {
+    nikki = await launch();
+    const { page, app } = nikki;
+    const s = await nikki.settings();
+    assert.equal(await page.getAttribute('#notch', 'aria-expanded'), 'false', 'die Insel macht Platz');
+    assert.deepEqual(await s.$$eval('.sideBtn', (b) => b.map((x) => x.dataset.page)), ['general', 'notch', 'today', 'modules', 'claude', 'nikki', 'keys']);
+    for (const id of ['general', 'notch', 'today', 'modules', 'claude', 'nikki', 'keys']) {
+      await s.click(`.sideBtn[data-page="${id}"]`);
+      assert.deepEqual(await s.$$eval('.sPage:not([hidden])', (p) => p.map((x) => x.dataset.page)), [id]);
+      assert.equal(await s.getAttribute(`.sideBtn[data-page="${id}"]`, 'aria-current'), 'page');
+    }
+    assert.equal(await s.locator('#setModuleList .modRow').count(), 7, 'alle Module mit Icon und Schalter');
+    // Plätze zurücksetzen wirkt in der Insel
+    await page.evaluate(() => localStorage.setItem('nikki.catPlaces', '{"home":{"left":20,"top":100}}'));
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('.catRest').offsetLeft === 20);
+    await s.click('.sideBtn[data-page="nikki"]');
+    await s.click('#setCatPlaces');
+    await page.waitForFunction(() => document.querySelector('.catRest').offsetLeft !== 20);
+    await page.click('#openSettings');
+    await page.waitForTimeout(400);
+    assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length), 2);
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('die Lichtkante läuft über den ganzen Bildschirm: das Fenster ist so breit wie die Anzeige', async () => {
     nikki = await launch();
     const { app } = nikki;
     const { win, display } = await app.evaluate(({ BrowserWindow, screen }) => {
-      const w = BrowserWindow.getAllWindows()[0].getBounds();
+      const w = BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop()).getBounds();
       return { win: w, display: screen.getDisplayMatching(w).bounds };
     });
     assert.equal(win.x, display.x);

@@ -53,7 +53,7 @@ async function rememberLastChat(id) {
 }
 let view = 'home';
 let cat = null; // Nikki the cat (cat.js), created once the page exists
-const VIEWS = { home: 'viewHome', chat: 'viewChat', settings: 'viewSettings' }; // + one per module switched on
+const VIEWS = { home: 'viewHome', chat: 'viewChat' }; // + one per module switched on
 
 function setView(name) {
   // Permission card lives in Chat — never leave it while a prompt is waiting
@@ -64,7 +64,6 @@ function setView(name) {
     btn.setAttribute('aria-pressed', String(btn.dataset.view === view));
   }
   if (view === 'chat' && open && !perms.length) promptEl.focus(); // a waiting card keeps the keyboard (its hotkeys)
-  if (view === 'settings') api.settingsGet().then(applySettings); // autostart or the Claude path may have changed outside
   if (view === 'home') for (const id of live.keys()) renderTile(id); // "in 12 min" and co. are as old as the last look
   if (live.has(view)) NikkiModules.get(view).page($(VIEWS[view]), live.get(view));
   cat?.setView(view);
@@ -137,7 +136,7 @@ function renderWeather(w) {
   let parts;
   if (!w) {
     const ask = h('button', { type: 'button', className: 'glassBtn' }, 'Stadt eintragen');
-    ask.addEventListener('click', () => (setView('settings'), $('setCity').focus()));
+    ask.addEventListener('click', () => openSettings('today'));
     parts = [head('Wetter'), hint('Stadt in den Einstellungen eintragen, dann zeigt Nikki hier das Wetter.'), ask];
   } else if (!Number.isFinite(w.temp)) {
     const why = w.error === 'notfound' ? `„${w.query}“ kennt der Wetterdienst nicht. Vielleicht mit anderer Schreibweise?` : w.error ? 'Gerade kommt kein Wetter durch. Nikki versucht es später wieder.' : 'Nikki holt das Wetter…';
@@ -1144,7 +1143,8 @@ document.addEventListener('drop', (e) => {
 $('notch').addEventListener('click', () => setOpen(true));
 $('tabs').addEventListener('click', (e) => {
   const btn = e.target.closest('.tab');
-  if (btn) goView(btn.dataset.view);
+  if (btn?.id === 'openSettings') openSettings();
+  else if (btn) goView(btn.dataset.view);
   else setOpen(false); // the empty strip closes the island, like the old bar did
 });
 $('toChat').addEventListener('click', () => goView('chat'));
@@ -1167,43 +1167,18 @@ function applySettings(s) {
     showBranch = s.showBranch;
     refreshBranch();
   }
-  $('setAutostart').checked = s.autostart;
-  $('setAutostart').disabled = !s.autostartAvailable;
-  $('autostartHint').hidden = s.autostartAvailable;
-  if (!capturing) $('setHotkey').textContent = hotkeyLabel(s.hotkey);
-  $('setSound').checked = !s.muted;
-  $('setAwake').checked = s.keepAwake;
-  $('setSleep').value = s.sleepMin;
-  $('setHooks').checked = s.hooks;
-  $('setRelay').checked = s.relay;
-  $('setRelay').disabled = !s.hooks;
-  $('setClaudePath').textContent = s.claudePath || 'nicht gefunden';
-  $('setClaudePath').title = s.claudePath || '';
-  $('setClaudePath').classList.toggle('bad', !s.claudePath);
-  $('setBranch').checked = s.showBranch;
-  $('setGlow').checked = s.glow;
-  $('setCatJump').checked = s.catJump;
-  $('setGlowLevel').value = s.glowLevel;
-  $('setGlowLevel').disabled = !s.glow;
-  if (document.activeElement !== $('setCity')) $('setCity').value = s.weatherCity;
   glowEl.dataset.level = s.glowLevel;
   showSpectrum();
   applyModules(s.modules);
   renderGlance();
 }
-const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
-$('setAutostart').addEventListener('change', (e) => setSetting('autostart', e.target.checked));
-$('setSound').addEventListener('change', (e) => setSetting('muted', !e.target.checked));
-$('setAwake').addEventListener('change', (e) => setSetting('keepAwake', e.target.checked));
-$('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.target.value)));
-$('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));
-$('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
-$('setBranch').addEventListener('change', (e) => setSetting('showBranch', e.target.checked));
-$('setCatJump').addEventListener('change', (e) => setSetting('catJump', e.target.checked));
-$('setCatPlaces').addEventListener('click', () => cat.resetPlaces());
-$('setGlow').addEventListener('change', (e) => setSetting('glow', e.target.checked));
-$('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));
-$('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));
+api.onSettingsChanged(applySettings);
+api.onCatReset(() => cat.resetPlaces());
+// the settings have their own window; the always-on-top island must not cover it
+function openSettings(page) {
+  setOpen(false);
+  api.openSettings(page);
+}
 
 // ---- modules (modules.js): tab, page and Home tile for each one switched on; switching works without a restart
 let modList = []; // [{ id, on }] in tab order, the switched off ones too (settings page)
@@ -1292,87 +1267,8 @@ function applyModules(saved) {
   $('moduleTabs').replaceChildren(...on.map((id) => moduleTab(NikkiModules.get(id))));
   $('homeTiles').append(...on.filter((id) => tileOf.has(id)).map((id) => tileOf.get(id)));
   for (const id of on) renderTile(id);
-  renderModuleSettings();
   if (!VIEWS[view]) setView('home');
 }
-function renderModuleSettings() {
-  const box = $('setModuleList');
-  const had = document.activeElement?.closest?.('#setModuleList [data-key]')?.dataset.key; // keep the focus across the re-render
-  const control = (el, key) => ((el.dataset.key = key), el);
-  box.replaceChildren(
-    ...modList.map((m, i) => {
-      const mod = NikkiModules.get(m.id);
-      const name = Object.assign(document.createElement('label'), { className: 'modName', htmlFor: `mod-${m.id}` });
-      name.innerHTML = mod.icon;
-      name.append(mod.title);
-      const move = (d, label, path) => {
-        const b = control(button('', 'iconBtn', () => moveModule(i, d)), `${m.id}:${d}`);
-        b.innerHTML = svg(path);
-        b.title = label;
-        b.setAttribute('aria-label', `${mod.title} ${label}`);
-        b.disabled = !modList[i + d];
-        return b;
-      };
-      const sw = control(Object.assign(document.createElement('input'), { type: 'checkbox', className: 'switch', id: `mod-${m.id}`, checked: m.on }), `${m.id}:on`);
-      sw.setAttribute('role', 'switch');
-      sw.addEventListener('change', () => setSetting('modules', modList.map((x) => (x.id === m.id ? { ...x, on: sw.checked } : x))));
-      const row = Object.assign(document.createElement('div'), { className: 'setRow modRow' });
-      row.append(name, move(-1, 'nach oben', 'M4.5 9.5 8 6l3.5 3.5'), move(1, 'nach unten', 'M4.5 6.5 8 10l3.5-3.5'), sw);
-      return row;
-    }),
-  );
-  const again = had && box.querySelector(`[data-key="${had}"]`);
-  (again && !again.disabled ? again : again?.parentElement.querySelector('.switch'))?.focus();
-}
-function moveModule(i, d) {
-  const list = [...modList];
-  [list[i], list[i + d]] = [list[i + d], list[i]];
-  setSetting('modules', list);
-}
-
-// hotkey: click, then press the new combo; main keeps the old one when the new one is taken
-let capturing = false;
-const hotkeyBtn = $('setHotkey');
-const hotkeyMsg = (text, bad = false) => {
-  $('hotkeyMsg').textContent = text;
-  $('hotkeyMsg').classList.toggle('bad', bad);
-};
-function stopCapture() {
-  if (!capturing) return;
-  capturing = false;
-  removeEventListener('keydown', onHotkeyKey, true);
-  hotkeyBtn.setAttribute('aria-pressed', 'false');
-  hotkeyBtn.textContent = hotkeyLabel(settings.hotkey);
-}
-async function onHotkeyKey(e) {
-  e.preventDefault();
-  e.stopPropagation(); // Escape cancels here, it must not close the island
-  if (e.key === 'Escape') {
-    stopCapture();
-    return hotkeyMsg('');
-  }
-  const acc = acceleratorFor(e);
-  if (!acc) return; // modifiers alone so far, or a key that cannot be a hotkey
-  stopCapture();
-  const s = await api.settingsSet('hotkey', acc);
-  applySettings(s);
-  if (s.error === 'taken') hotkeyMsg(`${hotkeyLabel(acc)} ist schon belegt. Nikki bleibt bei ${hotkeyLabel(s.hotkey)}.`, true);
-  else if (s.error) hotkeyMsg(`${hotkeyLabel(acc)} kann Windows nicht belegen.`, true);
-  else hotkeyMsg(`Nikki hört jetzt auf ${hotkeyLabel(s.hotkey)}.`);
-}
-hotkeyBtn.addEventListener('click', () => {
-  if (capturing) return stopCapture();
-  capturing = true;
-  hotkeyBtn.setAttribute('aria-pressed', 'true');
-  hotkeyBtn.textContent = 'Drück die Tasten…';
-  hotkeyMsg('Esc bricht ab.');
-  addEventListener('keydown', onHotkeyKey, true);
-});
-hotkeyBtn.addEventListener('blur', () => {
-  if (!capturing) return;
-  stopCapture();
-  hotkeyMsg('');
-});
 $('chatsBtn')?.addEventListener('click', (e) => {
   e.stopPropagation();
   if (chatsMenu && !chatsMenu.hidden) closeChatsMenu();

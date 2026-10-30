@@ -28,13 +28,13 @@ describe('Zwischenablage', () => {
     nikki = await launch();
     const { page, app } = nikki;
     const file = path.join(nikki.userData, 'clipboard.json');
-    await page.click('#tabs .tab[data-view="settings"]');
-    assert.equal(await page.isChecked('#mod-clipboard'), false, 'ab Werk aus');
+    const s = await nikki.settings('modules');
+    assert.equal(await s.isChecked('#mod-clipboard'), false, 'ab Werk aus');
     assert.equal(await page.locator('#moduleTabs .tab[data-view="clipboard"]').count(), 0);
 
     // on the clipboard as Nikki is switched on: a copy a password manager marked as not for monitors
     setClipboardText(SECRET, { exclude: true });
-    await page.click('#mod-clipboard');
+    await s.click('#mod-clipboard');
     await page.waitForSelector('#moduleTabs .tab[data-view="clipboard"]');
     await page.waitForTimeout(1500); // one look at the marked copy
     setClipboardText(FIRST);

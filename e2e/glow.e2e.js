@@ -9,7 +9,7 @@ afterEach(async () => {
   await nikki?.close();
   nikki = null;
 });
-const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d]) => BrowserWindow.getAllWindows()[0].webContents.send(c, d), [channel, data]);
+const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d]) => BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop()).webContents.send(c, d), [channel, data]);
 const glow = () => nikki.page.getAttribute('#glow', 'data-glow');
 const close = async () => {
   await nikki.page.keyboard.press('Escape');
@@ -46,20 +46,18 @@ describe('Notch und Glow', () => {
     await until(async () => (await look()).opacity === '1', 'Kante sichtbar');
 
     await page.click('#notch');
-    await page.click('#tabs .tab[data-view="settings"]');
-    assert.equal(await page.isChecked('#setGlow'), true, 'ab Werk an');
-    await page.selectOption('#setGlowLevel', 'kraeftig');
+    const s = await nikki.settings('notch');
+    assert.equal(await s.isChecked('#setGlow'), true, 'ab Werk an');
+    await s.selectOption('#setGlowLevel', 'kraeftig');
     await until(() => nikki.state().glowLevel === 'kraeftig', 'Stärke gespeichert');
-    assert.equal(await page.getAttribute('#glow', 'data-level'), 'kraeftig');
-    await page.click('#setGlow');
+    await until(async () => (await page.getAttribute('#glow', 'data-level')) === 'kraeftig', 'die Insel übernimmt die Stärke');
+    await s.click('#setGlow');
     await until(async () => (await glow()) === '', 'Leuchten aus');
     assert.equal(nikki.state().glow, false);
-    assert.equal(await page.isDisabled('#setGlowLevel'), true);
-    await close();
+    assert.equal(await s.isDisabled('#setGlowLevel'), true);
     await page.waitForTimeout(700);
     assert.equal((await look()).opacity, '0', 'needs you, but no edge');
-    await page.click('#notch');
-    await page.click('#setGlow');
+    await s.click('#setGlow');
     await until(async () => (await glow()) === 'need', 'Leuchten wieder an');
     assert.deepEqual(nikki.errors, []);
   });
