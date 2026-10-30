@@ -137,13 +137,14 @@ async function onHotkeyKey(e) {
     stopCapture();
     return keyMsg(entry, '');
   }
-  const clear = close && e.key === 'Backspace' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey;
-  const acc = clear ? '' : close && e.key === 'Escape' ? 'Escape' : acceleratorFor(e);
+  const plain = close && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey;
+  const clear = plain && e.key === 'Backspace';
+  const acc = clear ? '' : plain && e.key === 'Escape' ? 'Escape' : acceleratorFor(e);
   if (acc === null) return; // modifiers alone so far, or a key that cannot be a hotkey
   stopCapture();
   const s = await api.settingsSet(entry.key, acc);
   applySettings(s);
-  if (s.error === 'taken') keyMsg(entry, `${hotkeyLabel(acc)} ist schon belegt. Nikki bleibt bei ${hotkeyLabel(s[entry.key])}.`, true);
+  if (s.error === 'taken') keyMsg(entry, `${hotkeyLabel(acc)} ist schon belegt.${close ? '' : ` Nikki bleibt bei ${hotkeyLabel(s.hotkey)}.`}`, true);
   else if (s.error) keyMsg(entry, `${hotkeyLabel(acc)} kann Windows nicht belegen.`, true);
   else keyMsg(entry, clear ? '' : entry.tell(hotkeyLabel(s[entry.key])));
 }
