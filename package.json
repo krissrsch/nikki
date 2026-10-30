@@ -10,7 +10,8 @@
     "test": "node --test",
     "dist": "electron-builder --win",
     "pack": "electron-builder --win --dir",
-    "release": "npm run dist && gh release create \"v%npm_package_version%\" Nikki-Setup.exe --title \"Nikki %npm_package_version%\" --generate-notes"
+    "release": "npm run dist && gh release create \"v%npm_package_version%\" Nikki-Setup.exe --title \"Nikki %npm_package_version%\" --generate-notes",
+    "e2e": "node --test --test-concurrency=1 e2e/*.e2e.js"
   },
   "build": {
     "appId": "local.nikki",
@@ -33,7 +34,8 @@
       "!*.blockmap",
       "!builder-*.yml",
       "!latest.yml",
-      "!node_modules/@anthropic-ai/claude-agent-sdk-win32-x64/**"
+      "!node_modules/@anthropic-ai/claude-agent-sdk-win32-x64/**",
+      "!e2e/**"
     ],
     "win": {
       "target": "nsis",
@@ -57,6 +59,7 @@
   },
   "devDependencies": {
     "electron": "^45.0.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "playwright": "1.64.1"
   }
 }
