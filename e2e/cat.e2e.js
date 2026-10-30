@@ -91,6 +91,26 @@ describe('Nikki die Katze', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Töne: jeder klingt, keiner übersteuert, jeder verklingt von selbst', async () => {
+    nikki = await launch();
+    const levels = await nikki.page.evaluate(async () => {
+      const out = {};
+      for (const name of Object.keys(NIKKI_SOUNDS)) {
+        const ctx = new OfflineAudioContext(1, 44100 * 2, 44100);
+        playSound(ctx, soundRoom(ctx), name);
+        const d = (await ctx.startRendering()).getChannelData(0);
+        const peak = (from, to) => d.subarray(from, to).reduce((m, x) => Math.max(m, Math.abs(x)), 0);
+        out[name] = { peak: peak(0, d.length), end: peak(44100 * 1.7, d.length) };
+      }
+      return out;
+    });
+    for (const [name, l] of Object.entries(levels)) {
+      assert.ok(l.peak > 0.05 && l.peak < 0.5, `${name}: ${l.peak}`);
+      assert.ok(l.end < 0.002, `${name} klingt aus: ${l.end}`);
+    }
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('die Lichtkante läuft über den ganzen Bildschirm: das Fenster ist so breit wie die Anzeige', async () => {
     nikki = await launch();
     const { app } = nikki;
