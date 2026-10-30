@@ -117,6 +117,41 @@ function renderHome() {
   $('claudeSessions').replaceChildren(...nodes);
 }
 
+// ---- weather tile: main fetches it (Open-Meteo, lib/weather.js); null = no city yet
+const WEATHER_ICON = {
+  sun: '<circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />',
+  moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />',
+  partly: '<path d="M12 2v2M4.9 4.9l1.4 1.4M20 12h2M19.1 4.9l-1.4 1.4M15.9 12.7a4 4 0 0 0-5.9-4.1" /><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6z" />',
+  cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 1 1 0 9z" />',
+  fog: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2" /><path d="M16 17H7M17 21H9" />',
+  drizzle: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2" /><path d="M8 19v1M8 14v1M16 19v1M16 14v1M12 21v1M12 16v1" />',
+  rain: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2" /><path d="M16 14v6M8 14v6M12 16v6" />',
+  snow: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2" /><path d="M8 15h.01M8 19h.01M12 17h.01M12 21h.01M16 15h.01M16 19h.01" />',
+  storm: '<path d="M6 16.3A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 .5 9" /><path d="m13 12-3 5h4l-3 5" />',
+};
+function renderWeather(w) {
+  const head = (name, meta) => h('div', { className: 'tileHead', innerHTML: `<svg class="hi" viewBox="0 0 24 24" aria-hidden="true">${WEATHER_ICON[w?.icon] ?? WEATHER_ICON.sun}</svg>` }, name, meta && h('span', {}, meta));
+  const hint = (text) => h('p', { className: 'tileHint' }, text);
+  let parts;
+  if (!w) {
+    const ask = h('button', { type: 'button', className: 'glassBtn' }, 'Stadt eintragen');
+    ask.addEventListener('click', () => (setView('settings'), $('setCity').focus()));
+    parts = [head('Wetter'), hint('Stadt in den Einstellungen eintragen, dann zeigt Nikki hier das Wetter.'), ask];
+  } else if (!Number.isFinite(w.temp)) {
+    const why = w.error === 'notfound' ? `„${w.query}“ kennt der Wetterdienst nicht. Vielleicht mit anderer Schreibweise?` : w.error ? 'Gerade kommt kein Wetter durch. Nikki versucht es später wieder.' : 'Nikki holt das Wetter…';
+    parts = [head(w.query), hint(why)];
+  } else {
+    // offline: the last answer with its time
+    const stale = w.error && Number.isFinite(w.at) ? ` · Stand ${new Date(w.at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : '';
+    parts = [
+      head(w.place?.name || w.query, Number.isFinite(w.max) && Number.isFinite(w.min) ? `H ${w.max}° · T ${w.min}°` : ''),
+      h('div', { className: 'wNow' }, h('span', { className: 'wTemp' }, `${w.temp}°`), h('span', { className: 'wText' }, `${w.text}${stale}`)),
+      h('div', { className: 'wHours' }, ...(w.hours ?? []).map((x) => h('span', {}, x.h, h('b', {}, `${x.temp}°`)))),
+    ];
+  }
+  $('weatherTile').replaceChildren(...parts);
+}
+
 const folderName = (p) => {
   const s = String(p ?? '').trim();
   if (!s) return 'Projekt';
@@ -1243,14 +1278,6 @@ function moduleCtx(mod) {
       promptEl.value = [promptEl.value.trim(), text].filter(Boolean).join('\n\n');
       promptEl.focus();
     },
-    // the module's name opens its page (keyboard path; a click anywhere on the tile does the same), meta on the right
-    head: (meta = '', tone = '') => {
-      const b = button(mod.title, 'tileHead', ctx.open);
-      const m = b.appendChild(document.createElement('span'));
-      m.textContent = meta;
-      if (tone) m.className = tone;
-      return b;
-    },
   };
   return ctx;
 }
@@ -1296,6 +1323,7 @@ function applyModules(saved) {
     VIEWS[id] = page.id;
     if (mod.tile) {
       const tile = Object.assign(document.createElement('div'), { className: 'tile modTile' });
+      tile.dataset.tile = id; // its place on Home (style.css)
       tile.addEventListener('click', (e) => !e.target.closest('button, input, label, a, textarea, select') && ctx.open());
       tileOf.set(id, tile);
     }
@@ -1309,7 +1337,7 @@ function applyModules(saved) {
         if (view === id) mod.page(page, ctx);
       });
   }
-  // tabs and tiles follow the order of the list; append moves an existing tile into place
+  // tabs follow the order of the list; the tiles keep their fixed place on Home
   $('moduleTabs').replaceChildren(...on.map((id) => moduleTab(NikkiModules.get(id))));
   $('homeTiles').append(...on.filter((id) => tileOf.has(id)).map((id) => tileOf.get(id)));
   for (const id of on) renderTile(id);
@@ -1516,6 +1544,8 @@ api.onPermissionCancel((id) => {
   setView('home');
   const state = await api.getState();
   applySettings(await api.settingsGet()); // before the hello meow so mute is respected
+  api.onWeather(renderWeather);
+  renderWeather(await api.weatherGet());
   projects = state.projects;
   models = state.models ?? {};
   terminal = state.terminal;

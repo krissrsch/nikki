@@ -13,6 +13,8 @@
   --accent: #a9e7bd;
   --warn: #ffc861;
   --bad: #ff8a8a;
+  --glass-sub: #c3c4cb; /* secondary text on the glass tiles */
+  --warn-soft: #ffd98f;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -272,45 +274,104 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 .nikkiBlob.needsYou { filter: drop-shadow(0 0 12px rgb(255 180 80 / 0.45)); }
 .nikkiBlob.happy { filter: drop-shadow(0 0 12px rgb(243 161 170 / 0.35)); }
 
-.tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+/* glass (canvas Glas): see-through tiles with a fine light edge over a soft neutral shimmer; colour only from content */
+.shimmer { position: absolute; inset: 0; pointer-events: none; }
+.shimmer span { position: absolute; border-radius: 50%; background: #fff; filter: blur(80px); }
+.shimmer span:first-child { top: -60px; left: -80px; width: 420px; height: 260px; opacity: 0.07; }
+.shimmer span:last-child { right: -60px; bottom: -80px; width: 380px; height: 240px; opacity: 0.05; }
+body:not([data-view='home']) .shimmer { display: none; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .tile {
-  grid-column: span 2; /* three per row */
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 140px;
+  height: 164px;
   box-sizing: border-box;
-  padding: 14px;
-  border-radius: 16px;
-  background: var(--card);
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 20px;
+  background: linear-gradient(155deg, rgb(255 255 255 / 0.11), rgb(255 255 255 / 0.035) 45%, rgb(255 255 255 / 0.06));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 10px 30px rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(18px) saturate(1.5);
 }
-/* a short last row is filled: two tiles share it, a single one takes it whole */
-.tile:last-child:nth-child(3n + 1) { grid-column: span 6; }
-.tile:last-child:nth-child(3n + 2),
-.tile:nth-last-child(2):nth-child(3n + 1) { grid-column: span 3; }
+/* fixed places, whatever the module order: Claude, Musik / Wetter, Kalender */
+.tile[data-tile='claude'] { order: 1; }
+.tile[data-tile='music'] { order: 2; }
+.tile[data-tile='weather'] { order: 3; }
+.tile[data-tile='calendar'] { order: 4; flex-direction: row; justify-content: flex-start; gap: 18px; }
 .modTile { cursor: pointer; }
-.tileHead { display: flex; align-items: center; font-size: 12px; color: var(--muted); }
-button.tileHead { flex: none; padding: 0; border: 0; background: none; text-align: left; }
-.tileHead span { margin-left: auto; }
-.tileHead .warn { color: var(--warn); }
+.tileHead { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; font-weight: 600; }
+.tileHead span { flex: none; margin-left: auto; color: var(--glass-sub); font-size: 12px; font-weight: 400; }
+.hi { flex: none; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .tileStack { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tileBig { overflow: hidden; font-size: 17px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.tileSub { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.tileNum { font-size: 28px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.tileCheck { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; }
-.tileCheck input { flex: none; margin: 0; }
-.tileCheck span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tileCheck.done { color: var(--muted); }
-.tileNote { display: -webkit-box; margin: 0; overflow: hidden; font-size: 12px; line-height: 17px; white-space: pre-line; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
-.tileNote.empty { color: var(--muted); }
-.btn.go { color: var(--accent); }
-.tileList { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
-.tileHint { margin: 0; font-size: 12px; color: var(--muted); }
-.sRow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tileSub { overflow: hidden; color: var(--glass-sub); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.tileList { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.tileHint { margin: 0; color: var(--glass-sub); font-size: 12px; line-height: 1.45; }
+.glassBtn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.08);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 0.15s ease, scale 0.12s var(--ease-out);
+}
+.glassBtn:active { scale: 0.97; }
+@media (hover: hover) and (pointer: fine) {
+  .glassBtn:hover { background: rgb(255 255 255 / 0.14); }
+}
+.sRow { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sState { flex: none; margin-left: auto; color: var(--muted); }
-.sState[data-state='needsYou'] { color: var(--warn); }
+.sState { flex: none; margin-left: auto; color: var(--glass-sub); }
+.sState[data-state='needsYou'] { color: var(--warn-soft); }
 .sState[data-state='error'] { color: var(--bad); }
+.sRow .sDot[data-state='needsYou'] { box-shadow: 0 0 10px var(--warn); }
+/* Wetter: faint rings top right, the temperature big, four hours below */
+.tile.weather::before {
+  content: '';
+  position: absolute;
+  top: -70px;
+  right: -70px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, rgb(255 255 255 / 0.07) 0 1px, transparent 1px 14px);
+  mask-image: radial-gradient(circle, #000 30%, transparent 70%);
+  pointer-events: none;
+}
+.tile.weather > * { position: relative; }
+.wNow { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.wTemp { font-size: 44px; font-weight: 300; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.wText { overflow: hidden; color: var(--glass-sub); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.wHours { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; color: var(--glass-sub); font-size: 12px; font-variant-numeric: tabular-nums; }
+.wHours span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.wHours b { color: #fff; font-weight: 600; }
+.tile.weather .glassBtn { align-self: flex-start; }
+/* Kalender: today big on the left, the next two of today beside it */
+.calToday { display: flex; flex: none; flex-direction: column; justify-content: space-between; width: 96px; }
+.calWeekday { color: var(--glass-sub); font-size: 13px; font-weight: 600; }
+.calNum { font-size: 56px; font-weight: 300; letter-spacing: -0.04em; line-height: 0.9; font-variant-numeric: tabular-nums; }
+.calNext { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 8px; min-width: 0; }
+.calChip { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid transparent; border-radius: 12px; background: rgb(255 255 255 / 0.05); }
+.calChip:first-child { border-color: rgb(255 255 255 / 0.12); background: rgb(255 255 255 / 0.08); }
+.calChipTitle { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.calChipTime { color: var(--glass-sub); font-size: 12px; font-variant-numeric: tabular-nums; }
+.calChipTime.soon { color: var(--warn-soft); }
+/* Musik: cover 92, title, artist · app, a thin progress line, back/play/next 30/36/30 */
+.tile.musicTile { flex-direction: row; justify-content: flex-start; align-items: center; gap: 14px; }
+.musicTile .tileCover { width: 92px; height: 92px; border-radius: 14px; box-shadow: 0 10px 24px rgb(0 0 0 / 0.5); }
+.musicTileMain { display: flex; flex: 1; flex-direction: column; gap: 10px; min-width: 0; }
+.musicTileTitle { overflow: hidden; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
+.musicTile .musicTrack { flex: none; height: 3px; background: rgb(255 255 255 / 0.16); }
+.musicTile .mBtn { width: 30px; height: 30px; background: rgb(255 255 255 / 0.1); }
+.musicTile .mBtn.play { width: 36px; height: 36px; background: var(--text); }
+.musicTile .mi { width: 12px; height: 12px; }
+.musicTile .mBtn.play .mi { width: 14px; height: 14px; }
 
 /* ---------- Chat ---------- */
 .chatHead { position: relative; z-index: 2; display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -1043,7 +1104,6 @@ kbd.key {
 .musicPage { display: flex; align-items: center; gap: 18px; }
 .musicCover { display: grid; flex: none; place-items: center; width: 124px; height: 124px; border-radius: 16px; background: var(--raised); color: var(--muted); object-fit: cover; }
 .musicCover.small { width: 44px; height: 44px; border-radius: 10px; }
-.musicCover.mini { width: 40px; height: 40px; border-radius: 8px; }
 .musicCover.none .ti { width: 40%; height: 40%; }
 .musicMain { display: flex; flex: 1; flex-direction: column; gap: 14px; min-width: 0; }
 .musicHead { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
@@ -1051,16 +1111,13 @@ kbd.key {
 .musicSub { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .musicBar { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .musicTrack { display: block; flex: 1; height: 4px; overflow: hidden; border-radius: 2px; background: var(--raised-hover); }
-.musicTrack.thin { height: 3px; }
 .musicFill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--text); }
 .musicCtrl { display: flex; align-items: center; gap: 8px; }
 .mBtn { display: grid; flex: none; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--raised); color: var(--text); transition: background-color 0.15s ease, scale 0.12s var(--ease-out); }
 .mBtn.play { width: 44px; height: 44px; background: var(--text); color: #000; }
-.mBtn.play.small { width: 28px; height: 28px; }
 .mBtn:active { scale: 0.95; }
 .mi { width: 14px; height: 14px; fill: currentColor; }
 .mBtn.play .mi { width: 16px; height: 16px; }
-.mBtn.small .mi { width: 11px; height: 11px; }
 .mBtn.mute { width: 30px; height: 30px; background: transparent; color: var(--muted); }
 .mBtn.mute[aria-pressed='true'] { color: var(--bad); }
 .musicVolume { display: flex; flex: none; align-items: center; gap: 6px; }
@@ -1069,8 +1126,6 @@ kbd.key {
 .musicEmpty { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; background: var(--card); }
 .musicEmpty .musicTitle { font-size: 15px; }
 .musicEmpty .musicSub { font-size: 12px; white-space: normal; }
-.musicRow { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.musicTileTitle { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 @media (hover: hover) and (pointer: fine) {
   .mBtn:not(.play):hover { background: var(--raised-hover); color: var(--text); }
   .mBtn.play:hover { background: #fff; }
@@ -1098,12 +1153,9 @@ kbd.key {
 .clipText { flex: 1; min-width: 0; height: 32px; padding: 0 8px; overflow: hidden; border: 0; border-radius: 8px; background: none; font-size: 13px; text-align: left; text-overflow: ellipsis; white-space: nowrap; transition: background-color 0.15s ease; }
 .clipWhen { flex: none; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .clipRow .iconBtn { width: 28px; height: 28px; color: var(--faint); }
-.clipTile span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (hover: hover) and (pointer: fine) {
   .clipText:hover { background: var(--raised); }
 }
-.shelfRow { display: flex; gap: 8px; }
-.shelfRow .shelfThumb { width: 36px; height: 36px; }
 @media (hover: hover) and (pointer: fine) {
   .shelfItem:hover { background: var(--raised); }
 }

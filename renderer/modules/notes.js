@@ -142,13 +142,5 @@ function notesWhen(at, now) {
       root = el;
       render();
     },
-    tile(el, c) {
-      const top = data.sheets[Math.min(data.idx, n() - 1)];
-      el.append(
-        c.head(n() === 1 ? '1 Blatt' : `${n()} Blätter`),
-        h('p', { className: `tileNote${top?.text.trim() ? '' : ' empty'}` }, top?.text.trim() || (n() ? 'Leeres Blatt' : 'Der Block ist leer')),
-        h('button', { type: 'button', className: 'btn', onclick: () => (c.open(), newSheet()) }, 'Neues Blatt'),
-      );
-    },
   });
 })();

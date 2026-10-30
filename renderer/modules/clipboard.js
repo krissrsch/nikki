@@ -89,14 +89,5 @@
       info = '';
       render();
     },
-    tile(el, c) {
-      const last = state.items.slice(0, 3);
-      el.append(c.head(last.length ? count(state.items.length) : ''));
-      if (!last.length) {
-        el.append(h('span', { className: 'tileBig' }, 'Leer'), h('span', { className: 'tileSub' }, 'Kopierter Text landet hier'));
-        return;
-      }
-      el.append(h('div', { className: 'tileList clipTile' }, ...last.map((x) => h('span', { title: x.text.slice(0, 400) }, line(x.text)))));
-    },
   });
 })();

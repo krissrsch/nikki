@@ -2,7 +2,7 @@
 // Classic script (globals) like glance.js. A module file keeps its internals in a function scope: all scripts share one global scope.
 // def: { id, title, icon, page(el, ctx), tile?(el, ctx), glance?(ctx), start?(ctx), stop?(), drop?({ paths, text }) }
 //   icon: SVG markup from the module's own code, never user content (it goes in via innerHTML)
-//   page: renders the module page into el, every time it is shown · tile: renders its Home tile into el (a .tile)
+//   page: renders the module page into el, every time it is shown · tile: only for a Home tile (music, calendar), renders it into el (a .tile)
 //   glance: inputs for glance() in the closed notch, e.g. { music } · start/stop: load data, run timers while it is on
 //   drop: takes files or text dropped on the island while the chat tab is not open (the shelf); its page opens first
 const NikkiModules = new Map();

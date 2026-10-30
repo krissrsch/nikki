@@ -35,6 +35,7 @@
 
       <!-- open: the island; its height follows #panelBox -->
       <div id="panel">
+        <div class="shimmer" aria-hidden="true"><span></span><span></span></div><!-- soft neutral light behind the glass of Home -->
         <div id="panelBox">
           <nav id="tabs" aria-label="Ansichten">
             <button type="button" class="tab" data-view="home" aria-pressed="true" aria-label="Heute" title="Heute">
@@ -108,12 +109,14 @@
               </div>
               <div class="greet"><strong id="greet">Hallo</strong><span id="today"></span></div>
             </div>
-            <div class="tiles" id="homeTiles"><!-- Claude first, then one tile per module switched on -->
-              <div class="tile">
-                <div class="tileHead">Claude<span id="claudeMeta"></span></div>
+            <!-- four glass tiles (canvas Glas): Claude, Musik, Wetter, Kalender; music and calendar only while their module is on (app.js) -->
+            <div class="tiles" id="homeTiles">
+              <div class="tile" data-tile="claude">
+                <div class="tileHead"><svg class="hi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" /></svg>Claude<span id="claudeMeta"></span></div>
                 <div id="claudeSessions" class="tileList"></div>
-                <button id="toChat" type="button" class="btn">Zum Chat</button>
+                <button id="toChat" type="button" class="glassBtn">Zum Chat</button>
               </div>
+              <div class="tile weather" data-tile="weather" id="weatherTile"></div>
             </div>
           </section>
 

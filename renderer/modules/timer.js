@@ -37,7 +37,7 @@ function timerText(ms) {
     save();
     render();
   }
-  // every second while it runs: the numbers on page and tile, the ring; at zero chime and toast
+  // every second while it runs: the numbers and the ring; at zero chime and toast
   function step() {
     if (timerLeft(t, Date.now()) > 0) return paint();
     const focus = label() === 'Fokus';
@@ -95,13 +95,6 @@ function timerText(ms) {
     page(el) {
       root = el;
       render();
-    },
-    tile(el, c) {
-      el.append(
-        c.head(label()),
-        h('span', { className: 'tileNum timerText' }, timerText(timerLeft(t, Date.now()))),
-        h('button', { type: 'button', className: 'btn go', onclick: toggle }, goLabel()),
-      );
     },
   });
 })();
