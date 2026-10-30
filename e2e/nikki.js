@@ -28,8 +28,8 @@ export async function until(fn, what, ms = 10000) {
 export async function launch({ state, settings, realHome = false } = {}) {
   const userData = tmpDir('data');
   const home = realHome ? null : tmpDir('home');
-  // no jump between tabs in the tests: the page switches at once, as the assertions expect (cat.e2e.js turns it on)
-  fs.writeFileSync(path.join(userData, 'state.json'), JSON.stringify({ catJump: false, ...state }));
+  // no start show, no jump between tabs in the tests: the page switches at once, as the assertions expect (cat.e2e.js turns it on)
+  fs.writeFileSync(path.join(userData, 'state.json'), JSON.stringify({ catJump: false, intro: false, ...state }));
   // started like the user would: no nested Claude Code session, no API key, no node mode
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(CLAUDECODE|CLAUDE_CODE_|ANTHROPIC_|ELECTRON_RUN_AS_NODE)/.test(k)));
   env.NIKKI_USER_DATA = userData;

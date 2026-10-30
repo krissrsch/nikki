@@ -161,6 +161,9 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
   --glow-hot: #e9fff0;
 }
 #glow:not([data-glow='']) { opacity: 1; }
+/* the start: the line runs from the notch to both screen edges */
+#glowClip.sweeping { animation: introSweep 1.2s var(--ease-in-out) both; }
+@keyframes introSweep { from { clip-path: inset(0 50% 0 50%); } to { clip-path: inset(0 0 0 0); } }
 #glow[data-level='dezent']:not([data-glow='']) { opacity: 0.55; }
 #glow[data-level='kraeftig'] .rimOuter { stroke-width: 10; opacity: 0.85; }
 #glow[data-level='kraeftig'] .rimSoft { stroke-width: 4; }
@@ -1105,3 +1108,7 @@ kbd.key {
 .catFly .catIn { pointer-events: none; }
 .catDefs { position: absolute; }
 .tile[data-tile='claude'] #toChat { align-self: flex-start; width: 58%; } /* the right corner is Nikki's */
+
+/* the start: she falls out from behind the notch, so she is under the island until it opens */
+#introCat { position: absolute; z-index: 0; top: 44px; left: calc(50% - 46.5px); width: 93px; height: 82px; pointer-events: none; }
+#introCat.front { z-index: 8; }

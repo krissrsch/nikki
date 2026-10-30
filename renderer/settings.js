@@ -57,6 +57,7 @@ function applySettings(s) {
   $('setBranch').checked = s.showBranch;
   $('setGlow').checked = s.glow;
   $('setCatJump').checked = s.catJump;
+  $('setIntro').checked = s.intro;
   $('setGlowLevel').value = s.glowLevel;
   $('setGlowLevel').disabled = !s.glow;
   if (document.activeElement !== $('setCity')) $('setCity').value = s.weatherCity;
@@ -71,6 +72,7 @@ $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.che
 $('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
 $('setBranch').addEventListener('change', (e) => setSetting('showBranch', e.target.checked));
 $('setCatJump').addEventListener('change', (e) => setSetting('catJump', e.target.checked));
+$('setIntro').addEventListener('change', (e) => setSetting('intro', e.target.checked));
 $('setCatPlaces').addEventListener('click', () => setSetting('catPlaces', null));
 $('setGlow').addEventListener('change', (e) => setSetting('glow', e.target.checked));
 $('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));

@@ -601,6 +601,10 @@ function createCatStage({ box, tabs, ctx, reduceMotion = false, canJump = () => 
       sync();
     },
     isBusy: () => busy,
+    hide(on) {
+      rest.style.visibility = on ? 'hidden' : '';
+    },
+    restRect: () => rest.getBoundingClientRect(),
     resetPlaces() {
       custom = {};
       catSavePlaces(custom);
