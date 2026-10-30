@@ -37,8 +37,6 @@ let focusSession = null; // observed session id pinned by tapping a session pill
 let unseen = null; // 'done' | 'error' of our own task, until the chat was looked at
 let lastActivity = Date.now();
 let hover = false; // pointer over the island: Nikki wakes up
-let buddies = []; // Home Nikki; state syncs to it
-const buddyEmit = (fn, ...args) => buddies.forEach((b) => b[fn]?.(...args));
 const modelMenu = $('modelMenu');
 const chatsMenu = $('chatsMenu');
 const threadEl = $('thread');
@@ -81,19 +79,15 @@ function sessionDot(state) {
   return d;
 }
 
-// Home "Heute": greeting + the Claude tile (status only; the chat lives in its own tab)
+// Home "Heute": the Claude tile (status only; the chat lives in its own tab)
 function renderHome() {
-  const now = new Date();
-  const h = now.getHours();
-  $('greet').textContent = h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
-  $('today').textContent = now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
   const rows = [
     ...(current ? [{ name: folderName(current), state: ownState(), title: current }] : []),
     ...[...terminal]
       .sort((a, b) => (RANK[b.state] || 0) - (RANK[a.state] || 0) || b.at - a.at)
       .map((t) => ({ name: `${folderName(t.cwd)} · Terminal`, state: t.state || 'idle', title: t.cwd })),
   ];
-  $('claudeMeta').textContent = rows.length === 1 ? '1 Session' : `${rows.length} Sessions`;
+  $('claudeMeta').textContent = rows.length === 1 ? '1 Session' : rows.length ? `${rows.length} Sessions` : '';
   const nodes = rows.slice(0, 3).map((r) => {
     const row = document.createElement('div');
     row.className = 'sRow';
@@ -188,12 +182,9 @@ function shown() {
   const t = terminal.filter((x) => RANK[x.state]).sort((a, b) => RANK[b.state] - RANK[a.state])[0];
   return t ? { state: t.state, text: t.text, cwd: t.cwd, observed: true } : lastStatus;
 }
-let shownState;
 function renderState() {
   const s = shown();
   document.body.dataset.state = s.state;
-  if (s.state !== shownState) buddyEmit('setState', s.state);
-  shownState = s.state;
   if (open && view === 'chat') unseen = null; // looked at
   renderHome();
   renderGlance();
@@ -253,7 +244,7 @@ function chime(kind) {
     osc.stop(t + 0.4);
   });
 }
-/** Soft cat meow (Web Audio — no files). Used for spawn + poke. */
+/** Soft cat meow (Web Audio — no files): Nikki says hello at start. */
 function meow() {
   if (muted) return;
   const ctx = ensureAudio();
@@ -317,8 +308,7 @@ function meow() {
   air.stop(t + 0.55);
   noise.stop(t + 0.55);
 }
-window.nikkiMeow = meow;
-// Electron still gates AudioContext until a gesture — unlock so spawn/poke meows can play
+// Electron still gates AudioContext until a gesture — unlock so later sounds can play
 document.addEventListener('pointerdown', () => ensureAudio(), { once: true });
 
 function show(s) {
@@ -1493,7 +1483,6 @@ api.onSession?.(({ id }) => {
   if (chatId) persistChat();
 });
 api.onPointer(({ x, y }) => {
-  buddyEmit('lookAt', x, y);
   const over = document.elementFromPoint(x, y);
   // the pointer over the notch wakes Nikki; while it rests there she stays awake
   const nowOver = !!over?.closest('#island');
@@ -1539,8 +1528,6 @@ api.onPermissionCancel((id) => {
 });
 
 (async () => {
-  buddies = [createCompanion({ walker: $('homeWalker'), stage: $('homeStage'), island, mode: 'blob', pinned: true })];
-
   setView('home');
   const state = await api.getState();
   applySettings(await api.settingsGet()); // before the hello meow so mute is respected
