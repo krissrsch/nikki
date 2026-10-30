@@ -969,7 +969,9 @@ async function voiceInstall() {
       done += a.size;
     }
     const zip = path.join(voiceDir, 'whisper.zip');
-    await new Promise((ok, fail) => execFile('tar', ['-xf', zip, '-C', voiceDir], { windowsHide: true, timeout: 60000 }, (e) => (e ? fail(e) : ok())));
+    // Windows' own tar: one from Git on the PATH reads C: as a remote host
+    const tar = path.join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'tar.exe');
+    await new Promise((ok, fail) => execFile(tar, ['-xf', zip, '-C', voiceDir], { windowsHide: true, timeout: 60000 }, (e) => (e ? fail(e) : ok())));
     fs.rmSync(zip, { force: true });
     if (!voiceInstalled()) throw new Error('whisper-cli fehlt im Paket');
     voiceSetup = { state: 'ready', percent: 100 };
