@@ -125,12 +125,12 @@ describe('Nikki offline', () => {
     nikki = await launch();
     const { page } = nikki;
     const tabs = () => page.$$eval('#moduleTabs .tab', (b) => b.map((x) => x.dataset.view));
-    assert.deepEqual(await tabs(), ['calendar', 'todo', 'notes', 'timer']);
-    assert.equal(await page.locator('#homeTiles .tile').count(), 5, 'Claude + vier Module');
+    assert.deepEqual(await tabs(), ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer']);
+    assert.equal(await page.locator('#homeTiles .tile').count(), 7, 'Claude + sechs Module');
     await page.click('#tabs .tab[data-view="settings"]');
     await page.click('#mod-timer');
     await page.waitForFunction(() => !document.querySelector('#moduleTabs .tab[data-view="timer"]'));
-    assert.equal(await page.locator('#homeTiles .tile').count(), 4);
+    assert.equal(await page.locator('#homeTiles .tile').count(), 6);
     assert.deepEqual(nikki.state().modules.find((m) => m.id === 'timer'), { id: 'timer', on: false });
     await page.click('#mod-timer');
     await page.waitForSelector('#moduleTabs .tab[data-view="timer"]');
