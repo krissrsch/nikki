@@ -40,6 +40,13 @@ contextBridge.exposeInMainWorld('companion', {
   shelfClear: () => ipcRenderer.invoke('shelf-clear'), // { items, errors }
   shelfOpen: (id) => ipcRenderer.invoke('shelf-open', id), // '' or why not
   shelfDrag: (ids) => ipcRenderer.send('shelf-drag', ids), // start dragging these files out of the island
+  // clipboard history (module "clipboard"): main reads the clipboard while the module is on; each call returns { items: [{ text, at }], keep }
+  clipGet: () => ipcRenderer.invoke('clip-get'),
+  clipCopy: (text) => ipcRenderer.invoke('clip-copy', text),
+  clipRemove: (text) => ipcRenderer.invoke('clip-remove', text),
+  clipClear: () => ipcRenderer.invoke('clip-clear'),
+  clipKeep: (on) => ipcRenderer.invoke('clip-keep', on), // "Verlauf merken": on disk, or memory only
+  onClipboard: on('clipboard'),
   openExternal: (url) => ipcRenderer.send('open-external', url),
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
   onTerminal: on('terminal'),
