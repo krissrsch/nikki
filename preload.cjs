@@ -25,6 +25,12 @@ contextBridge.exposeInMainWorld('companion', {
   settingsSet: (key, value) => ipcRenderer.invoke('settings-set', key, value),
   openSettings: (page) => ipcRenderer.send('open-settings', page), // page: general | notch | today | modules | claude | discord | nikki | keys
   onSettingsChanged: on('settings-changed'),
+  // Spracheingabe: the capsule, the "she listens" signal and what was said (kind: claude | text)
+  onPill: on('pill'),
+  onPillBands: on('pill-bands'),
+  onVoice: on('voice'),
+  onVoiceText: on('voice-text'),
+  voiceNote: (text, bad) => ipcRenderer.send('voice-note', text, bad),
   // Discord (lib/discord.js): the whole state, see renderer/modules/discord.js
   discordGet: () => ipcRenderer.invoke('discord-get'),
   discordAuthorize: () => ipcRenderer.send('discord-authorize'), // opens the dialog in Discord

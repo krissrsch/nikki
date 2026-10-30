@@ -20,6 +20,7 @@ import { DEFAULT_MODULES, moduleFile, normalizeModules, withNewModules } from '.
 import { createRelay } from './lib/relay.js';
 import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
 import { onHook, sweep } from './lib/terminal.js';
+import { cleanTranscript, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs } from './lib/voice.js';
 import { forecastUrl, geocodeUrl, parseForecast, parsePlace } from './lib/weather.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -87,6 +88,9 @@ let store = {
   display: null, // id of the display the notch was dragged to
   discord: {}, // { clientId, secret, token, refresh }: the last three sealed with safeStorage, see seal()
   discordJoin: false, // a toast when someone joins the voice channel
+  voice: false, // Spracheingabe; switching it on downloads whisper once
+  voiceKey: VOICE_KEY, // held while speaking
+  voiceHooks: [], // [{ name, url }]: url sealed like the Discord secret
   weatherCity: '', // Home weather tile; '' = none yet
   weather: null, // last answer for weatherCity, see fetchWeather()
 };
@@ -404,6 +408,10 @@ const settings = async () => ({
   discordId: store.discord?.clientId ?? '',
   discordSecretSet: !!store.discord?.secret,
   discordJoin: !!store.discordJoin,
+  voice: !!store.voice,
+  voiceKey: store.voiceKey,
+  voiceSetup,
+  voiceHooks: voiceHooks().map((h) => h.name),
   glowLevel: GLOW_LEVELS.includes(store.glowLevel) ? store.glowLevel : 'normal',
   weatherCity: typeof store.weatherCity === 'string' ? store.weatherCity : '',
 });
@@ -442,6 +450,20 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   else if (key === 'discordId') error = setDiscord({ clientId: String(value ?? '').trim() });
   else if (key === 'discordSecret') error = setDiscord({ secret: String(value ?? '').trim() });
   else if (key === 'discordJoin') store.discordJoin = !!value;
+  else if (key === 'voice') {
+    store.voice = !!value;
+    syncHelper();
+    syncVoice();
+    if (store.voice) voiceInstall();
+  } else if (key === 'voiceKey') {
+    if (!pttKeys(value)) error = 'invalid';
+    else if (value === hotkey || value === store.closeKey) error = 'taken';
+    else {
+      store.voiceKey = String(value);
+      syncVoice();
+    }
+  } else if (key === 'hookAdd') error = addVoiceHook(value);
+  else if (key === 'hookRemove') store.voiceHooks = voiceHooks().filter((h) => h.name !== value);
   else if (key === 'muted') store.muted = !!value;
   else if (key === 'sleepMin') store.sleepMin = Math.min(120, Math.max(1, Math.round(Number(value)) || 5));
   else if (key === 'hooks') await setHooks(!!value);
@@ -591,7 +613,7 @@ let helperBuild = null; // dev: build.cmd runs once when the exe is missing
 let mediaNow = null; // { app, title, artist, album, status, position, duration, updatedAt, cover: data URL | '' } | null
 let volumeNow = null; // { level 0-100, muted } | null
 // the spectrum needs the helper too, with or without the music module
-const helperWanted = () => !process.env.NIKKI_NO_HELPER && !quitting && (store.glow !== false || store.modules.some((m) => m.id === 'music' && m.on));
+const helperWanted = () => !process.env.NIKKI_NO_HELPER && !quitting && (store.glow !== false || store.voice || store.modules.some((m) => m.id === 'music' && m.on));
 function syncHelper() {
   if (helperWanted()) startHelper();
   else stopHelper();
@@ -612,8 +634,9 @@ function startHelper() {
   const p = (helper = spawn(helperExe, [], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }));
   p.stdin.on('error', () => {}); // a command sent while it dies must not take main down (EPIPE)
   readline.createInterface({ input: p.stdout, crlfDelay: Infinity }).on('line', onHelperLine);
-  spectrumSent = micSent = null; // a new helper starts with its spectrum off
+  spectrumSent = micSent = pttSent = null; // a new helper starts with its spectrum off
   syncSpectrum();
+  syncVoice();
   let gone = false;
   const restart = () => {
     if (gone) return;
@@ -665,6 +688,9 @@ function onHelperLine(line) {
     send('media', mediaNow);
   } else if (m.type === 'volume') send('volume', (volumeNow = { level: m.level, muted: !!m.muted }));
   else if (m.type === 'spectrum' && Array.isArray(m.bands) && m.bands.length === 12) sendSpectrum(m.bands.map((v) => Math.min(1, Math.max(0, Number(v) || 0))));
+  else if (m.type === 'ptt') m.down ? voiceDown() : voiceUp();
+  else if (m.type === 'rec') voiceHeard(m.ms);
+  else if (m.type === 'voice' && Array.isArray(m.bands)) pill?.webContents.send('pill-bands', m.bands);
   else if (m.type === 'error') console.error('helper:', m.message);
 }
 // --- spectrum for the glow: the helper listens to what plays (WASAPI loopback) only while someone can see it:
@@ -674,7 +700,7 @@ let micSent = null;
 function syncSpectrum() {
   if (!helper) return;
   const want = store.glow !== false && alive() && win.isVisible() ? 'on' : 'off';
-  const mic = want === 'on' && store.micSpectrum ? 'on' : 'off';
+  const mic = (want === 'on' && store.micSpectrum) || voiceState === 'listening' ? 'on' : 'off';
   if (mic !== micSent) helper.stdin.write(`mic ${(micSent = mic)}\n`);
   if (want === spectrumSent) return;
   spectrumSent = want;
@@ -783,6 +809,177 @@ function setDiscord(change) {
 }
 ipcMain.handle('discord-get', () => ({ ...discordNow, people: discordNow.people.map((p) => ({ ...p, avatar: avatarOf(p) })) }));
 ipcMain.on('discord-authorize', () => discord?.authorize());
+
+// --- Spracheingabe: hold the key, speak, let go. The helper records, whisper.cpp writes it down, lib/voice.js says what it means.
+const voiceDir = path.join(app.getPath('userData'), 'voice');
+const whisperExe = path.join(voiceDir, 'Release', 'whisper-cli.exe');
+const whisperModel = path.join(voiceDir, 'ggml-base.bin');
+const voiceWav = path.join(voiceDir, 'take.wav');
+const VOICE_MIN_MS = 350;
+const VOICE_MAX_MS = 60000;
+const voiceInstalled = () => fs.existsSync(whisperExe) && fs.existsSync(whisperModel);
+let voiceSetup = { state: voiceInstalled() ? 'ready' : 'idle', percent: 0 }; // idle | loading | ready | error
+let voiceState = 'idle'; // idle | listening | thinking
+let voiceStop = null;
+let voiceLoading = false;
+let pttSent = null;
+let pill = null;
+let pillTimer = null;
+const voiceHooks = () => (Array.isArray(store.voiceHooks) ? store.voiceHooks : []);
+function tellSettings() {
+  settings().then((all) => {
+    for (const w of BrowserWindow.getAllWindows()) w.webContents.send('settings-changed', all);
+  });
+}
+function addVoiceHook(value) {
+  const name = String(value?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  const url = String(value?.url ?? '').trim();
+  if (!name || !webhookOk(url)) return 'invalid';
+  if (!safeStorage.isEncryptionAvailable()) return 'nocrypt';
+  store.voiceHooks = [...voiceHooks().filter((h) => h.name.toLowerCase() !== name.toLowerCase()), { name, url: seal(url) }];
+  return null;
+}
+function pillShow(state) {
+  clearTimeout(pillTimer);
+  if (!pill) {
+    pill = new BrowserWindow({ width: 420, height: 56, transparent: true, backgroundColor: '#00000000', frame: false, resizable: false, movable: false, focusable: false, skipTaskbar: true, hasShadow: false, show: false, webPreferences: { preload: path.join(dir, 'preload.cjs') } });
+    pill.setAlwaysOnTop(true, 'screen-saver');
+    pill.setIgnoreMouseEvents(true);
+    pill.on('closed', () => (pill = null));
+    pill.loadFile(path.join(dir, 'renderer', 'pill.html'));
+  }
+  const { workArea: a } = screen.getDisplayMatching(win.getBounds());
+  pill.setBounds({ x: Math.round(a.x + (a.width - 420) / 2), y: a.y + a.height - 72, width: 420, height: 56 });
+  const say = () => pill?.webContents.send('pill', state);
+  if (pill.webContents.isLoading()) pill.webContents.once('did-finish-load', say);
+  else say();
+  pill.showInactive();
+}
+function pillDone(text, tone = '') {
+  pillShow({ phase: 'message', text, tone });
+  pillTimer = setTimeout(() => {
+    pill?.webContents.send('pill', { phase: 'hidden' });
+    pill?.hide();
+  }, 2400);
+}
+function setVoice(state) {
+  voiceState = state;
+  send('voice', state === 'listening');
+  syncSpectrum();
+}
+function voiceDown() {
+  if (voiceState !== 'idle' || !helper || !alive()) return;
+  if (!voiceInstalled()) return pillDone('Die Spracheingabe wird noch eingerichtet.', 'bad');
+  fs.rmSync(voiceWav, { force: true });
+  setVoice('listening');
+  helper.stdin.write(`rec start ${voiceWav}\n`);
+  voiceStop = setTimeout(voiceUp, VOICE_MAX_MS);
+  pillShow({ phase: 'listening' });
+}
+function voiceUp() {
+  if (voiceState !== 'listening') return;
+  clearTimeout(voiceStop);
+  setVoice('thinking');
+  pillShow({ phase: 'thinking' });
+  helper?.stdin.write('rec stop\n');
+}
+function voiceHeard(ms) {
+  if (voiceState !== 'thinking') return;
+  if (ms < VOICE_MIN_MS) {
+    setVoice('idle');
+    return pillDone('Nichts gehört. Halt die Taste beim Sprechen.', 'bad');
+  }
+  execFile(whisperExe, whisperArgs(whisperModel, voiceWav), { cwd: path.dirname(whisperExe), windowsHide: true, timeout: 60000, encoding: 'utf8', maxBuffer: 1024 * 1024 }, (err, out) => {
+    fs.rmSync(voiceWav, { force: true });
+    setVoice('idle');
+    if (err) {
+      console.error('whisper:', err.message);
+      return pillDone('Das konnte Nikki nicht verstehen.', 'bad');
+    }
+    const text = cleanTranscript(out);
+    if (!text) return pillDone('Nichts verstanden.', 'bad');
+    voiceAct(parseVoice(text, voiceHooks().map((h) => h.name)));
+  });
+}
+async function voiceAct(said) {
+  if (said.kind !== 'webhook') {
+    send('voice-text', said);
+    return pill?.webContents.send('pill', { phase: 'hidden' }), pill?.hide();
+  }
+  const url = unseal(voiceHooks().find((h) => h.name === said.name)?.url);
+  try {
+    if (!url || !webhookOk(url)) throw new Error('webhook');
+    const r = await net.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: said.text.slice(0, 2000), allowed_mentions: { parse: [] } }) });
+    if (!r.ok) throw new Error(`webhook ${r.status}`);
+    pillDone(`An ${said.name} gesendet`);
+  } catch (e) {
+    console.error(e.message);
+    pillDone(`${said.name} ist nicht angekommen.`, 'bad');
+  }
+}
+ipcMain.on('voice-note', (_e, text, bad) => pillDone(String(text ?? '').slice(0, 120), bad ? 'bad' : ''));
+// the helper watches the key only while voice is on and installed
+function syncVoice() {
+  if (!helper) return;
+  const want = store.voice && voiceInstalled() ? `ptt ${pttKeys(store.voiceKey)?.join(',') ?? 'off'}` : 'ptt off';
+  if (want === pttSent) return;
+  pttSent = want;
+  helper.stdin.write(`${want}\n`);
+}
+// One file: streamed to .part, the hash checked, then renamed; nothing unverified ever stays
+async function voiceFetch({ file, url, sha256 }, done, total) {
+  const to = path.join(voiceDir, file);
+  const part = `${to}.part`;
+  const r = await net.fetch(url);
+  if (!r.ok) throw new Error(`${file}: ${r.status}`);
+  const hash = crypto.createHash('sha256');
+  const out = fs.createWriteStream(part);
+  let got = 0;
+  let last = -1;
+  try {
+    for await (const chunk of r.body) {
+      hash.update(chunk);
+      got += chunk.length;
+      if (!out.write(chunk)) await new Promise((ok) => out.once('drain', ok));
+      const percent = Math.floor(((done + got) / total) * 100);
+      if (percent !== last) {
+        voiceSetup = { state: 'loading', percent: (last = percent) };
+        tellSettings();
+      }
+    }
+  } finally {
+    await new Promise((ok) => out.end(ok));
+  }
+  if (hash.digest('hex') !== sha256) {
+    fs.rmSync(part, { force: true });
+    throw new Error(`${file}: Prüfsumme stimmt nicht`);
+  }
+  fs.renameSync(part, to);
+}
+async function voiceInstall() {
+  if (voiceLoading || voiceInstalled()) return;
+  voiceLoading = true;
+  try {
+    fs.mkdirSync(voiceDir, { recursive: true });
+    const total = VOICE_ASSETS.reduce((n, a) => n + a.size, 0);
+    let done = 0;
+    for (const a of VOICE_ASSETS) {
+      if (!fs.existsSync(path.join(voiceDir, a.file))) await voiceFetch(a, done, total);
+      done += a.size;
+    }
+    const zip = path.join(voiceDir, 'whisper.zip');
+    await new Promise((ok, fail) => execFile('tar', ['-xf', zip, '-C', voiceDir], { windowsHide: true, timeout: 60000 }, (e) => (e ? fail(e) : ok())));
+    fs.rmSync(zip, { force: true });
+    if (!voiceInstalled()) throw new Error('whisper-cli fehlt im Paket');
+    voiceSetup = { state: 'ready', percent: 100 };
+    syncVoice();
+  } catch (e) {
+    console.error('voice setup:', e.message);
+    voiceSetup = { state: 'error', percent: 0 };
+  }
+  voiceLoading = false;
+  tellSettings();
+}
 
 // --- shelf (Ablage): copies in userData/shelf, the list in userData/shelf.json (not under modules/: module-set must not reach it).
 // The renderer names items by id only; every path is shelfFile(shelfDir, name) for a name that is really in the folder.
@@ -1327,6 +1524,7 @@ app.whenReady().then(() => {
   syncHelper();
   syncClipboard();
   syncDiscord();
+  if (store.voice) voiceInstall();
   if (store.weatherCity) fetchWeather();
   setInterval(() => store.weatherCity && fetchWeather(), 30 * 60 * 1000).unref();
   applyAwake(); // switched on by hand last time

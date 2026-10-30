@@ -39,6 +39,7 @@ let lastActivity = Date.now();
 let hover = false; // pointer over the island: Nikki wakes up
 let drag = null; // the closed notch under the mouse: { off, moved }
 let peek = null; // her head behind the closed notch
+let listening = false; // the voice key is held
 const modelMenu = $('modelMenu');
 const chatsMenu = $('chatsMenu');
 const threadEl = $('thread');
@@ -221,7 +222,7 @@ function renderGlance() {
     setTimeout(renderGlance, DONE_MS + 50); // the flash is over: what ranks below shows again
   }
   glanceStatus = status;
-  const g = glance({ ...fromModules, status, doneAge: status === 'done' ? Date.now() - doneSince : 0, sound: spectrum.sound, lastActivity, hover, sleepMin });
+  const g = glance({ ...fromModules, status, doneAge: status === 'done' ? Date.now() - doneSince : 0, voice: listening, sound: spectrum.sound, lastActivity, hover, sleepMin });
   island.dataset.mood = g.mood;
   glowEl.dataset.glow = settings.glow === false ? '' : (g.glow ?? '');
   $('notch').setAttribute('aria-label', MOOD_LABEL[g.mood]);
@@ -1402,6 +1403,23 @@ api.onShow?.((page) => {
 });
 api.onStatus(show);
 api.onSpectrum((bands) => spectrum.set(bands));
+api.onVoice((on) => {
+  listening = on;
+  renderGlance();
+});
+// "frag Claude" goes straight in, anything else waits in the composer for the user
+api.onVoiceText(({ kind, text }) => {
+  if (kind === 'claude') {
+    if (!current) return api.voiceNote('Wähl erst ein Projekt.', true);
+    if (busy) return api.voiceNote('Claude arbeitet noch.', true);
+    promptEl.value = text;
+    return start();
+  }
+  setView('chat');
+  setOpen(true);
+  promptEl.value = [promptEl.value.trim(), text].filter(Boolean).join('\n\n');
+  promptEl.focus();
+});
 api.onCloseKey(escape); // the same steps as Esc: a global Esc never reaches keydown
 api.onSession?.(({ id }) => {
   if (!id) return;

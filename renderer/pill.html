@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'"
+    />
+    <title>Nikki hört zu</title>
+    <link rel="stylesheet" href="cat.css" />
+    <link rel="stylesheet" href="pill.css" />
+  </head>
+  <body>
+    <div id="pill" hidden role="status" aria-live="polite">
+      <div id="pillCat"></div>
+      <div id="pillDots" aria-hidden="true"></div>
+      <span id="pillText" hidden></span>
+    </div>
+    <script src="cat.js"></script>
+    <script src="pill.js"></script>
+  </body>
+</html>
