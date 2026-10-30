@@ -258,8 +258,11 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 }
 .mono { font-family: 'Cascadia Code', Consolas, monospace; }
 .sDot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+/* bereit white, arbeitet white and breathing, fertig green, braucht dich yellow, Fehler red */
+.sDot[data-state='idle'] { background: var(--text); }
 .sDot[data-state='working'],
-.sDot[data-state='thinking'],
+.sDot[data-state='thinking'] { background: var(--text); animation: sDotBusy 1.3s ease-in-out infinite; }
+@keyframes sDotBusy { 0%, 100% { opacity: 1; scale: 1; } 50% { opacity: 0.35; scale: 0.72; } }
 .sDot[data-state='done'] { background: var(--accent); }
 .sDot[data-state='needsYou'] { background: var(--warn); }
 .sDot[data-state='error'] { background: var(--bad); }
@@ -318,9 +321,6 @@ body:not([data-view='home']) .shimmer { display: none; }
 }
 .sRow { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sState { flex: none; margin-left: auto; color: var(--glass-sub); }
-.sState[data-state='needsYou'] { color: var(--warn-soft); }
-.sState[data-state='error'] { color: var(--bad); }
 .sRow .sDot[data-state='needsYou'] { box-shadow: 0 0 10px var(--warn); }
 /* Wetter: faint rings top right, the temperature big, four hours below */
 .tile.weather::before {
@@ -1084,6 +1084,7 @@ kbd.key {
   /* no reflex, no breathing, no spectrum; "done" still fades out (only opacity) */
   #glow .sweep,
   #glow .bars { display: none; }
+  .sDot { animation: none !important; }
   #glow:not([data-glow='done']) .rim { animation: none; }
 }
 
@@ -1092,9 +1093,15 @@ kbd.key {
 .catFly { position: absolute; z-index: 5; width: 93px; height: 82px; pointer-events: none; }
 .catFly { z-index: 6; }
 .catFly[hidden] { display: none; }
-.catRest[data-type='peek'] { overflow: hidden; }
-.catIn { width: 93px; height: 82px; pointer-events: auto; cursor: pointer; }
+/* only the bottom is cut: she hides behind the edge, but a hop or a sign above her head stays whole */
+.catRest[data-type='peek'] { clip-path: inset(-44px -44px 0 -44px); }
+.catRest.held { z-index: 7; }
+.catIn { width: 93px; height: 82px; pointer-events: auto; cursor: grab; touch-action: none; }
+.held .catIn { cursor: grabbing; }
+.held .cat { scale: 1.08; transform-origin: 50% 25%; }
+@media (hover: hover) and (pointer: fine) {
+  .catRest:not(.held) .catIn:hover .cat { scale: 1.05; }
+}
 .catFly .catIn { pointer-events: none; }
 .catDefs { position: absolute; }
 .tile[data-tile='claude'] #toChat { align-self: flex-start; width: 58%; } /* the right corner is Nikki's */
-.sState[data-state='idle'] { color: var(--faint); }

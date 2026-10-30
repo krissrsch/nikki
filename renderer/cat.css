@@ -1,5 +1,5 @@
 /* generated from renderer/cat.js by scripts/build-cat-css.mjs, do not edit by hand */
-.cat { display: block; width: 100%; height: 100%; overflow: visible; }
+.cat { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: 50% 100%; transition: scale 0.18s cubic-bezier(0.23, 1, 0.32, 1), rotate 0.14s ease-out; }
 .cat .fb { transform-box: fill-box; transform-origin: center; }
 .cat .fbb { transform-box: fill-box; transform-origin: 50% 100%; }
 .cat .fbt { transform-box: fill-box; transform-origin: 50% 0; }

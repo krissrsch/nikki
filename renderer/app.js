@@ -103,11 +103,11 @@ function renderHome() {
     const name = document.createElement('span');
     name.className = 'sName';
     name.textContent = r.name;
-    const state = document.createElement('span');
-    state.className = 'sState';
-    state.dataset.state = r.state;
-    state.textContent = STATE_LABEL[r.state] ?? r.state;
-    row.append(sessionDot(r.state), name, state);
+    const dot = sessionDot(r.state);
+    dot.setAttribute('role', 'img');
+    dot.setAttribute('aria-label', STATE_LABEL[r.state] ?? r.state);
+    dot.title = STATE_LABEL[r.state] ?? r.state;
+    row.append(dot, name);
     return row;
   });
   if (!nodes.length) {
@@ -253,6 +253,44 @@ function chime(kind) {
     osc.stop(t + 0.4);
   });
 }
+// Nikki's small sounds when she is touched: a pitch glide through a warm filter, the "r" of a mrrp is a fast tremolo
+const CAT_VOICE = {
+  mrrp: [{ from: 420, to: 640, dur: 0.2, vol: 0.13, trill: 30 }],
+  chirp: [{ from: 720, to: 1080, dur: 0.09, vol: 0.1 }, { from: 820, to: 1240, dur: 0.12, vol: 0.11, at: 0.1 }],
+  lift: [{ from: 340, to: 560, dur: 0.07, vol: 0.07 }],
+  land: [{ from: 190, to: 90, dur: 0.1, vol: 0.2 }],
+};
+function catVoice(kind) {
+  if (kind === 'mrow') return meow();
+  if (muted) return;
+  const ctx = ensureAudio();
+  for (const { from, to, dur, vol, trill, at = 0 } of CAT_VOICE[kind]) {
+    const t = ctx.currentTime + at;
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(from, t);
+    osc.frequency.exponentialRampToValueAtTime(to, t + dur);
+    filter.type = 'lowpass';
+    filter.frequency.value = 2200;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.06);
+    osc.connect(filter).connect(gain).connect(ctx.destination);
+    if (trill) {
+      const lfo = ctx.createOscillator();
+      const depth = ctx.createGain();
+      lfo.frequency.value = trill;
+      depth.gain.value = vol * 0.7;
+      lfo.connect(depth).connect(gain.gain);
+      lfo.start(t);
+      lfo.stop(t + dur + 0.08);
+    }
+    osc.start(t);
+    osc.stop(t + dur + 0.08);
+  }
+}
 /** Soft cat meow (Web Audio — no files): Nikki says hello at start. */
 function meow() {
   if (muted) return;
@@ -376,6 +414,7 @@ cat = createCatStage({
   tabs: $('tabs'),
   reduceMotion,
   canJump: () => settings.catJump !== false,
+  voice: catVoice,
   ctx: () => ({ box: $('panelBox'), home: document.querySelector('[data-tile="claude"]'), composer: $('composer'), pageOf: (v) => $(VIEWS[v]) }),
 });
 new ResizeObserver(() => cat.sync()).observe($('panelBox'));
@@ -1273,6 +1312,7 @@ $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.che
 $('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
 $('setBranch').addEventListener('change', (e) => setSetting('showBranch', e.target.checked));
 $('setCatJump').addEventListener('change', (e) => setSetting('catJump', e.target.checked));
+$('setCatPlaces').addEventListener('click', () => cat.resetPlaces());
 $('setGlow').addEventListener('change', (e) => setSetting('glow', e.target.checked));
 $('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));
 $('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));

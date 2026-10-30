@@ -120,7 +120,7 @@ function catCss() {
   const sel = (list, tail) => list.map((m) => `.cat[data-mood='${m}'] ${tail}`).join(',\n');
   const rule = (list, tail, body) => (list.length ? `${sel(list, tail)} { ${body} }\n` : '');
   let css = `/* generated from renderer/cat.js by scripts/build-cat-css.mjs, do not edit by hand */
-.cat { display: block; width: 100%; height: 100%; overflow: visible; }
+.cat { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: 50% 100%; transition: scale 0.18s cubic-bezier(0.23, 1, 0.32, 1), rotate 0.14s ease-out; }
 .cat .fb { transform-box: fill-box; transform-origin: center; }
 .cat .fbb { transform-box: fill-box; transform-origin: 50% 100%; }
 .cat .fbt { transform-box: fill-box; transform-origin: 50% 0; }
@@ -266,16 +266,37 @@ function catSpot(view, { box, home, composer, pageOf }) {
   return { type: 'peek', left: Math.round(box.offsetWidth * 0.62), edge: Math.max(r.y, 62) };
 }
 
+// a place she was dragged to stays inside the island and below the tabs, whatever size the page has
+function catClamp({ left, top }, { w, h, minTop }) {
+  return { left: Math.round(Math.min(Math.max(left, 0), w - CAT_W)), top: Math.round(Math.max(Math.min(top, h - CAT_H), minTop)) };
+}
+
 // the tab icon's shrunk-cat landing: centred on the button
 function catIconBox(btn, box) {
   const r = catOffset(btn, box);
   return { left: Math.round(r.x + r.w / 2 - CAT_W / 2), top: Math.round(r.y + r.h / 2 - CAT_H + 11.5) };
 }
 
+// where the user dragged her, per view; only this renderer needs it
+const CAT_PLACES_KEY = 'nikki.catPlaces';
+function catReadPlaces() {
+  try {
+    const all = JSON.parse(localStorage.getItem(CAT_PLACES_KEY)) ?? {};
+    return Object.fromEntries(Object.entries(all).filter(([, p]) => Number.isFinite(p?.left) && Number.isFinite(p?.top)));
+  } catch {
+    return {};
+  }
+}
+function catSavePlaces(places) {
+  try {
+    localStorage.setItem(CAT_PLACES_KEY, JSON.stringify(places));
+  } catch {}
+}
+
 const CAT_EASE = 'cubic-bezier(0.45, 0, 0.55, 1)';
 const CAT_EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
-function createCatStage({ box, tabs, ctx, reduceMotion = false, canJump = () => true }) {
+function createCatStage({ box, tabs, ctx, reduceMotion = false, canJump = () => true, voice = () => {} }) {
   const mk = (cls) => {
     const el = document.createElement('div');
     el.className = cls;
@@ -296,6 +317,8 @@ function createCatStage({ box, tabs, ctx, reduceMotion = false, canJump = () => 
   let active = false;
   let busy = false;
   let timers = [];
+  let press = null; // the mouse holds her: { x, y, left, top, lastX, dragging }
+  let custom = catReadPlaces(); // view → { left, top } where the user put her
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
 
   const mood = () => touchMood || timed?.mood || (base !== 'idle' ? base : idleMood);
@@ -328,8 +351,11 @@ function createCatStage({ box, tabs, ctx, reduceMotion = false, canJump = () => 
     if (ms) touchTimer = setTimeout(() => ((touchMood = null), paint()), ms);
   }
 
+  const bounds = () => ({ w: box.offsetWidth, h: box.offsetHeight, minTop: catOffset(tabs, box).y + tabs.offsetHeight + 2 });
   function sync() {
-    const s = catSpot(view, ctx());
+    if (press?.dragging) return { type: 'sit', left: rest.offsetLeft, top: rest.offsetTop }; // she is in the hand
+    const mine = custom[view];
+    const s = mine ? { type: 'sit', ...catClamp(mine, bounds()) } : catSpot(view, ctx());
     rest.dataset.type = s.type;
     rest.style.left = `${s.left}px`;
     if (s.type === 'sit') {
@@ -437,22 +463,113 @@ function createCatStage({ box, tabs, ctx, reduceMotion = false, canJump = () => 
   }
   switchTo.token = 0;
 
-  // her body takes the mouse: love after two quiet seconds, three quick clicks make her dizzy
+  // ---- the mouse: pressing squashes her, a click makes her hop and answer, dragging gives her a new place in this view
   const body = inner(rest);
+  const face = svgOf(rest);
+  const still = () => face.getAnimations().forEach((x) => x.cancel());
+  // spring in keyframes: launch, apex, landing squash, a small rebound. Rise eases out, the fall eases in like gravity.
+  function hop(height, turn = 0) {
+    if (reduceMotion) return;
+    still();
+    const at = (y, r, sx, sy) => `translateY(${y}px) rotate(${r}deg) scale(${sx}, ${sy})`;
+    face.animate(
+      [
+        { transform: at(0, 0, 1.1, 0.86), easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+        { transform: at(-height * 0.62, turn * 0.3, 0.9, 1.14), offset: 0.16, easing: 'cubic-bezier(0.2, 0.7, 0.4, 1)' },
+        { transform: at(-height, turn * 0.6, 0.97, 1.03), offset: 0.42, easing: 'cubic-bezier(0.5, 0, 0.8, 0.5)' },
+        { transform: at(0, turn, 1.14, 0.84), offset: 0.7, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+        { transform: at(-3, turn, 0.97, 1.04), offset: 0.85, easing: 'ease-in-out' },
+        { transform: at(0, turn, 1, 1) },
+      ],
+      { duration: turn ? 760 : 560 },
+    );
+  }
+  function react() {
+    const now = Date.now();
+    clicks = clicks.filter((t) => now - t < 2200).concat(now);
+    const n = clicks.length;
+    if (n >= 3) clicks = [];
+    const [m, ms, h, turn, say] = n >= 3 ? ['dizzy', 2200, 26, 360, 'mrow'] : n === 2 ? ['love', 1500, 22, 0, 'chirp'] : ['purr', 1300, 16, 0, 'mrrp'];
+    touch(m, ms);
+    hop(h, turn);
+    voice(say);
+  }
+  function move(left, top) {
+    const p = catClamp({ left, top }, bounds());
+    rest.style.left = `${p.left}px`;
+    rest.style.top = `${p.top}px`;
+  }
+  function pickUp() {
+    press.dragging = true;
+    still();
+    rest.dataset.type = 'sit';
+    rest.style.height = `${CAT_H}px`;
+    rest.classList.add('held');
+    touch('surprised', 0);
+    voice('lift');
+  }
+  let tiltTimer = null;
+  function letGo() {
+    const p = press;
+    press = null;
+    clearTimeout(tiltTimer);
+    face.style.rotate = '';
+    if (!p?.dragging) return;
+    rest.classList.remove('held');
+    custom[view] = { left: rest.offsetLeft, top: rest.offsetTop };
+    catSavePlaces(custom);
+    touch('purr', 1100);
+    hop(8);
+    voice('land');
+  }
+  body.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || busy) return;
+    body.setPointerCapture(e.pointerId);
+    clearTimeout(hoverTimer);
+    press = { x: e.clientX, y: e.clientY, left: rest.offsetLeft, top: rest.offsetTop, lastX: e.clientX, dragging: false };
+    if (reduceMotion) return;
+    still();
+    face.animate([{ transform: 'scale(1, 1)' }, { transform: 'scale(1.1, 0.86)' }], { duration: 110, easing: CAT_EASE_OUT, fill: 'forwards' });
+  });
+  body.addEventListener('pointermove', (e) => {
+    if (!press) return;
+    if (!e.buttons) return letGo(); // the button came up outside the window
+    const dx = e.clientX - press.x;
+    const dy = e.clientY - press.y;
+    if (!press.dragging) {
+      if (Math.hypot(dx, dy) < 5) return;
+      pickUp();
+    }
+    move(press.left + dx, press.top + dy);
+    // she swings behind the hand and settles when it stops
+    face.style.rotate = `${Math.max(-16, Math.min(16, (e.clientX - press.lastX) * 2.2))}deg`;
+    press.lastX = e.clientX;
+    clearTimeout(tiltTimer);
+    tiltTimer = setTimeout(() => (face.style.rotate = ''), 90);
+  });
+  body.addEventListener('pointerup', () => {
+    const clicked = press && !press.dragging;
+    letGo();
+    if (clicked) react();
+  });
+  body.addEventListener('pointercancel', letGo);
+  body.addEventListener('lostpointercapture', letGo);
   body.addEventListener('mouseenter', () => {
     clearTimeout(hoverTimer);
-    hoverTimer = setTimeout(() => touch('love', 0), 2000);
+    hoverTimer = setTimeout(() => !press && touch('love', 0), 2000);
   });
   body.addEventListener('mouseleave', () => {
     clearTimeout(hoverTimer);
     if (touchMood === 'love') touch(null, 0);
   });
-  body.addEventListener('click', () => {
-    const now = Date.now();
-    clicks = clicks.filter((t) => now - t < 2200).concat(now);
-    const n = clicks.length;
-    touch(n >= 3 ? 'dizzy' : n === 2 ? 'error' : 'surprised', n >= 3 ? 2600 : 1300);
-    if (n >= 3) clicks = [];
+  // a double click sends her back to the place the page has for her
+  body.addEventListener('dblclick', () => {
+    if (!custom[view]) return;
+    const was = { left: rest.offsetLeft, top: rest.offsetTop };
+    delete custom[view];
+    catSavePlaces(custom);
+    sync();
+    if (!reduceMotion) rest.animate([{ transform: `translate(${was.left - rest.offsetLeft}px, ${was.top - rest.offsetTop}px)` }, { transform: 'none' }], { duration: 320, easing: CAT_EASE });
   });
 
   sync();
@@ -484,6 +601,11 @@ function createCatStage({ box, tabs, ctx, reduceMotion = false, canJump = () => 
       sync();
     },
     isBusy: () => busy,
+    resetPlaces() {
+      custom = {};
+      catSavePlaces(custom);
+      sync();
+    },
     mood,
   };
 }

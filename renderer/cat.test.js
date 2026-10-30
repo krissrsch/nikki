@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 // classic renderer script: the pure part runs in a sandbox, the stage needs a DOM (e2e/cat.e2e.js)
 const src = readFileSync(new URL('./cat.js', import.meta.url), 'utf8');
-const cat = vm.runInNewContext(`${src}\n({ CAT_MOODS, CAT_LOOK, CAT_IDLE, catMoodFor, catCss, catSvg, catDefs, catSpot, catOffset })`);
+const cat = vm.runInNewContext(`${src}\n({ catClamp, CAT_MOODS, CAT_LOOK, CAT_IDLE, catMoodFor, catCss, catSvg, catDefs, catSpot, catOffset })`);
 
 test('alle 19 Stimmungen haben Aussehen, Beschriftung und Bewegung', () => {
   assert.equal(cat.CAT_MOODS.length, 19);
@@ -91,4 +91,14 @@ test('jeder Reiter hat seinen eigenen Platz, nicht nur oben mittig', () => {
   // the places differ from tab to tab
   const spots = ['music', 'shelf', 'todo', 'timer'].map((v) => JSON.stringify(at(v, { '.musicPage, .musicEmpty': withParent(el(16, 62, 688, 90)), '.shelfGrid, .shelfEmpty': withParent(el(16, 108, 688, 300)), '.todoList': withParent(el(16, 108, 688, 100)), '.timerRing': withParent(el(200, 70, 140, 140)) })));
   assert.equal(new Set(spots).size, spots.length);
+});
+
+test('wohin man sie zieht: sie bleibt in der Insel und unter den Tabs', () => {
+  const area = { w: 720, h: 300, minTop: 50 };
+  const at = (left, top) => JSON.parse(JSON.stringify(cat.catClamp({ left, top }, area)));
+  assert.deepEqual(at(100, 120), { left: 100, top: 120 });
+  assert.deepEqual(at(-40, 0), { left: 0, top: 50 });
+  assert.deepEqual(at(900, 900), { left: 720 - 93, top: 300 - 82 });
+  // a page smaller than the saved place: the tabs win
+  assert.equal(cat.catClamp({ left: 10, top: 500 }, { w: 720, h: 100, minTop: 50 }).top, 50);
 });
