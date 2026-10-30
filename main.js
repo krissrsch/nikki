@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, powerSaveBlocker, protocol, screen, shell, Tray } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, powerSaveBlocker, protocol, screen, shell, Tray } from 'electron';
 import { execFile, spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -8,6 +8,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createClaudeAgent } from './backends/claude.js';
+import { addClip, removeClip, restoreClips } from './lib/clipboard.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
 import { friendlyError } from './lib/errors.js';
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
@@ -73,6 +74,7 @@ let store = {
   showBranch: true,
   modules: DEFAULT_MODULES, // [{ id, on }] in tab order, see lib/modules.js
   keepAwake: false, // by hand: PC and screen stay awake (while our Claude run works they do anyway)
+  clipKeep: false, // clipboard module: keep its history on disk (userData/clipboard.json); off, it lives in memory only
 };
 let storeNotice = null; // shown once the app is ready
 let storeWritable = true; // never overwrite a state.json we could not read: that is how chats got lost (H2)
@@ -377,6 +379,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   else if (key === 'modules') {
     store.modules = normalizeModules(value, store.modules);
     syncHelper();
+    syncClipboard();
   } else if (key === 'keepAwake') {
     store.keepAwake = !!value;
     applyAwake();
@@ -702,6 +705,100 @@ ipcMain.on('shelf-drag', (e, ids) => {
   if (files.length) e.sender.startDrag({ file: files[0], files, icon: dragIcon });
 });
 
+// --- clipboard history (module "clipboard", opt-in): the system clipboard is read once a second, only while the module is on.
+// Text only, in memory; on disk (userData/clipboard.json) only with "Verlauf merken". See lib/clipboard.js.
+const clipFile = path.join(app.getPath('userData'), 'clipboard.json');
+let clips = []; // [{ text, at }], newest first
+let clipSeen = null; // the clipboard text at the last look
+let clipTimer = null;
+let clipWritable = true; // a history file we could not read is never written over (H2)
+const clipOn = () => !quitting && store.modules.some((m) => m.id === 'clipboard' && m.on);
+const clipState = () => ({ items: clips, keep: !!store.clipKeep });
+function syncClipboard() {
+  if (clipOn() === !!clipTimer) return;
+  if (clipTimer) {
+    clearInterval(clipTimer);
+    clipTimer = null;
+    clips = []; // switched off: what was only in memory is forgotten
+    clipSeen = null;
+    return;
+  }
+  if (store.clipKeep) clips = loadClips();
+  pollClipboard();
+  clipTimer = setInterval(pollClipboard, 1000);
+}
+// Electron 45's clipboard is async (W3C style); one look at a time
+let clipLooking = false;
+const MONITOR_OFF = ['ExcludeClipboardContentFromMonitorProcessing', 'Clipboard Viewer Ignore'].map((f) => `electron application/osclipboard;format="${f}"`);
+async function pollClipboard() {
+  if (clipLooking) return;
+  clipLooking = true;
+  try {
+    const text = await clipboard.readText();
+    if (text === clipSeen) return;
+    clipSeen = text;
+    // password managers mark what they copy as not for clipboard monitors and histories: it stays out
+    for (const f of MONITOR_OFF) if (await clipboard.has(f)) return;
+    if (clipTimer) setClips(addClip(clips, text, Date.now())); // still on after the wait
+  } catch {
+    // another app holds the clipboard open: next second
+  } finally {
+    clipLooking = false;
+  }
+}
+function setClips(next) {
+  if (next === clips) return;
+  clips = next;
+  if (store.clipKeep) saveClips();
+  send('clipboard', clipState());
+}
+function loadClips() {
+  try {
+    return restoreClips(readJson(clipFile, (moved) => warn(`Der Verlauf der Zwischenablage war beschädigt und liegt jetzt unter
+${moved}`))?.items);
+  } catch (e) {
+    clipWritable = false;
+    warn(`Nikki kann ${clipFile} nicht lesen (${e.code ?? e.message}). Bis zum Neustart merkt sich Nikki den Verlauf nicht.`);
+    return [];
+  }
+}
+let clipSaveFailed = false;
+function saveClips() {
+  if (!clipWritable) return;
+  try {
+    writeJsonAtomic(clipFile, { items: clips });
+    clipSaveFailed = false;
+  } catch (e) {
+    console.error(clipFile, e);
+    if (!clipSaveFailed) warn(`Nikki kann den Verlauf der Zwischenablage nicht speichern: ${e.code ?? e.message}`);
+    clipSaveFailed = true;
+  }
+}
+ipcMain.handle('clip-get', clipState);
+// copy an entry again: it moves to the top right away, the next look sees it as known
+ipcMain.handle('clip-copy', async (_e, text) => {
+  if (typeof text !== 'string' || !text) return clipState();
+  await clipboard.writeText(text);
+  clipSeen = text;
+  setClips(addClip(clips, text, Date.now()));
+  return clipState();
+});
+ipcMain.handle('clip-remove', (_e, text) => (setClips(removeClip(clips, text)), clipState()));
+ipcMain.handle('clip-clear', () => (setClips(clips.length ? [] : clips), clipState()));
+ipcMain.handle('clip-keep', (_e, on) => {
+  store.clipKeep = !!on;
+  save();
+  if (store.clipKeep) saveClips();
+  else
+    try {
+      fs.rmSync(clipFile, { force: true }); // "Verlauf merken" off: nothing stays on disk
+    } catch (e) {
+      warn(`Nikki kann ${clipFile} nicht löschen: ${e.code ?? e.message}`);
+    }
+  send('clipboard', clipState());
+  return clipState();
+});
+
 ipcMain.on('toast', (_e, text) => notify(String(text ?? '').slice(0, 200), true));
 ipcMain.on('open-external', (_e, url) => /^https?:\/\//i.test(url) && shell.openExternal(url));
 ipcMain.on('stop', () => agent.stop());
@@ -953,6 +1050,7 @@ app.whenReady().then(() => {
   feedPointer();
   startHookServer();
   syncHelper();
+  syncClipboard();
   applyAwake(); // switched on by hand last time
   // a watcher that is slow to start (Add-Type) must not keep the island away for long
   setTimeout(() => fullscreen === null && setFullscreen(false), 3000);
@@ -985,6 +1083,7 @@ app.on('will-quit', () => {
   pointerTimer = null;
   agent.abort(); // no claude.exe left running on its own (M5)
   stopHelper();
+  clearInterval(clipTimer);
   relay.cancelAll(); // waiting terminal hooks fall back to their own dialog
   try {
     fullscreenWatcher?.stdout?.removeAllListeners('data');
