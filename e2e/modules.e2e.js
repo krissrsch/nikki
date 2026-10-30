@@ -52,6 +52,11 @@ describe('Module aus Phase 3', () => {
     await until(async () => (await app.evaluate(() => globalThis.cmds)).length === 4, 'Befehle an main');
     assert.deepEqual(await app.evaluate(() => globalThis.cmds), ['toggle', 'next', 'volume 55', 'mute']);
     assert.match(await tile.textContent(), /Testlied/);
+    // players send a fresh position snapshot every few seconds: the page keeps the keyboard focus
+    await page.focus('.mod-music [aria-label="Weiter"]');
+    await fromMain('media', { app: 'Spotify.exe', title: 'Testlied', artist: 'Nikki', status: 'playing', position: 14, duration: 200, updatedAt: Date.now(), cover: '' });
+    await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Weiter');
 
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.getElementById('island').dataset.mood === 'music');

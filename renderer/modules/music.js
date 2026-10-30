@@ -115,11 +115,15 @@ function musicApp(id) {
     if (vol) paintVolume();
   }
 
+  // what the page and tile show; players send a fresh position snapshot every few seconds, which only moves the bar
+  const SHOWN = ['title', 'artist', 'app', 'status', 'duration', 'cover'];
   // subscribed once: switching the module off and on must not add listeners
   api?.onMedia((m) => {
+    const same = !!media === !!m && SHOWN.every((k) => media?.[k] === m?.[k]);
     media = m;
     if (!ctx) return;
     run();
+    if (same) return paint(); // a new page would take the keyboard focus away every few seconds
     render();
     ctx.changed();
   });
@@ -161,7 +165,7 @@ function musicApp(id) {
       }
       el.append(
         c.head(musicApp(media.app)),
-        h('div', { className: 'musicRow' }, cover('musicCover tile'), h('span', { className: 'tileStack' }, h('span', { className: 'musicTileTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'tileSub' }, media.artist))),
+        h('div', { className: 'musicRow' }, cover('musicCover mini'), h('span', { className: 'tileStack' }, h('span', { className: 'musicTileTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'tileSub' }, media.artist))),
         h('div', { className: 'musicRow' }, track('thin'), playBtn('small')),
       );
       paint();

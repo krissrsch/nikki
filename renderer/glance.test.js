@@ -67,6 +67,8 @@ test('peek lasts until its time, then the next item shows', () => {
   const g = glance({ peek, music, now: NOW });
   assert.equal(g.mood, 'awake');
   assert.deepEqual(g.left, { icon: 'volume', text: '60 %' });
+  assert.deepEqual(g.right, { icon: 'level', level: 0.6 }, 'its bar, not the song');
+  assert.deepEqual(glance({ peek: { ...peek, right: undefined }, music, now: NOW }).right, { icon: 'music', cover: 'data:x' }, 'without a right side the next item fills it');
   assert.equal(glance({ peek, music, now: NOW + 2000 }).mood, 'music');
 });
 
