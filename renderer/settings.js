@@ -44,7 +44,7 @@ function applySettings(s) {
   $('setAutostart').checked = s.autostart;
   $('setAutostart').disabled = !s.autostartAvailable;
   $('autostartHint').hidden = s.autostartAvailable;
-  if (!capturing) $('setHotkey').textContent = hotkeyLabel(s.hotkey);
+  for (const key of ['hotkey', 'closeKey']) if (capturing?.key !== key) $(key === 'hotkey' ? 'setHotkey' : 'setCloseKey').textContent = hotkeyLabel(s[key]);
   $('setSound').checked = !s.muted;
   $('setAwake').checked = s.keepAwake;
   $('setSleep').value = s.sleepMin;
@@ -56,6 +56,8 @@ function applySettings(s) {
   $('setClaudePath').classList.toggle('bad', !s.claudePath);
   $('setBranch').checked = s.showBranch;
   $('setGlow').checked = s.glow;
+  $('setMic').checked = s.micSpectrum;
+  $('setMic').disabled = !s.glow;
   $('setCatJump').checked = s.catJump;
   $('setIntro').checked = s.intro;
   $('setGlowLevel').value = s.glowLevel;
@@ -75,6 +77,7 @@ $('setCatJump').addEventListener('change', (e) => setSetting('catJump', e.target
 $('setIntro').addEventListener('change', (e) => setSetting('intro', e.target.checked));
 $('setCatPlaces').addEventListener('click', () => setSetting('catPlaces', null));
 $('setGlow').addEventListener('change', (e) => setSetting('glow', e.target.checked));
+$('setMic').addEventListener('change', (e) => setSetting('micSpectrum', e.target.checked));
 $('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));
 $('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));
 
@@ -107,49 +110,60 @@ function moveModule(list, i, d) {
   setSetting('modules', next);
 }
 
-// ---- hotkey: click, then press the new combo; main keeps the old one when the new one is taken
-let capturing = false;
-const hotkeyBtn = $('setHotkey');
-const hotkeyMsg = (text, bad = false) => {
-  $('hotkeyMsg').textContent = text;
-  $('hotkeyMsg').classList.toggle('bad', bad);
+// ---- keys: click, then press the new combo; main keeps the old one when the new one is taken
+const KEYS = {
+  hotkey: { btn: $('setHotkey'), msg: $('hotkeyMsg'), tell: (k) => `Nikki hört jetzt auf ${k}.`, tip: 'Esc bricht ab.' },
+  closeKey: { btn: $('setCloseKey'), msg: $('closeKeyMsg'), tell: (k) => `${k} schließt Nikki, solange die Insel offen ist.`, tip: 'Esc belegt Esc. Rücktaste löscht.' },
+};
+let capturing = null; // the entry of KEYS being set
+const keyMsg = (entry, text, bad = false) => {
+  entry.msg.textContent = text;
+  entry.msg.classList.toggle('bad', bad);
 };
 function stopCapture() {
   if (!capturing) return;
-  capturing = false;
+  const { btn, key } = capturing;
+  capturing = null;
   removeEventListener('keydown', onHotkeyKey, true);
-  hotkeyBtn.setAttribute('aria-pressed', 'false');
-  hotkeyBtn.textContent = hotkeyLabel(settings.hotkey);
+  btn.setAttribute('aria-pressed', 'false');
+  btn.textContent = hotkeyLabel(settings[key]);
 }
 async function onHotkeyKey(e) {
   e.preventDefault();
   e.stopPropagation();
-  if (e.key === 'Escape') {
+  const entry = capturing;
+  const close = entry.key === 'closeKey';
+  if (e.key === 'Escape' && !close) {
     stopCapture();
-    return hotkeyMsg('');
+    return keyMsg(entry, '');
   }
-  const acc = acceleratorFor(e);
-  if (!acc) return; // modifiers alone so far, or a key that cannot be a hotkey
+  const clear = close && e.key === 'Backspace' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey;
+  const acc = clear ? '' : close && e.key === 'Escape' ? 'Escape' : acceleratorFor(e);
+  if (acc === null) return; // modifiers alone so far, or a key that cannot be a hotkey
   stopCapture();
-  const s = await api.settingsSet('hotkey', acc);
+  const s = await api.settingsSet(entry.key, acc);
   applySettings(s);
-  if (s.error === 'taken') hotkeyMsg(`${hotkeyLabel(acc)} ist schon belegt. Nikki bleibt bei ${hotkeyLabel(s.hotkey)}.`, true);
-  else if (s.error) hotkeyMsg(`${hotkeyLabel(acc)} kann Windows nicht belegen.`, true);
-  else hotkeyMsg(`Nikki hört jetzt auf ${hotkeyLabel(s.hotkey)}.`);
+  if (s.error === 'taken') keyMsg(entry, `${hotkeyLabel(acc)} ist schon belegt. Nikki bleibt bei ${hotkeyLabel(s[entry.key])}.`, true);
+  else if (s.error) keyMsg(entry, `${hotkeyLabel(acc)} kann Windows nicht belegen.`, true);
+  else keyMsg(entry, clear ? '' : entry.tell(hotkeyLabel(s[entry.key])));
 }
-hotkeyBtn.addEventListener('click', () => {
-  if (capturing) return stopCapture();
-  capturing = true;
-  hotkeyBtn.setAttribute('aria-pressed', 'true');
-  hotkeyBtn.textContent = 'Drück die Tasten…';
-  hotkeyMsg('Esc bricht ab.');
-  addEventListener('keydown', onHotkeyKey, true);
-});
-hotkeyBtn.addEventListener('blur', () => {
-  if (!capturing) return;
-  stopCapture();
-  hotkeyMsg('');
-});
+for (const [key, entry] of Object.entries(KEYS)) {
+  entry.key = key;
+  entry.btn.addEventListener('click', () => {
+    if (capturing === entry) return stopCapture();
+    stopCapture();
+    capturing = entry;
+    entry.btn.setAttribute('aria-pressed', 'true');
+    entry.btn.textContent = 'Drück die Tasten…';
+    keyMsg(entry, entry.tip);
+    addEventListener('keydown', onHotkeyKey, true);
+  });
+  entry.btn.addEventListener('blur', () => {
+    if (capturing !== entry) return;
+    stopCapture();
+    keyMsg(entry, '');
+  });
+}
 
 api.onSettingsChanged(applySettings);
 api.onSettingsPage(showPage);

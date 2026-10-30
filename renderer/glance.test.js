@@ -42,8 +42,9 @@ test('music or any system sound: dancing eyes and the music edge; paused is idle
   assert.equal(glance({ music: { playing: false }, now: NOW }).glow, null);
 });
 
-test('rank: needs you > voice > agent > music', () => {
-  assert.equal(glance({ status: 'needsYou', voice: true, music, now: NOW }).glow, 'need');
+test('rank: voice > needs you > agent > music', () => {
+  assert.equal(glance({ status: 'needsYou', voice: true, music, now: NOW }).glow, 'voice');
+  assert.equal(glance({ status: 'needsYou', music, now: NOW }).glow, 'need');
   assert.deepEqual(glance({ status: 'working', voice: true, music, now: NOW }), { mood: 'awake', glow: 'voice' });
   assert.equal(glance({ status: 'working', music, sound: true, now: NOW }).glow, 'work');
   assert.equal(glance({ status: 'done', music, now: NOW }).mood, 'done');

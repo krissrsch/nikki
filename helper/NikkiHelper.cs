@@ -1,7 +1,7 @@
 // Nikki's Windows helper: long-running, talks JSON lines over stdio.
 // stdout: {"type":"ready"} | {"type":"media",...} | {"type":"volume","level":0-100,"muted":bool} | {"type":"error","message":...}
 //         | {"type":"spectrum","bands":[12 numbers 0-1]} (~30/s while something sounds, see Spectrum)
-// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off
+// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off | mic on | mic off
 // NikkiHelper.exe --spectrum-test: checks the analysis on a test tone and silence, exit code 0 when it is right
 // Built with the C# 5 compiler that ships with Windows (see build.cmd): no C# 6+ syntax, and WinRT
 // async calls are waited on directly because .NET Framework's await bridge does not bind to the system .winmd files.
@@ -30,7 +30,7 @@ class NikkiHelper
     {
         Console.OutputEncoding = new UTF8Encoding(false);
         Console.InputEncoding = new UTF8Encoding(false);
-        if (args.Length > 0 && args[0] == "--spectrum-test") Environment.Exit(Spectrum.SelfTest() ? 0 : 1);
+        if (args.Length > 0 && args[0] == "--spectrum-test") Environment.Exit(Spectrum.Output.SelfTest() ? 0 : 1);
         try { Run(args); }
         catch (Exception e)
         {
@@ -80,7 +80,12 @@ class NikkiHelper
     {
         if (line == "spectrum on" || line == "spectrum off")
         {
-            Spectrum.Set(line == "spectrum on");
+            Spectrum.Output.Set(line == "spectrum on");
+            return;
+        }
+        if (line == "mic on" || line == "mic off")
+        {
+            Spectrum.Mic.Set(line == "mic on");
             return;
         }
         if (line.StartsWith("volume "))
@@ -266,16 +271,16 @@ static class Volume
     }
 
     // The default device can change (headphones), so it is looked up on every call.
-    internal static IMMDevice DefaultDevice()
+    internal static IMMDevice DefaultDevice(int flow = 0 /* eRender */)
     {
         var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
         IMMDevice device;
-        return enumerator.GetDefaultAudioEndpoint(0 /* eRender */, 1 /* eMultimedia */, out device) == 0 ? device : null;
+        return enumerator.GetDefaultAudioEndpoint(flow, 1 /* eMultimedia */, out device) == 0 ? device : null;
     }
 
-    internal static string DefaultDeviceId()
+    internal static string DefaultDeviceId(int flow = 0)
     {
-        var device = DefaultDevice();
+        var device = DefaultDevice(flow);
         string id;
         return device != null && device.GetId(out id) == 0 ? id : null;
     }
@@ -317,18 +322,30 @@ static class Volume
 // that follows the loudest band at once and falls 3 dB a second (quiet and loud music both fill the bars), fast up, slow down.
 // ~30 lines a second while something sounds; after half a second of quiet one line of zeros, then nothing.
 // A new default device (headphones) starts the capture over; an error is said once, then it tries again later and the rest runs on.
-static class Spectrum
+class Spectrum
 {
     const int N = 1024, Bands = 12, FrameMs = 33, QuietMs = 500;
-    const double MinHz = 40, MaxHz = 12000, RangeDb = 36, FloorDb = -60, FallDb = 0.1, Still = 0.0005;
-    static readonly object gate = new object();
-    static bool want;
-    static Thread thread;
-    static string said; // the last error, said once
+    const double MinHz = 40, MaxHz = 12000, RangeDb = 36, FloorDb = -60, FallDb = 0.1;
+    const double MicStill = 0.01; // a room is never silent: below about -40 dBFS the microphone counts as quiet
+    public static readonly Spectrum Output = new Spectrum(0, 0.0005), Mic = new Spectrum(1, MicStill);
+    static readonly object merge = new object();
+    readonly object gate = new object();
+    readonly int flow; // 0 eRender (loopback), 1 eCapture (microphone)
+    readonly double still;
+    readonly double[] sent = new double[Bands];
+    bool want;
+    Thread thread;
+    string said; // the last error, said once
 
-    static readonly double[] hann = new double[N], re = new double[N], im = new double[N], level = new double[Bands], shown = new double[Bands];
-    static readonly int[] lo = new int[Bands], hi = new int[Bands];
-    static double peak;
+    readonly double[] hann = new double[N], re = new double[N], im = new double[N], level = new double[Bands], shown = new double[Bands];
+    readonly int[] lo = new int[Bands], hi = new int[Bands];
+    double peak;
+
+    Spectrum(int flow, double still)
+    {
+        this.flow = flow;
+        this.still = still;
+    }
 
     [ComImport, Guid("1CB9AD4C-DBFA-4C32-B178-C2F568A703B2"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     interface IAudioClient
@@ -355,7 +372,7 @@ static class Spectrum
         void GetNextPacketSize(out uint frames);
     }
 
-    public static void Set(bool on)
+    public void Set(bool on)
     {
         lock (gate)
         {
@@ -370,12 +387,12 @@ static class Spectrum
         }
     }
 
-    static bool Wanted()
+    bool Wanted()
     {
         lock (gate) return want;
     }
 
-    static void Loop()
+    void Loop()
     {
         int delay = 1000;
         while (true)
@@ -396,10 +413,10 @@ static class Spectrum
         }
     }
 
-    static void Capture()
+    void Capture()
     {
-        var device = Volume.DefaultDevice();
-        if (device == null) throw new InvalidOperationException("Kein Wiedergabegerät für das Spektrum");
+        var device = Volume.DefaultDevice(flow);
+        if (device == null) throw new InvalidOperationException(flow == 0 ? "Kein Wiedergabegerät für das Spektrum" : "Kein Mikrofon für das Spektrum");
         string id;
         device.GetId(out id);
         Guid iid = typeof(IAudioClient).GUID;
@@ -417,7 +434,7 @@ static class Spectrum
             try
             {
                 ReadFormat(fmt, out channels, out rate, out block, out bytes, out isFloat);
-                client.Initialize(0 /* shared */, 0x00020000 /* AUDCLNT_STREAMFLAGS_LOOPBACK */, 1000000 /* 100 ms */, 0, fmt, IntPtr.Zero);
+                client.Initialize(0 /* shared */, flow == 0 ? 0x00020000 /* AUDCLNT_STREAMFLAGS_LOOPBACK */ : 0, 1000000 /* 100 ms */, 0, fmt, IntPtr.Zero);
             }
             finally { Marshal.FreeCoTaskMem(fmt); }
             Guid cid = typeof(IAudioCaptureClient).GUID;
@@ -481,7 +498,7 @@ static class Spectrum
                 if (now >= nextCheck)
                 {
                     nextCheck = now + 1000;
-                    if (Volume.DefaultDeviceId() != id) return; // headphones in or out: start over on the new device
+                    if (Volume.DefaultDeviceId(flow) != id) return; // headphones in or out: start over on the new device
                 }
                 Thread.Sleep(10);
             }
@@ -520,7 +537,7 @@ static class Spectrum
     }
 
     // the FFT bins of each band at this sample rate; every band gets at least one
-    static void Prepare(int rate)
+    void Prepare(int rate)
     {
         for (int k = 0; k < N; k++) hann[k] = 0.5 - 0.5 * Math.Cos(2 * Math.PI * k / (N - 1));
         for (int b = 0; b < Bands; b++)
@@ -534,7 +551,7 @@ static class Spectrum
     }
 
     // level[]: dB per band of the last N samples (oldest at pos); false when it is quieter than the stillness threshold
-    static bool Analyze(float[] ring, int pos)
+    bool Analyze(float[] ring, int pos)
     {
         double sq = 0;
         for (int k = 0; k < N; k++)
@@ -544,7 +561,7 @@ static class Spectrum
             re[k] = x * hann[k];
             im[k] = 0;
         }
-        if (Math.Sqrt(sq / N) < Still) return false;
+        if (Math.Sqrt(sq / N) < still) return false;
         Fft(re, im);
         for (int b = 0; b < Bands; b++)
         {
@@ -557,7 +574,7 @@ static class Spectrum
     }
 
     // shown[] 0-1 against the falling peak; up quickly, down slowly
-    static void Step(bool loud)
+    void Step(bool loud)
     {
         double top = FloorDb;
         if (loud) for (int b = 0; b < Bands; b++) top = Math.Max(top, level[b]);
@@ -603,15 +620,20 @@ static class Spectrum
         }
     }
 
-    static void Send(double[] v)
+    // one line of bars: the louder of both sources per band
+    void Send(double[] v)
     {
-        var sb = new StringBuilder("{\"type\":\"spectrum\",\"bands\":[");
-        for (int b = 0; b < Bands; b++) sb.Append(b > 0 ? "," : "").Append(v[b].ToString("0.00", CultureInfo.InvariantCulture));
-        NikkiHelper.Emit(sb.Append("]}").ToString());
+        lock (merge)
+        {
+            Array.Copy(v, sent, Bands);
+            var sb = new StringBuilder("{\"type\":\"spectrum\",\"bands\":[");
+            for (int b = 0; b < Bands; b++) sb.Append(b > 0 ? "," : "").Append(Math.Max(Output.sent[b], Mic.sent[b]).ToString("0.00", CultureInfo.InvariantCulture));
+            NikkiHelper.Emit(sb.Append("]}").ToString());
+        }
     }
 
     // --spectrum-test: a 1 kHz tone peaks in its band (692-1117 Hz, band 6) and fills it, silence stays quiet
-    public static bool SelfTest()
+    public bool SelfTest()
     {
         const int rate = 48000;
         Prepare(rate);

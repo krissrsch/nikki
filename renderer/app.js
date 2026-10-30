@@ -37,6 +37,7 @@ let focusSession = null; // observed session id pinned by tapping a session pill
 let unseen = null; // 'done' | 'error' of our own task, until the chat was looked at
 let lastActivity = Date.now();
 let hover = false; // pointer over the island: Nikki wakes up
+let drag = null; // the closed notch under the mouse: { off, moved }
 const modelMenu = $('modelMenu');
 const chatsMenu = $('chatsMenu');
 const threadEl = $('thread');
@@ -165,7 +166,7 @@ const ICON_FOLDER = svg('M2.5 4.5h4l1.5 1.5h5.5v6.5h-11z');
 // ---- click-through: the window only catches the mouse over .hit elements
 let through = true;
 function setThrough(on) {
-  if (on === through) return;
+  if (drag || on === through) return; // a drag keeps the mouse, or its release would go to the window below
   through = on;
   api.setClickThrough(on);
 }
@@ -662,7 +663,9 @@ function setBusy(b) {
 // focus: false when nobody asked for the island (a card arrived): it must not take the keyboard from the terminal the user types in
 function setOpen(v, { instant = false, focus = true } = {}) {
   if (v === open) return;
+  if (v) endDrag(); // a card arrived mid-drag
   open = v;
+  api.islandOpen(v);
   if (instant) {
     island.classList.add('instant');
     requestAnimationFrame(() => requestAnimationFrame(() => island.classList.remove('instant')));
@@ -1142,7 +1145,52 @@ document.addEventListener('drop', (e) => {
 });
 
 // ---- wiring
-$('notch').addEventListener('click', () => setOpen(true));
+// The closed notch follows the mouse along the top edge, onto another display too (main moves the window there);
+// let go, it springs back to the middle of the display it is on.
+const dragRoot = document.documentElement;
+const DRAG_START = 4; // px: less is a click
+const NOTCH_HALF = 55;
+const setDragX = (x) => dragRoot.style.setProperty('--dragX', `${x}px`);
+let dragBack = 0;
+let justDragged = false;
+function endDrag() {
+  if (!drag) return;
+  const { moved } = drag;
+  drag = null;
+  if (!moved) return;
+  api.notchDrag(false);
+  justDragged = true; // the click of this release is not an opening click
+  dragRoot.dataset.drag = 'back';
+  setDragX(0);
+  clearTimeout(dragBack);
+  dragBack = setTimeout(() => {
+    delete dragRoot.dataset.drag;
+    justDragged = false;
+  }, 450);
+}
+$('notch').addEventListener('pointerdown', (e) => {
+  if (open || introRunning || e.button !== 0) return;
+  drag = { off: e.clientX - innerWidth / 2, moved: false };
+  $('notch').setPointerCapture(e.pointerId);
+});
+$('notch').addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const x = e.clientX - innerWidth / 2 - drag.off;
+  if (!drag.moved) {
+    if (Math.abs(x) < DRAG_START) return;
+    drag.moved = true;
+    dragRoot.dataset.drag = 'on';
+    api.notchDrag(true);
+  }
+  const room = innerWidth / 2 - NOTCH_HALF;
+  setDragX(Math.max(-room, Math.min(room, x)));
+});
+$('notch').addEventListener('pointerup', endDrag);
+$('notch').addEventListener('pointercancel', endDrag);
+$('notch').addEventListener('click', () => {
+  if (!justDragged) setOpen(true);
+  justDragged = false;
+});
 $('tabs').addEventListener('click', (e) => {
   const btn = e.target.closest('.tab');
   if (btn?.id === 'openSettings') openSettings();
@@ -1336,6 +1384,7 @@ api.onShow?.((page) => {
 });
 api.onStatus(show);
 api.onSpectrum((bands) => spectrum.set(bands));
+api.onCloseKey(() => !perms.length && setOpen(false)); // like Esc: a waiting card keeps the island open
 api.onSession?.(({ id }) => {
   if (!id) return;
   chatSessionId = id;

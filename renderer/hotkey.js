@@ -14,5 +14,5 @@ function acceleratorFor(e) {
   return [...mods, key].join('+');
 }
 
-const HOTKEY_LABELS = { Control: 'Strg', Shift: 'Umschalt', Super: 'Win', Space: 'Leertaste' };
+const HOTKEY_LABELS = { Control: 'Strg', Shift: 'Umschalt', Super: 'Win', Space: 'Leertaste', Escape: 'Esc' };
 const hotkeyLabel = (acc) => (acc ? acc.split('+').map((k) => HOTKEY_LABELS[k] ?? k).join('+') : 'keins');
