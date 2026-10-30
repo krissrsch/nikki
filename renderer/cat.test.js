@@ -35,7 +35,9 @@ test('der Blick der Notch bestimmt ihre Stimmung', () => {
 
 test('cat.css ist aktuell (node scripts/build-cat-css.mjs) und deckt jede Stimmung ab', () => {
   const css = readFileSync(new URL('./cat.css', import.meta.url), 'utf8');
-  assert.equal(css, cat.catCss());
+  assert.equal(css.replace(/
+/g, '
+'), cat.catCss()); // git may hand out CRLF
   for (const m of cat.CAT_MOODS) assert.ok(css.includes(`.cat[data-mood='${m}'] .c-body`), m);
   // every animation it uses is defined
   const defined = new Set([...css.matchAll(/@keyframes (ct-\w+)/g)].map((x) => x[1]));
