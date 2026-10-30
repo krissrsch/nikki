@@ -22,6 +22,9 @@
     "files": [
       "**/*",
       "!**/*.test.js",
+      "!notes/**",
+      "!*.md",
+      "!installer.nsh",
       "!dist/**",
       "!win-unpacked/**",
       "!graphify-out/**",
@@ -42,7 +45,8 @@
       "perMachine": false,
       "createDesktopShortcut": "always",
       "shortcutName": "Nikki",
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "include": "installer.nsh"
     }
   },
   "dependencies": {
