@@ -18,6 +18,7 @@ Während des Laufs erscheint die Insel kurz oben am Bildschirm. Läuft eine Voll
 | | B1: Code-Block, Inline-Code und Link aus einer gespeicherten Chat-Fixture bleiben unverfälscht |
 | | B2: Nach einem Projektwechsel geht keine fremde Session-ID an Claude, der alte Chat bleibt unverändert |
 | | B6: Enter im leeren Feld stoppt nichts, auch nicht bei offener Freigabe-Karte; der Stop-Knopf stoppt |
+| | Module: in den Settings aus- und wieder einschalten ändert Tabs und Kacheln ohne Neustart; ein To-do landet in `userData/modules/todo.json`; „An Chat“ füllt nur das Eingabefeld |
 | `relay.e2e.js` | Terminal-Rückkanal über das echte `hook.cjs`: Der Start schreibt den wartenden PermissionRequest-Hook (`--wait`, timeout 120), „Immer“ in der Insel geht als allow mit `updatedPermissions` zurück, ein Stop der Session räumt die Karte ab, eine vorgemerkte Nachricht kommt genau einmal per `--stop` als `block` zurück |
 | `claude.e2e.js` (nur mit `NIKKI_E2E_CLAUDE=1`) | Prompt, Freigabe erlauben (`node -e`), Freigabe ablehnen (`git init`), B4: Senden direkt nach „fertig“, B5: Stop ohne Diagnose-Text |
 

@@ -1,5 +1,6 @@
 // Offline e2e run: no network, no Claude login. Claude is replaced at the IPC boundary where a test needs a running task.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, test } from 'node:test';
 import { launch, rm, tmpDir, until } from './nikki.js';
@@ -38,7 +39,9 @@ describe('Nikki offline', () => {
     await nikki.page.click('#notch');
     assert.equal(await isOpen(), true);
     assert.equal(await nikki.page.getAttribute('#notch', 'aria-expanded'), 'true');
-    // the empty strip of the tab bar closes it (the spacer itself has no height to click)
+    // the empty strip of the tab bar closes it (the spacer itself has no height to click);
+    // measured once the island has its full width: with module tabs the spacer's middle is off-center
+    await nikki.page.waitForFunction(() => document.getElementById('island').getBoundingClientRect().width === 720);
     const bar = await nikki.page.locator('#tabs').boundingBox();
     const gap = await nikki.page.locator('#tabs .grow').boundingBox();
     await nikki.page.mouse.click(gap.x + gap.width / 2, bar.y + bar.height / 2);
@@ -116,6 +119,34 @@ describe('Nikki offline', () => {
     assert.equal(savedA.sessionId, 'sess-A');
     assert.deepEqual(savedA.messages.map((m) => m.text), ['Hallo A', 'Hi aus A']);
     assert.equal(chats.find((c) => c.id !== 'chat-a').cwd, b);
+  });
+
+  test('Module: ein und aus ohne Neustart, Daten in userData/modules, „An Chat“ schickt nichts', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    const tabs = () => page.$$eval('#moduleTabs .tab', (b) => b.map((x) => x.dataset.view));
+    assert.deepEqual(await tabs(), ['calendar', 'todo', 'notes', 'timer']);
+    assert.equal(await page.locator('#homeTiles .tile').count(), 5, 'Claude + vier Module');
+    await page.click('#tabs .tab[data-view="settings"]');
+    await page.click('#mod-timer');
+    await page.waitForFunction(() => !document.querySelector('#moduleTabs .tab[data-view="timer"]'));
+    assert.equal(await page.locator('#homeTiles .tile').count(), 4);
+    assert.deepEqual(nikki.state().modules.find((m) => m.id === 'timer'), { id: 'timer', on: false });
+    await page.click('#mod-timer');
+    await page.waitForSelector('#moduleTabs .tab[data-view="timer"]');
+
+    await nikki.fakeClaude();
+    await page.click('#tabs .tab[data-view="todo"]');
+    await page.fill('.todoNew', 'Milch holen');
+    await page.press('.todoNew', 'Enter');
+    const file = path.join(nikki.userData, 'modules', 'todo.json');
+    const saved = await until(() => fs.existsSync(file) && JSON.parse(fs.readFileSync(file, 'utf8')), 'todo.json geschrieben');
+    assert.equal(saved.items[0].text, 'Milch holen');
+    await page.click('.todoRow .todoChat');
+    assert.equal(await page.inputValue('#prompt'), 'Milch holen');
+    assert.equal(await page.getAttribute('#tabs .tab[data-view="chat"]', 'aria-pressed'), 'true');
+    assert.deepEqual((await nikki.calls()).starts, [], 'nicht abgeschickt');
+    assert.deepEqual(nikki.errors, []);
   });
 
   test('B6: Enter im leeren Feld stoppt nichts, auch nicht bei offener Freigabe', async () => {
