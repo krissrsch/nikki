@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { _electron as electron } from 'playwright';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const electronPath = createRequire(import.meta.url)('electron'); // the package exports the path of its binary
 export const tmpDir = (name) => fs.mkdtempSync(path.join(os.tmpdir(), `nikki-e2e-${name}-`));
 export const rm = (dir) => dir && fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
@@ -22,9 +22,10 @@ export async function until(fn, what, ms = 10000) {
   }
 }
 
-// state: initial state.json (fixture). realHome: keep the user's home, only for runs that need the Claude login.
-// Without it HOME/USERPROFILE point to a temp folder, so nothing can reach ~/.claude/settings.json.
-export async function launch({ state, realHome = false } = {}) {
+// state: initial state.json (fixture). settings: initial ~/.claude/settings.json in the temp home.
+// realHome: keep the user's home, only for runs that need the Claude login.
+// Without it HOME/USERPROFILE point to a temp folder, so nothing can reach the real ~/.claude/settings.json.
+export async function launch({ state, settings, realHome = false } = {}) {
   const userData = tmpDir('data');
   const home = realHome ? null : tmpDir('home');
   if (state) fs.writeFileSync(path.join(userData, 'state.json'), JSON.stringify(state));
@@ -36,6 +37,10 @@ export async function launch({ state, realHome = false } = {}) {
     // Claude counts as installed on every machine; the offline tests replace it before anything would run it
     fs.mkdirSync(path.join(home, '.local', 'bin'), { recursive: true });
     fs.writeFileSync(path.join(home, '.local', 'bin', 'claude.exe'), '');
+    if (settings) {
+      fs.mkdirSync(path.join(home, '.claude'));
+      fs.writeFileSync(path.join(home, '.claude', 'settings.json'), JSON.stringify(settings));
+    }
   }
   // --user-data-dir too: an app without NIKKI_USER_DATA support still stays off the real data
   // cwd in temp: with a temp USERPROFILE, PowerShell (fullscreen watcher) writes its module cache relative to it
