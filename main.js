@@ -25,14 +25,15 @@ const claudePath = path.join(os.homedir(), '.local', 'bin', 'claude.exe');
 const WIDTH = 760; // expanded island width; height stays compact
 const HEIGHT = 320; // fixed open island (panel 228px + bar + shadow)
 
-// Usage must run on the user's own subscription, never on an API key that happens to be set.
+// Usage must run on the user's own subscription, never on an API key or another endpoint that happens to be set (N10).
 delete process.env.ANTHROPIC_API_KEY;
+delete process.env.ANTHROPIC_AUTH_TOKEN;
+delete process.env.ANTHROPIC_BASE_URL;
 
-// --- tiny JSON store: recent projects + last session per project/backend
+// --- tiny JSON store: recent projects, model per project, chats (each with its own session id)
 const storeFile = path.join(app.getPath('userData'), 'state.json');
 let store = {
   projects: [],
-  sessions: {},
   models: {},
   favorites: { claude: [] },
   chats: [],
@@ -49,6 +50,8 @@ try {
   store.favorites = { claude: store.favorites?.claude ?? [] };
   store.chats = Array.isArray(store.chats) ? store.chats : [];
   store.lastChatId = store.lastChatId ?? null;
+  delete store.sessions; // 1.0: last session per project, now only chats carry one (N9)
+  delete store.backends;
 } catch (e) {
   storeWritable = false;
   storeNotice = `Nikki kann ${storeFile} nicht lesen (${e.code ?? e.message}). Bis zum Neustart speichert Nikki nichts.`;
@@ -70,20 +73,6 @@ const addProject = (p) => {
   store.projects = [p, ...store.projects.filter((x) => x !== p)].slice(0, 8);
   save();
 };
-
-function getSession(cwd, backend) {
-  const v = store.sessions[cwd];
-  if (!v) return undefined;
-  if (typeof v === 'string') return backend === 'claude' ? v : undefined;
-  return v[backend];
-}
-function setSession(cwd, backend, id) {
-  const cur = store.sessions[cwd];
-  const obj = typeof cur === 'string' ? { claude: cur } : { ...(cur || {}) };
-  obj[backend] = id;
-  store.sessions[cwd] = obj;
-  save();
-}
 
 let win;
 let quitting = false;
@@ -154,10 +143,7 @@ const agent = createClaudeAgent({
     if (s.state === 'done') notify(`Fertig in ${where}.`);
     if (s.state === 'error') notify(`Fehler in ${where}.`);
   },
-  onSession: (sid) => {
-    setSession(activeCwd, 'claude', sid);
-    send('session', { id: sid, cwd: activeCwd });
-  },
+  onSession: (sid) => send('session', { id: sid, cwd: activeCwd }),
 });
 
 // --- the island sits at the top-center of one display: the primary one at start, the mouse pointer's one when opened
@@ -353,9 +339,8 @@ ipcMain.handle('start', (_e, { prompt, cwd, newSession, plan, model, sessionId }
   addProject(cwd);
   setModel(cwd, model);
   save();
-  const resume = newSession ? undefined : sessionId || getSession(cwd, 'claude');
-  agent.start(prompt, cwd, resume, { plan, model: model ?? undefined });
-  return true;
+  // only the chat's own session: no fallback to whatever ran last in this project (N9)
+  return agent.start(prompt, cwd, newSession ? undefined : sessionId || undefined, { plan, model: model ?? undefined });
 });
 ipcMain.on('open-external', (_e, url) => /^https?:\/\//i.test(url) && shell.openExternal(url));
 ipcMain.on('stop', () => agent.stop());
@@ -563,7 +548,7 @@ app.on('will-quit', () => {
   quitting = true;
   clearInterval(pointerTimer);
   pointerTimer = null;
-  agent.stop();
+  agent.abort(); // no claude.exe left running on its own (M5)
   try {
     fullscreenWatcher?.stdout?.removeAllListeners('data');
     fullscreenWatcher?.kill();
