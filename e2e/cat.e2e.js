@@ -1,0 +1,64 @@
+// Nikki the cat: she sits in the Claude tile, jumps out before the tab changes, peeks over an edge on the other pages.
+// And the light edge reaches across the whole display (the window is as wide as the screen).
+import assert from 'node:assert/strict';
+import { afterEach, describe, test } from 'node:test';
+import { launch, until } from './nikki.js';
+
+let nikki;
+afterEach(async () => {
+  await nikki?.close();
+  nikki = null;
+});
+const shown = () => nikki.page.$$eval('.view:not([hidden])', (v) => v.map((x) => x.id));
+const rest = () => nikki.page.$eval('.catRest', (el) => ({ type: el.dataset.type, mood: el.querySelector('.cat').dataset.mood, h: el.offsetHeight }));
+
+describe('Nikki die Katze', () => {
+  test('sitzt in der Claude-Kachel, lugt im Chat über die Eingabe', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    await until(async () => (await rest()).type === 'sit', 'sitzt in Home');
+    await page.waitForTimeout(500); // the page's own fade-in moves the tile for a moment
+    const tile = await page.$eval('[data-tile="claude"]', (t) => t.getBoundingClientRect().toJSON());
+    const cat = await page.$eval('.catRest', (t) => t.getBoundingClientRect().toJSON());
+    assert.ok(cat.right <= tile.right && cat.bottom <= tile.bottom + 1.5 && cat.left > tile.left + tile.width / 2, `unten rechts in der Kachel: ${JSON.stringify({ cat, tile })}`);
+    await page.click('#tabs .tab[data-view="chat"]');
+    await until(async () => (await rest()).type === 'peek', 'lugt im Chat');
+    await page.waitForTimeout(500);
+    const comp = await page.$eval('#composer', (t) => t.getBoundingClientRect().toJSON());
+    const c = await page.$eval('.catRest', (t) => t.getBoundingClientRect().toJSON());
+    assert.ok(Math.abs(c.bottom - comp.top) <= 1.5, 'die Unterkante des sichtbaren Teils liegt auf der Eingabe');
+    assert.deepEqual(nikki.errors, []);
+  });
+
+  test('mit Sprung: erst springt sie, dann wechselt der Tab, dann ist sie in der neuen Ansicht', async () => {
+    nikki = await launch({ state: { catJump: true } });
+    const { page } = nikki;
+    await page.waitForTimeout(400);
+    await page.click('#tabs .tab[data-view="chat"]');
+    await page.waitForTimeout(150);
+    assert.deepEqual(await shown(), ['viewHome'], 'die alte Ansicht steht noch, solange sie springt');
+    assert.equal(await page.$eval('.catFly', (e) => e.hidden), false, 'sie fliegt');
+    await until(async () => (await shown())[0] === 'viewChat', 'der Tab wechselt danach', 3000);
+    await until(async () => (await rest()).type === 'peek' && (await page.$eval('.catFly', (e) => e.hidden)), 'sie ist angekommen', 3000);
+    // und zurück: sie taucht ab, bevor Heute erscheint
+    await page.waitForTimeout(1000);
+    await page.click('#tabs .tab[data-view="home"]');
+    await page.waitForTimeout(100);
+    assert.deepEqual(await shown(), ['viewChat']);
+    await until(async () => (await shown())[0] === 'viewHome' && (await rest()).type === 'sit', 'wieder in der Kachel', 3000);
+    assert.deepEqual(nikki.errors, []);
+  });
+
+  test('die Lichtkante läuft über den ganzen Bildschirm: das Fenster ist so breit wie die Anzeige', async () => {
+    nikki = await launch();
+    const { app } = nikki;
+    const { win, display } = await app.evaluate(({ BrowserWindow, screen }) => {
+      const w = BrowserWindow.getAllWindows()[0].getBounds();
+      return { win: w, display: screen.getDisplayMatching(w).bounds };
+    });
+    assert.equal(win.x, display.x);
+    assert.equal(win.width, Math.max(1200, display.width));
+    const rim = await nikki.page.$eval('#glow', (g) => ({ w: g.getBoundingClientRect().width, v: g.getAttribute('viewBox') }));
+    assert.ok(rim.w >= win.width, 'die Linie reicht bis zu den Rändern');
+  });
+});

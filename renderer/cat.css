@@ -1,0 +1,197 @@
+/* generated from renderer/cat.js by scripts/build-cat-css.mjs, do not edit by hand */
+.cat { display: block; width: 100%; height: 100%; overflow: visible; }
+.cat .fb { transform-box: fill-box; transform-origin: center; }
+.cat .fbb { transform-box: fill-box; transform-origin: 50% 100%; }
+.cat .fbt { transform-box: fill-box; transform-origin: 50% 0; }
+.cat .c-earL { transform-origin: 40px 30px; }
+.cat .c-earR { transform-origin: 80px 30px; }
+.cat .c-whL { transform-origin: 20px 70px; }
+.cat .c-whR { transform-origin: 100px 70px; }
+.cat .c-arm { transform-box: fill-box; transform-origin: 98px 82px; animation: ct-waveArm 0.7s ease-in-out infinite; }
+.cat .ce, .cat .cm, .cat .cx { display: none; }
+.cat .c-blush { opacity: 0.28; }
+.cat[data-mood='idle'] .ce-pill,
+.cat[data-mood='blink'] .ce-pill,
+.cat[data-mood='look'] .ce-pill,
+.cat[data-mood='work'] .ce-pill,
+.cat[data-mood='think'] .ce-pill,
+.cat[data-mood='box'] .ce-pill { display: inline; }
+.cat[data-mood='listen'] .ce-tall { display: inline; }
+.cat[data-mood='need'] .ce-round { display: inline; }
+.cat[data-mood='surprised'] .ce-big { display: inline; }
+.cat[data-mood='done'] .ce-happy,
+.cat[data-mood='purr'] .ce-happy,
+.cat[data-mood='music'] .ce-happy,
+.cat[data-mood='wave'] .ce-happy { display: inline; }
+.cat[data-mood='yawn'] .ce-closed,
+.cat[data-mood='sleep'] .ce-closed { display: inline; }
+.cat[data-mood='sad'] .ce-sad { display: inline; }
+.cat[data-mood='error'] .ce-squint { display: inline; }
+.cat[data-mood='love'] .ce-heart { display: inline; }
+.cat[data-mood='dizzy'] .ce-spiral { display: inline; }
+.cat[data-mood='idle'] .cm-cat,
+.cat[data-mood='blink'] .cm-cat,
+.cat[data-mood='look'] .cm-cat,
+.cat[data-mood='work'] .cm-cat,
+.cat[data-mood='think'] .cm-cat,
+.cat[data-mood='listen'] .cm-cat,
+.cat[data-mood='sleep'] .cm-cat,
+.cat[data-mood='box'] .cm-cat { display: inline; }
+.cat[data-mood='done'] .cm-smile,
+.cat[data-mood='purr'] .cm-smile,
+.cat[data-mood='music'] .cm-smile,
+.cat[data-mood='wave'] .cm-smile,
+.cat[data-mood='love'] .cm-smile { display: inline; }
+.cat[data-mood='surprised'] .cm-open { display: inline; }
+.cat[data-mood='error'] .cm-frown,
+.cat[data-mood='sad'] .cm-frown { display: inline; }
+.cat[data-mood='yawn'] .cm-yawn { display: inline; }
+.cat[data-mood='need'] .cm-o,
+.cat[data-mood='dizzy'] .cm-o { display: inline; }
+.cat[data-mood='error'] .cx-sweat,
+.cat[data-mood='dizzy'] .cx-sweat { display: inline; }
+.cat[data-mood='sad'] .cx-tear { display: inline; }
+.cat[data-mood='sleep'] .cx-zz { display: inline; }
+.cat[data-mood='music'] .cx-notes { display: inline; }
+.cat[data-mood='need'] .cx-bang,
+.cat[data-mood='surprised'] .cx-bang { display: inline; }
+.cat[data-mood='error'] .cx-err { display: inline; }
+.cat[data-mood='think'] .cx-think { display: inline; }
+.cat[data-mood='listen'] .cx-arcs { display: inline; }
+.cat[data-mood='done'] .cx-spark,
+.cat[data-mood='purr'] .cx-spark,
+.cat[data-mood='love'] .cx-spark { display: inline; }
+.cat[data-mood='wave'] .cx-wave { display: inline; }
+.cat[data-mood='box'] .cx-box { display: inline; }
+.cat[data-mood='idle'] .c-body { animation: ct-bob 3.4s ease-in-out infinite; }
+.cat[data-mood='blink'] .c-body { animation: ct-bob 3.4s ease-in-out infinite; }
+.cat[data-mood='look'] .c-body { animation: ct-bob 3.4s ease-in-out infinite; }
+.cat[data-mood='work'] .c-body { animation: ct-nod 1.2s ease-in-out infinite; }
+.cat[data-mood='think'] .c-body { animation: ct-sway 3s ease-in-out infinite; }
+.cat[data-mood='listen'] .c-body { animation: ct-nod 1.6s ease-in-out infinite; }
+.cat[data-mood='need'] .c-body { animation: ct-ping 1.6s ease-in-out infinite; }
+.cat[data-mood='surprised'] .c-body { animation: ct-pop 2.2s ease-out infinite; }
+.cat[data-mood='done'] .c-body { animation: ct-hop 1.8s cubic-bezier(.23,1,.32,1) infinite; }
+.cat[data-mood='purr'] .c-body { animation: ct-vib .12s linear infinite; }
+.cat[data-mood='music'] .c-body { animation: ct-dance .9s ease-in-out infinite; }
+.cat[data-mood='wave'] .c-body { animation: ct-bob 3s ease-in-out infinite; }
+.cat[data-mood='error'] .c-body { animation: ct-shake .7s ease-in-out infinite; }
+.cat[data-mood='sad'] .c-body { animation: ct-sway 4.5s ease-in-out infinite; }
+.cat[data-mood='dizzy'] .c-body { animation: ct-wobble 1.1s ease-in-out infinite; }
+.cat[data-mood='yawn'] .c-body { animation: ct-breathe 3.2s ease-in-out infinite; }
+.cat[data-mood='sleep'] .c-body { animation: ct-breathe 3.6s ease-in-out infinite; }
+.cat[data-mood='box'] .c-body { animation: ct-bob 3.4s ease-in-out infinite; }
+.cat[data-mood='love'] .c-body { animation: ct-heartBeat 1.4s ease-in-out infinite; }
+.cat[data-mood='listen'] .c-earL,
+.cat[data-mood='need'] .c-earL,
+.cat[data-mood='surprised'] .c-earL { animation: ct-earPerk 0.8s ease-in-out infinite; }
+.cat[data-mood='listen'] .c-earR,
+.cat[data-mood='need'] .c-earR,
+.cat[data-mood='surprised'] .c-earR { animation: ct-earPerkR 0.8s ease-in-out infinite; }
+.cat[data-mood='idle'] .c-earL,
+.cat[data-mood='blink'] .c-earL,
+.cat[data-mood='look'] .c-earL,
+.cat[data-mood='work'] .c-earL,
+.cat[data-mood='think'] .c-earL,
+.cat[data-mood='done'] .c-earL,
+.cat[data-mood='purr'] .c-earL,
+.cat[data-mood='music'] .c-earL,
+.cat[data-mood='wave'] .c-earL,
+.cat[data-mood='error'] .c-earL,
+.cat[data-mood='dizzy'] .c-earL,
+.cat[data-mood='yawn'] .c-earL,
+.cat[data-mood='box'] .c-earL,
+.cat[data-mood='love'] .c-earL { animation: ct-earTwitchL 6s ease-in-out infinite; }
+.cat[data-mood='idle'] .c-earR,
+.cat[data-mood='blink'] .c-earR,
+.cat[data-mood='look'] .c-earR,
+.cat[data-mood='work'] .c-earR,
+.cat[data-mood='think'] .c-earR,
+.cat[data-mood='done'] .c-earR,
+.cat[data-mood='purr'] .c-earR,
+.cat[data-mood='music'] .c-earR,
+.cat[data-mood='wave'] .c-earR,
+.cat[data-mood='error'] .c-earR,
+.cat[data-mood='dizzy'] .c-earR,
+.cat[data-mood='yawn'] .c-earR,
+.cat[data-mood='box'] .c-earR,
+.cat[data-mood='love'] .c-earR { animation: ct-earTwitchR 7.5s ease-in-out infinite; }
+.cat[data-mood='listen'] .c-whL,
+.cat[data-mood='need'] .c-whL,
+.cat[data-mood='surprised'] .c-whL,
+.cat[data-mood='music'] .c-whL { animation: ct-wiggleL 0.45s ease-in-out infinite; }
+.cat[data-mood='listen'] .c-whR,
+.cat[data-mood='need'] .c-whR,
+.cat[data-mood='surprised'] .c-whR,
+.cat[data-mood='music'] .c-whR { animation: ct-wiggleR 0.45s ease-in-out infinite; }
+.cat[data-mood='sad'] .c-wd,
+.cat[data-mood='sleep'] .c-wd { transform: translateY(3px); }
+.cat[data-mood='look'] .c-eyes { animation: ct-lookA 3.2s ease-in-out infinite; }
+.cat[data-mood='work'] .c-eyes { animation: ct-scan 1.1s ease-in-out infinite; }
+.cat[data-mood='think'] .c-eyes { animation: ct-thinkEyes 2.4s ease-in-out infinite; }
+.cat[data-mood='idle'] .c-blink { animation: ct-blink 4.6s infinite; }
+.cat[data-mood='blink'] .c-blink { animation: ct-blink 1.6s infinite; }
+.cat[data-mood='look'] .c-blink { animation: ct-blink 4.6s infinite; }
+.cat[data-mood='wave'] .c-blink { animation: ct-blink 4.6s infinite; }
+.cat[data-mood='box'] .c-blink { animation: ct-blink 4.6s infinite; }
+.cat[data-mood='done'] .c-blush,
+.cat[data-mood='purr'] .c-blush,
+.cat[data-mood='error'] .c-blush,
+.cat[data-mood='love'] .c-blush { opacity: .55; }
+.cat[data-mood='sad'] .c-blush { opacity: .2; }
+.cat .c-beat { animation: ct-heartBeat 0.9s ease-in-out infinite; }
+.cat .c-spin { animation: ct-spin 1.1s linear infinite; }
+.cat .c-spinR { animation: ct-spin 1.1s linear infinite reverse; }
+.cat .c-yawn { animation: ct-yawn 3.2s ease-in-out infinite; }
+.cat .c-drop { animation: ct-drop 1.6s ease-in infinite; }
+.cat .c-tear { animation: ct-tearF 2.6s ease-in infinite; }
+.cat .c-z1 { animation: ct-zzf 2.8s ease-out infinite; }
+.cat .c-z2 { animation: ct-zzf 2.8s ease-out 1.4s infinite; }
+.cat .c-n1 { animation: ct-noteF 2.2s ease-out infinite; }
+.cat .c-n2 { animation: ct-noteF 2.2s ease-out 1.1s infinite; }
+.cat .c-ping { animation: ct-ping 1.6s ease-in-out infinite; }
+.cat .c-d1 { animation: ct-dots 1.4s infinite; }
+.cat .c-d2 { animation: ct-dots 1.4s 0.25s infinite; }
+.cat .c-d3 { animation: ct-dots 1.4s 0.5s infinite; }
+.cat .c-a1 { animation: ct-arcs 1.5s ease-out infinite; }
+.cat .c-a2 { animation: ct-arcs 1.5s ease-out 0.5s infinite; }
+.cat .c-a3 { animation: ct-arcs 1.5s ease-out 0.25s infinite; }
+.cat .c-a4 { animation: ct-arcs 1.5s ease-out 0.75s infinite; }
+.cat .c-s1 { animation: ct-sparkle 1.8s ease-in-out infinite; }
+.cat .c-s2 { animation: ct-sparkle 1.8s ease-in-out 0.6s infinite; }
+.cat .c-s3 { animation: ct-sparkle 1.8s ease-in-out 1.1s infinite; }
+.cat .c-peek { animation: ct-peek 2.4s ease-in-out infinite; }
+@keyframes ct-bob { 0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-2.5px) scale(1.012,.99)} }
+@keyframes ct-hop { 0%,55%,100%{transform:translateY(0) scale(1,1)}62%{transform:translateY(1px) scale(1.06,.93)}74%{transform:translateY(-11px) scale(.96,1.05)}86%{transform:translateY(0) scale(1.05,.95)} }
+@keyframes ct-shake { 0%,100%{transform:translateX(0)}15%{transform:translateX(-3px)}30%{transform:translateX(3px)}45%{transform:translateX(-2px)}60%{transform:translateX(2px)}75%{transform:translateX(0)} }
+@keyframes ct-dance { 0%,100%{transform:translateY(0) rotate(-4deg)}25%{transform:translateY(-6px) rotate(0)}50%{transform:translateY(0) rotate(4deg)}75%{transform:translateY(-6px) rotate(0)} }
+@keyframes ct-vib { 0%,100%{transform:translateX(-.5px)}50%{transform:translateX(.5px)} }
+@keyframes ct-sway { 0%,100%{transform:rotate(-1.5deg) translateY(1px)}50%{transform:rotate(1.5deg) translateY(1px)} }
+@keyframes ct-breathe { 0%,100%{transform:scale(1,1)}50%{transform:scale(1.025,1.045)} }
+@keyframes ct-nod { 0%,100%{transform:translateY(0)}50%{transform:translateY(2px)} }
+@keyframes ct-wobble { 0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)} }
+@keyframes ct-pop { 0%,70%,100%{transform:scale(1,1)}78%{transform:scale(1.1,.92)}88%{transform:scale(.95,1.08)} }
+@keyframes ct-blink { 0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.1)} }
+@keyframes ct-lookA { 0%,12%,100%{transform:translateX(0)}28%,48%{transform:translateX(3.5px)}64%,84%{transform:translateX(-3.5px)} }
+@keyframes ct-scan { 0%,100%{transform:translateX(-3px)}50%{transform:translateX(3px)} }
+@keyframes ct-thinkEyes { 0%,100%{transform:translate(2px,-3px)}50%{transform:translate(3px,-3.5px)} }
+@keyframes ct-earTwitchL { 0%,86%,100%{transform:rotate(0)}90%{transform:rotate(-9deg)}94%{transform:rotate(3deg)} }
+@keyframes ct-earTwitchR { 0%,70%,100%{transform:rotate(0)}74%{transform:rotate(9deg)}78%{transform:rotate(-3deg)} }
+@keyframes ct-earPerk { 0%,100%{transform:rotate(0)}50%{transform:rotate(-7deg)} }
+@keyframes ct-earPerkR { 0%,100%{transform:rotate(0)}50%{transform:rotate(7deg)} }
+@keyframes ct-wiggleL { 0%,100%{transform:rotate(3deg)}50%{transform:rotate(-5deg)} }
+@keyframes ct-wiggleR { 0%,100%{transform:rotate(-3deg)}50%{transform:rotate(5deg)} }
+@keyframes ct-zzf { 0%{opacity:0;transform:translate(0,0)}25%{opacity:.95}100%{opacity:0;transform:translate(7px,-12px)} }
+@keyframes ct-noteF { 0%{opacity:0;transform:translate(0,6px)}20%{opacity:1}100%{opacity:0;transform:translate(6px,-22px)} }
+@keyframes ct-sparkle { 0%,100%{opacity:0;transform:scale(.3)}40%{opacity:1;transform:scale(1)}70%{opacity:.4;transform:scale(.7)} }
+@keyframes ct-ping { 0%,60%,100%{transform:scale(1)}70%{transform:scale(1.18)}80%{transform:scale(.96)} }
+@keyframes ct-drop { 0%,30%{opacity:0;transform:translateY(-3px)}50%{opacity:1}100%{opacity:0;transform:translateY(10px)} }
+@keyframes ct-arcs { 0%{opacity:0;transform:scale(.7)}30%{opacity:.9}100%{opacity:0;transform:scale(1.25)} }
+@keyframes ct-dots { 0%,100%{opacity:.25}33%{opacity:1} }
+@keyframes ct-waveArm { 0%,100%{transform:rotate(-10deg)}50%{transform:rotate(26deg)} }
+@keyframes ct-spin { to{transform:rotate(360deg)} }
+@keyframes ct-yawn { 0%,100%{transform:scale(.3,.2);opacity:.3}40%,70%{transform:scale(1,1);opacity:1} }
+@keyframes ct-peek { 0%,100%{transform:translateY(2px)}50%{transform:translateY(-2px)} }
+@keyframes ct-tearF { 0%,25%{opacity:0;transform:translateY(0)}45%{opacity:1}100%{opacity:0;transform:translateY(12px)} }
+@keyframes ct-heartBeat { 0%,100%{transform:scale(1)}30%{transform:scale(1.18)}60%{transform:scale(.96)} }
+@media (prefers-reduced-motion: reduce) { .cat * { animation: none !important; } }
