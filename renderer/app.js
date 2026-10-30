@@ -40,6 +40,7 @@ let hover = false; // pointer over the island: Nikki wakes up
 let drag = null; // the closed notch under the mouse: { off, moved }
 let peek = null; // her head behind the closed notch
 let listening = false; // the voice key is held
+let generalDir = null; // the folder of the general chat: no project needed
 const modelMenu = $('modelMenu');
 const chatsMenu = $('chatsMenu');
 const threadEl = $('thread');
@@ -160,6 +161,7 @@ function renderWeather(w) {
 const folderName = (p) => {
   const s = String(p ?? '').trim();
   if (!s) return 'Projekt';
+  if (s === generalDir) return 'Allgemein';
   return s.split(/[\\/]/).filter(Boolean).pop() ?? s;
 };
 const svg = (path) => `<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="${path}"/></svg>`;
@@ -738,12 +740,12 @@ function selectProject(p) {
   renderHome();
 }
 function renderMenu() {
-  const items = projects.map((p) => {
+  const items = [generalDir, ...projects].map((p) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.role = 'menuitemradio';
     b.setAttribute('aria-checked', String(p === current));
-    b.title = p;
+    b.title = p === generalDir ? 'Allgemeine Fragen, ohne Projekt' : p;
     b.innerHTML = `${ICON_FOLDER}<span></span>`;
     b.lastChild.textContent = folderName(p);
     b.addEventListener('click', () => {
@@ -1407,11 +1409,16 @@ api.onVoice((on) => {
   listening = on;
   renderGlance();
 });
-// "frag Claude" goes straight in, anything else waits in the composer for the user
+// said after "Hey Nikki": goes straight in, to the project or the general chat; anything else waits in the composer for the user
 api.onVoiceText(({ kind, text }) => {
-  if (kind === 'claude') {
-    if (!current) return api.voiceNote('Wähl erst ein Projekt.', true);
+  if (kind === 'claude' || kind === 'general') {
     if (busy) return api.voiceNote('Claude arbeitet noch.', true);
+    if (kind === 'general' && current !== generalDir) {
+      const last = chatsCache.find((c) => c.cwd === generalDir); // the general chat goes on where it was
+      if (last) loadChat(last, { activate: false });
+      else selectProject(generalDir);
+    }
+    focusSession = null; // spoken to Nikki, not queued for a pinned terminal session
     promptEl.value = text;
     return start();
   }
@@ -1491,11 +1498,12 @@ async function startUp() {
   api.onWeather(renderWeather);
   renderWeather(await api.weatherGet());
   projects = state.projects;
+  generalDir = state.general;
   models = state.models ?? {};
   terminal = state.terminal;
   lastChatId = state.lastChatId ?? null;
   claudeFound = state.claudeFound;
-  selectProject(projects[0] ?? null);
+  selectProject(projects[0] ?? generalDir);
   renderTerminal();
   try {
     chatsCache = (await api.chatsList?.()) || [];

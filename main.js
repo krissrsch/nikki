@@ -125,7 +125,14 @@ function save() {
   }
 }
 const MAX_CHATS = 40;
+// the general chat runs here, so questions need no project; a folder of its own, because Claude always works in one
+const generalDir = path.join(app.getPath('userData'), 'allgemein');
+function generalFolder() {
+  fs.mkdirSync(generalDir, { recursive: true });
+  return generalDir;
+}
 const addProject = (p) => {
+  if (p === generalDir) return; // not a project: it has its own place in the menu
   store.projects = [p, ...store.projects.filter((x) => x !== p)].slice(0, 8);
   save();
 };
@@ -506,6 +513,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
 });
 ipcMain.handle('get-state', async () => ({
   ...store,
+  general: generalFolder(),
   claudeFound: !!(await findClaude()),
   terminal: [...terminal.values()],
 }));
