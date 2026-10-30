@@ -1,7 +1,8 @@
 // Hook forwarder for Claude Code: stdin JSON → POST to the running companion. Silent no-op when the app is down.
-// Usage: node hook.cjs <path to hook.json with { port, token }> [--wait] --nikki-hook
+// Usage: node hook.cjs <path to hook.json with { port, token }> [--wait | --stop] --nikki-hook
 // --wait (PermissionRequest only): long-poll the island for the answer and print Claude Code's decision JSON.
-// No answer (app down, timeout, answered in the terminal) prints nothing, so the terminal dialog decides (fail-open).
+// --stop (Stop only): ask the island for a message queued for this session; if there is one, Claude keeps working with it.
+// No answer (app down, timeout, answered in the terminal) prints nothing, so the terminal decides as usual (fail-open).
 const fs = require('node:fs');
 const http = require('node:http');
 
@@ -39,7 +40,12 @@ function decision(raw, reply) {
     d.updatedPermissions = raw.permission_suggestions;
   return out(d);
 }
-module.exports = { slim, decision };
+// A message queued in the island for a finished turn → Stop "block": Claude continues with it as the reason.
+function stopDecision(reply) {
+  const text = typeof reply?.message === 'string' ? reply.message.trim() : '';
+  return text ? { decision: 'block', reason: `Nachricht des Nutzers aus Nikki: ${text}` } : null;
+}
+module.exports = { slim, decision, stopDecision };
 
 const WAIT_MS = 110_000; // below the hook's own timeout (120 s, lib/hooks.js), so we always end cleanly first
 
@@ -68,6 +74,7 @@ function post(cfg, route, payload, timeout, done) {
 // Own SDK sessions already report status in-app (and canUseTool answers their permissions).
 if (require.main === module && !process.env.DESKTOPCOMPANION_AGENT) {
   const wait = process.argv.includes('--wait');
+  const stop = process.argv.includes('--stop');
   let body = '';
   process.stdin.on('data', (d) => (body += d));
   process.stdin.on('end', () => {
@@ -82,6 +89,17 @@ if (require.main === module && !process.env.DESKTOPCOMPANION_AGENT) {
       return;
     }
     const event = slim(raw);
+    if (stop)
+      // never holds the session up: no queued message or no app within 1.5 s means Claude simply stops
+      return post(cfg, '/hook/stop', JSON.stringify(event), 1500, (text) => {
+        let reply = null;
+        try {
+          reply = text ? JSON.parse(text) : null;
+        } catch {}
+        const d = stopDecision(reply);
+        if (d) process.stdout.write(JSON.stringify(d));
+        process.exit(0);
+      });
     if (!wait) return post(cfg, '/hook', JSON.stringify(event), 1000, () => {});
     // the island needs the suggestion count to offer "Immer"; the rules themselves stay here
     const payload = JSON.stringify({ ...event, can_always: Array.isArray(raw.permission_suggestions) && raw.permission_suggestions.length > 0 });

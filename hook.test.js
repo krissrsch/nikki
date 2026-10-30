@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { hookToStatus } from './lib/status.js';
 
-const { slim, decision } = createRequire(import.meta.url)('./hook.cjs');
+const { slim, decision, stopDecision } = createRequire(import.meta.url)('./hook.cjs');
 
 test('slim drops tool output and file contents and cuts long commands (M10)', () => {
   const raw = {
@@ -50,4 +50,10 @@ test('decision: question picks go back inside the tool input; no or unknown answ
   assert.deepEqual(d.updatedInput, { questions: [{ question: 'Tee oder Kaffee?' }], answers: { 'Tee oder Kaffee?': 'Tee' } });
   assert.equal(decision(raw, null), null);
   assert.equal(decision(raw, { answer: 'terminal' }), null);
+});
+
+test('stopDecision: a queued message keeps Claude working, nothing queued lets it stop', () => {
+  assert.deepEqual(stopDecision({ message: ' Bitte noch Tests schreiben ' }), { decision: 'block', reason: 'Nachricht des Nutzers aus Nikki: Bitte noch Tests schreiben' });
+  assert.equal(stopDecision({ message: '   ' }), null);
+  assert.equal(stopDecision(null), null);
 });
