@@ -11,6 +11,7 @@ const PAGES = [
   ['today', 'Heute', '<rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />', 'look'],
   ['modules', 'Module', '<path d="M12 3 3 8l9 5 9-5z" /><path d="m3 13 9 5 9-5" />', 'box'],
   ['claude', 'Claude', '<path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" />', 'work'],
+  ['discord', 'Discord', '<path d="M4 14v-2a8 8 0 0 1 16 0v2" /><rect x="3" y="14" width="4" height="6" rx="1.5" /><rect x="17" y="14" width="4" height="6" rx="1.5" />', 'listen'],
   ['nikki', 'Nikki', '<path d="M5 20V8l3-4 2 3h4l2-3 3 4v12z" /><path d="M9.5 12v1M14.5 12v1" />', 'wave'],
   ['keys', 'Tastenkürzel', '<rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />', 'think'],
 ];
@@ -55,6 +56,9 @@ function applySettings(s) {
   $('setClaudePath').title = s.claudePath || '';
   $('setClaudePath').classList.toggle('bad', !s.claudePath);
   $('setBranch').checked = s.showBranch;
+  if (document.activeElement !== $('setDiscordId')) $('setDiscordId').value = s.discordId;
+  $('setDiscordSecret').placeholder = s.discordSecretSet ? 'gespeichert' : '';
+  $('setDiscordJoin').checked = s.discordJoin;
   $('setGlow').checked = s.glow;
   $('setMic').checked = s.micSpectrum;
   $('setMic').disabled = !s.glow;
@@ -80,6 +84,19 @@ $('setGlow').addEventListener('change', (e) => setSetting('glow', e.target.check
 $('setMic').addEventListener('change', (e) => setSetting('micSpectrum', e.target.checked));
 $('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));
 $('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));
+async function setDiscord(key, value) {
+  const s = await api.settingsSet(key, value);
+  applySettings(s);
+  $('discordMsg').textContent = s.error === 'nocrypt' ? 'Windows kann das Secret hier nicht verschlüsseln.' : s.error ? 'Das ist keine gültige Angabe.' : '';
+  $('discordMsg').classList.toggle('bad', !!s.error);
+}
+$('setDiscordId').addEventListener('change', (e) => setDiscord('discordId', e.target.value));
+$('setDiscordSecret').addEventListener('change', (e) => {
+  setDiscord('discordSecret', e.target.value);
+  e.target.value = '';
+});
+$('setDiscordJoin').addEventListener('change', (e) => setSetting('discordJoin', e.target.checked));
+$('discordPortal').addEventListener('click', () => api.openExternal('https://discord.com/developers/applications'));
 
 // ---- modules: order and on/off
 function renderModules(list) {

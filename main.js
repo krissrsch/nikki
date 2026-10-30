@@ -1,8 +1,9 @@
-import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, powerSaveBlocker, protocol, screen, shell, Tray } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, powerSaveBlocker, protocol, safeStorage, screen, shell, Tray } from 'electron';
 import { execFile, spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
+import { connect as pipeConnect } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
@@ -10,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createClaudeAgent } from './backends/claude.js';
 import { addClip, removeClip, restoreClips } from './lib/clipboard.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
+import { avatarUrl, createDiscord, DISCORD_REDIRECT, pipePath } from './lib/discord.js';
 import { friendlyError } from './lib/errors.js';
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
@@ -83,6 +85,8 @@ let store = {
   closeKey: null, // closes the open island without focus; held only while it is open
   micSpectrum: false, // the spectrum also hears the microphone; off by default: Windows then shows the mic as in use
   display: null, // id of the display the notch was dragged to
+  discord: {}, // { clientId, secret, token, refresh }: the last three sealed with safeStorage, see seal()
+  discordJoin: false, // a toast when someone joins the voice channel
   weatherCity: '', // Home weather tile; '' = none yet
   weather: null, // last answer for weatherCity, see fetchWeather()
 };
@@ -397,6 +401,9 @@ const settings = async () => ({
   intro: store.intro !== false,
   closeKey: store.closeKey ?? null,
   micSpectrum: !!store.micSpectrum,
+  discordId: store.discord?.clientId ?? '',
+  discordSecretSet: !!store.discord?.secret,
+  discordJoin: !!store.discordJoin,
   glowLevel: GLOW_LEVELS.includes(store.glowLevel) ? store.glowLevel : 'normal',
   weatherCity: typeof store.weatherCity === 'string' ? store.weatherCity : '',
 });
@@ -432,6 +439,9 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   if (key === 'autostart' && app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!value });
   else if (key === 'hotkey') error = setHotkey(String(value));
   else if (key === 'closeKey') error = setCloseKey(String(value ?? ''));
+  else if (key === 'discordId') error = setDiscord({ clientId: String(value ?? '').trim() });
+  else if (key === 'discordSecret') error = setDiscord({ secret: String(value ?? '').trim() });
+  else if (key === 'discordJoin') store.discordJoin = !!value;
   else if (key === 'muted') store.muted = !!value;
   else if (key === 'sleepMin') store.sleepMin = Math.min(120, Math.max(1, Math.round(Number(value)) || 5));
   else if (key === 'hooks') await setHooks(!!value);
@@ -445,6 +455,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     store.modules = normalizeModules(value, store.modules);
     syncHelper();
     syncClipboard();
+    syncDiscord();
   } else if (key === 'keepAwake') {
     store.keepAwake = !!value;
     applyAwake();
@@ -687,6 +698,91 @@ ipcMain.on('media-cmd', (_e, cmd, value) => {
   const line = mediaCommand(cmd, value);
   if (line && helper) helper.stdin.write(`${line}\n`);
 });
+
+// --- Discord (lib/discord.js): runs while the module is on and a client id is set; secret and tokens never leave main
+let discord = null;
+let discordFor = null; // the client id it runs with
+let discordNow = { status: 'off', channel: null, people: [], error: null };
+const seal = (text) => safeStorage.encryptString(text).toString('base64');
+function unseal(text) {
+  try {
+    return text ? safeStorage.decryptString(Buffer.from(text, 'base64')) : null;
+  } catch {
+    return null;
+  }
+}
+const avatars = new Map(); // url -> data URL | '' while it loads or when it failed
+function avatarOf({ id, avatar }) {
+  const url = avatarUrl(id, avatar);
+  if (!url) return null;
+  if (!avatars.has(url)) {
+    avatars.set(url, '');
+    net.fetch(url)
+      .then((r) => (r.ok ? r.arrayBuffer() : null))
+      .then((buf) => {
+        const img = buf && nativeImage.createFromBuffer(Buffer.from(buf));
+        if (!img || img.isEmpty()) return;
+        avatars.set(url, img.toDataURL());
+        sendDiscord(discordNow);
+      })
+      .catch(() => {});
+  }
+  return avatars.get(url) || null;
+}
+function sendDiscord(state) {
+  discordNow = state;
+  send('discord', { ...state, people: state.people.map((p) => ({ ...p, avatar: avatarOf(p) })) });
+}
+async function discordToken(params) {
+  const { clientId, secret } = store.discord;
+  const r = await net.fetch('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: clientId, client_secret: unseal(secret) ?? '', ...params }).toString(),
+  });
+  const json = await r.json().catch(() => ({}));
+  if (!r.ok || !json.access_token) throw new Error(json.error === 'invalid_client' ? 'Client-ID oder Secret stimmen nicht.' : 'Discord hat die Freigabe abgelehnt. Prüf die Redirect-URL deiner App.');
+  store.discord = { ...store.discord, token: seal(json.access_token), refresh: json.refresh_token ? seal(json.refresh_token) : null };
+  save();
+  return json.access_token;
+}
+const discordTokens = {
+  get: () => unseal(store.discord?.token),
+  exchange: (code) => discordToken({ grant_type: 'authorization_code', code, redirect_uri: DISCORD_REDIRECT }),
+  refresh: () => discordToken({ grant_type: 'refresh_token', refresh_token: unseal(store.discord?.refresh) ?? '' }),
+  clear() {
+    store.discord = { ...store.discord, token: null, refresh: null };
+    save();
+  },
+};
+function syncDiscord() {
+  const moduleOn = !quitting && store.modules.some((m) => m.id === 'discord' && m.on);
+  const clientId = store.discord?.clientId;
+  const wanted = moduleOn && clientId && store.discord?.secret ? clientId : null;
+  if (wanted !== discordFor) {
+    discord?.stop();
+    discord = null;
+    discordFor = wanted;
+    if (wanted) discord = createDiscord({ clientId: wanted, connect: (n) => pipeConnect(pipePath(n)), tokens: discordTokens, onState: sendDiscord, onJoin: (name) => store.discordJoin && notify(`${name} ist im Sprachkanal`, true) });
+  }
+  if (!discord) sendDiscord({ status: moduleOn ? 'setup' : 'off', channel: null, people: [], error: null });
+}
+// a new app or secret starts over: old tokens belong to the old one
+function setDiscord(change) {
+  if (change.clientId !== undefined && change.clientId && !/^\d{5,30}$/.test(change.clientId)) return 'invalid';
+  if (change.secret !== undefined && change.secret.length > 200) return 'invalid';
+  if (change.secret && !safeStorage.isEncryptionAvailable()) return 'nocrypt';
+  const next = { ...store.discord, token: null, refresh: null };
+  if (change.clientId !== undefined) next.clientId = change.clientId;
+  if (change.secret !== undefined) next.secret = change.secret ? seal(change.secret) : null;
+  store.discord = next;
+  discord?.stop();
+  discord = discordFor = null;
+  syncDiscord();
+  return null;
+}
+ipcMain.handle('discord-get', () => ({ ...discordNow, people: discordNow.people.map((p) => ({ ...p, avatar: avatarOf(p) })) }));
+ipcMain.on('discord-authorize', () => discord?.authorize());
 
 // --- shelf (Ablage): copies in userData/shelf, the list in userData/shelf.json (not under modules/: module-set must not reach it).
 // The renderer names items by id only; every path is shelfFile(shelfDir, name) for a name that is really in the folder.
@@ -1230,6 +1326,7 @@ app.whenReady().then(() => {
   startHookServer();
   syncHelper();
   syncClipboard();
+  syncDiscord();
   if (store.weatherCity) fetchWeather();
   setInterval(() => store.weatherCity && fetchWeather(), 30 * 60 * 1000).unref();
   applyAwake(); // switched on by hand last time
@@ -1264,6 +1361,7 @@ app.on('will-quit', () => {
   pointerTimer = null;
   agent.abort(); // no claude.exe left running on its own (M5)
   stopHelper();
+  discord?.stop();
   clearInterval(clipTimer);
   relay.cancelAll(); // waiting terminal hooks fall back to their own dialog
   try {

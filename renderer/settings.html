@@ -60,6 +60,17 @@
         </div>
       </section>
 
+      <section class="sPage" data-page="discord" aria-labelledby="pDiscord" hidden>
+        <h1 id="pDiscord">Discord</h1>
+        <p class="sLead">Nikki zeigt, wer mit dir im Sprachkanal ist. Dafür brauchst du eine eigene Discord-App: anlegen, unter OAuth2 die Redirect-URL <span class="mono">http://127.0.0.1</span> eintragen, dann Client-ID und Secret hier einsetzen und das Modul Discord einschalten.</p>
+        <div class="setCard">
+          <div class="setRow"><span>Developer Portal<small>Dort legst du deine App an</small></span><button id="discordPortal" type="button" class="btn">Öffnen</button></div>
+          <label class="setRow"><span>Client-ID<small id="discordMsg" role="status"></small></span><input id="setDiscordId" class="num wide" type="text" inputmode="numeric" maxlength="30" spellcheck="false" autocomplete="off" /></label>
+          <label class="setRow"><span>Client Secret<small>Liegt verschlüsselt nur auf diesem PC</small></span><input id="setDiscordSecret" class="num wide" type="password" maxlength="200" autocomplete="off" /></label>
+          <label class="setRow"><span>Hinweis bei Beitritt<small>Eine Meldung, wenn jemand in deinen Kanal kommt</small></span><input id="setDiscordJoin" class="switch" type="checkbox" role="switch" /></label>
+        </div>
+      </section>
+
       <section class="sPage" data-page="nikki" aria-labelledby="pNikki" hidden>
         <h1 id="pNikki">Nikki</h1>
         <div class="setCard">
@@ -95,6 +106,7 @@
     <script src="modules/notes.js"></script>
     <script src="modules/timer.js"></script>
     <script src="modules/clipboard.js"></script>
+    <script src="modules/discord.js"></script>
     <script src="settings.js"></script>
   </body>
 </html>

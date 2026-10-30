@@ -116,13 +116,13 @@ describe('Nikki die Katze', () => {
     const { page, app } = nikki;
     const s = await nikki.settings();
     assert.equal(await page.getAttribute('#notch', 'aria-expanded'), 'false', 'die Insel macht Platz');
-    assert.deepEqual(await s.$$eval('.sideBtn', (b) => b.map((x) => x.dataset.page)), ['general', 'notch', 'today', 'modules', 'claude', 'nikki', 'keys']);
-    for (const id of ['general', 'notch', 'today', 'modules', 'claude', 'nikki', 'keys']) {
+    assert.deepEqual(await s.$$eval('.sideBtn', (b) => b.map((x) => x.dataset.page)), ['general', 'notch', 'today', 'modules', 'claude', 'discord', 'nikki', 'keys']);
+    for (const id of ['general', 'notch', 'today', 'modules', 'claude', 'discord', 'nikki', 'keys']) {
       await s.click(`.sideBtn[data-page="${id}"]`);
       assert.deepEqual(await s.$$eval('.sPage:not([hidden])', (p) => p.map((x) => x.dataset.page)), [id]);
       assert.equal(await s.getAttribute(`.sideBtn[data-page="${id}"]`, 'aria-current'), 'page');
     }
-    assert.equal(await s.locator('#setModuleList .modRow').count(), 7, 'alle Module mit Icon und Schalter');
+    assert.equal(await s.locator('#setModuleList .modRow').count(), 8, 'alle Module mit Icon und Schalter');
     // Plätze zurücksetzen wirkt in der Insel
     await page.evaluate(() => localStorage.setItem('nikki.catPlaces', '{"home":{"left":20,"top":100}}'));
     await page.reload();
