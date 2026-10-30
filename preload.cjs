@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld('companion', {
   onSettingsPage: on('settings-page'),
   onCatReset: on('cat-reset'),
   focus: () => ipcRenderer.send('focus'),
+  notchDrag: (on) => ipcRenderer.send('notch-drag', on), // the closed notch is being dragged: main follows the pointer to another display
+  islandOpen: (on) => ipcRenderer.send('island-open', on), // main holds the close key only while the island is open
+  onCloseKey: on('close-key'),
   // module data: userData/modules/<id>.json (null when there is none yet); set resolves false when it was not saved
   moduleGet: (id) => ipcRenderer.invoke('module-get', id),
   moduleSet: (id, data) => ipcRenderer.invoke('module-set', id, data),

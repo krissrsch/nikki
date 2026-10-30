@@ -31,8 +31,9 @@
       <section class="sPage" data-page="notch" aria-labelledby="pNotch" hidden>
         <h1 id="pNotch">Notch &amp; Leuchten</h1>
         <div class="setCard">
-          <label class="setRow"><span>Leuchten<small>Lichtkante am oberen Bildschirmrand, Spektrum bei Musik</small></span><input id="setGlow" class="switch" type="checkbox" role="switch" /></label>
+          <label class="setRow"><span>Leuchten<small>Lichtkante am oberen Bildschirmrand, Spektrum bei jedem Ton</small></span><input id="setGlow" class="switch" type="checkbox" role="switch" /></label>
           <label class="setRow"><span>Stärke</span><select id="setGlowLevel" class="num wide"><option value="dezent">dezent</option><option value="normal">normal</option><option value="kraeftig">kräftig</option></select></label>
+          <label class="setRow"><span>Mikrofon im Spektrum<small>Deine Stimme läuft mit. Nichts wird gespeichert, aber Windows zeigt dein Mikrofon dann als benutzt an.</small></span><input id="setMic" class="switch" type="checkbox" role="switch" /></label>
         </div>
       </section>
 
@@ -75,6 +76,10 @@
           <div class="setRow">
             <span>Nikki öffnen und schließen<small id="hotkeyMsg" role="status"></small></span>
             <button id="setHotkey" type="button" class="btn mono" aria-pressed="false" title="Klicken, dann die neue Kombination drücken"></button>
+          </div>
+          <div class="setRow">
+            <span>Nikki schließen ohne Fokus<small id="closeKeyMsg" role="status"></small></span>
+            <button id="setCloseKey" type="button" class="btn mono" aria-pressed="false" title="Klicken, dann die Taste drücken. Rücktaste löscht sie."></button>
           </div>
         </div>
       </section>

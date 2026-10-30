@@ -79,4 +79,65 @@ describe('Notch und Glow', () => {
     assert.equal(await glow(), '');
     assert.deepEqual(nikki.errors, []);
   });
+
+  test('ziehen: die Notch folgt der Maus, federt in die Mitte zurück, öffnet dabei nicht; ein Klick öffnet weiter', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    await close();
+    const middle = () => page.evaluate(() => {
+      const r = document.getElementById('island').getBoundingClientRect();
+      return Math.round(r.left + r.width / 2 - innerWidth / 2);
+    });
+    const box = await page.locator('#notch').boundingBox();
+    const y = box.y + box.height / 2;
+    const x = box.x + box.width / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 150, y, { steps: 5 });
+    await until(async () => (await middle()) === 150, 'Notch folgt der Maus');
+    await page.mouse.move(x + 150, y + 200); // waagerecht gebunden, auch unterhalb der Notch bleibt die Maus beim Ziehen
+    assert.equal(await middle(), 150);
+    await page.mouse.up();
+    await until(async () => (await middle()) === 0 && !(await page.evaluate(() => document.documentElement.dataset.drag)), 'zurück in der Mitte');
+    assert.equal(await page.getAttribute('#notch', 'aria-expanded'), 'false', 'Ziehen öffnet nicht');
+    assert.equal(typeof nikki.state().display, 'number', 'der Bildschirm wird gemerkt');
+
+    await page.mouse.click(x, y);
+    await until(async () => (await page.getAttribute('#notch', 'aria-expanded')) === 'true', 'Klick öffnet');
+    assert.deepEqual(nikki.errors, []);
+  });
+
+  test('Schließen-Taste: nur belegt, solange die Insel offen ist; Rücktaste löscht sie', async () => {
+    nikki = await launch();
+    const { page, app } = nikki;
+    const held = (k) => app.evaluate(({ globalShortcut }, k) => globalShortcut.isRegistered(k), k);
+    const s = await nikki.settings('keys');
+    assert.equal(await s.textContent('#setCloseKey'), 'keins');
+    await s.click('#setCloseKey');
+    await s.keyboard.press('Escape');
+    await until(async () => (await s.textContent('#setCloseKey')) === 'Esc', 'Esc belegt');
+    assert.equal(nikki.state().closeKey, 'Escape');
+    assert.equal(await held('Escape'), false, 'zu: Esc bleibt bei den anderen Programmen');
+    await page.click('#notch');
+    await until(() => held('Escape'), 'offen: belegt');
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop()).webContents.send('close-key'));
+    await until(async () => (await page.getAttribute('#notch', 'aria-expanded')) === 'false', 'geschlossen');
+    await until(async () => !(await held('Escape')), 'wieder frei');
+    await s.click('#setCloseKey');
+    await s.keyboard.press('Backspace');
+    await until(async () => (await s.textContent('#setCloseKey')) === 'keins', 'gelöscht');
+    assert.equal(nikki.state().closeKey, null);
+    assert.deepEqual(nikki.errors, []);
+  });
+
+  test('Mikrofon im Spektrum: ab Werk aus, gespeichert, aus mit dem Leuchten', async () => {
+    nikki = await launch();
+    const s = await nikki.settings('notch');
+    assert.equal(await s.isChecked('#setMic'), false);
+    await s.click('#setMic');
+    await until(() => nikki.state().micSpectrum === true, 'gespeichert');
+    await s.click('#setGlow');
+    await until(() => s.isDisabled('#setMic'), 'ohne Leuchten nicht wählbar');
+    assert.deepEqual(nikki.errors, []);
+  });
 });

@@ -54,7 +54,7 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
   z-index: 1; /* above the glow */
   top: 0;
   left: 50%;
-  translate: -50% 0;
+  translate: calc(-50% + var(--dragX, 0px)) 0; /* --dragX: the notch under the mouse (app.js) */
   width: 110px;
   height: 36px; /* open: set from #panelBox by app.js (ResizeObserver) */
   background: var(--black);
@@ -67,6 +67,10 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
     opacity 0.34s var(--ease-out),
     translate 0.34s var(--ease-out);
 }
+:root[data-drag='on'] #island,
+:root[data-drag='on'] #glow { transition: none; }
+:root[data-drag='back'] #island,
+:root[data-drag='back'] #glow { transition: translate 0.45s cubic-bezier(0.3, 1.45, 0.45, 1); }
 #island.open { width: 720px; border-radius: 0 0 28px 28px; box-shadow: 0 16px 40px rgb(0 0 0 / 0.5); }
 #island.boot { opacity: 0; translate: -50% -18px; }
 .instant,
@@ -150,7 +154,7 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
   position: absolute;
   top: 0;
   left: 50%;
-  translate: -50% 0;
+  translate: calc(-50% + var(--dragX, 0px)) 0;
   width: 10000px; /* wide enough for any display; the window cuts the ends */
   height: 120px;
   overflow: visible;

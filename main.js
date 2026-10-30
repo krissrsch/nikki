@@ -80,6 +80,9 @@ let store = {
   glowLevel: 'normal', // dezent | normal | kraeftig
   catJump: true, // Nikki jumps through the tab icons when the page changes
   intro: true, // she arrives with a small show when Nikki starts
+  closeKey: null, // closes the open island without focus; held only while it is open
+  micSpectrum: false, // the spectrum also hears the microphone; off by default: Windows then shows the mic as in use
+  display: null, // id of the display the notch was dragged to
   weatherCity: '', // Home weather tile; '' = none yet
   weather: null, // last answer for weatherCity, see fetchWeather()
 };
@@ -216,7 +219,7 @@ function applyAwake() {
   awake = { id: type ? powerSaveBlocker.start(type) : null, type };
 }
 
-// --- the island sits at the top-center of one display: the primary one at start, the mouse pointer's one when opened
+// --- the island sits at the top-center of one display: the one it was dragged to (else the primary) at start, the mouse pointer's one when opened
 function place(display) {
   if (!alive()) return;
   const { bounds } = display;
@@ -245,6 +248,8 @@ function createWindow() {
   // a crashed renderer (GPU): load it again, and nothing waits for an answer it can no longer give (N11)
   win.webContents.on('render-process-gone', (_e, details) => {
     for (const finish of [...pending.values()]) finish({ answer: 'deny' });
+    islandOpen = false;
+    syncCloseKey();
     if (!quitting && details.reason !== 'clean-exit') win.webContents.reload();
   });
   // clear timers before will-quit — destroy races the pointer tick otherwise
@@ -253,7 +258,7 @@ function createWindow() {
     pointerTimer = null;
     win = null;
   });
-  place(screen.getPrimaryDisplay());
+  place(screen.getAllDisplays().find((d) => d.id === store.display) ?? screen.getPrimaryDisplay());
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setIgnoreMouseEvents(true, { forward: true });
   // links in answers open in the browser; the island itself never navigates (e.g. on a stray file drop)
@@ -274,6 +279,7 @@ function applyVisibility() {
     if (!show && win.isVisible()) win.hide();
   } catch {}
   syncSpectrum();
+  syncCloseKey();
 }
 // view: the page the island opens on (tray "Einstellungen"), else it keeps the last one
 function showNow(view) {
@@ -323,6 +329,20 @@ function watchFullscreen() {
   ps.on('exit', restart);
 }
 
+// --- the closed notch is dragged by the renderer inside the window; the window follows the pointer to the next display
+let notchDragging = false;
+function moveToPointerDisplay() {
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  if (display.id !== screen.getDisplayMatching(win.getBounds()).id) place(display);
+  return display;
+}
+ipcMain.on('notch-drag', (_e, on) => {
+  notchDragging = on;
+  if (on || !alive()) return;
+  store.display = moveToPointerDisplay().id;
+  save();
+});
+
 // --- mouse pointer position (window-relative) for the companion's eyes; only while visible and only on change
 let lastPointer = '';
 let pointerTimer;
@@ -332,6 +352,7 @@ function feedPointer() {
     try {
       if (!alive() || !win.isVisible()) return;
       const p = screen.getCursorScreenPoint();
+      if (notchDragging) moveToPointerDisplay();
       const b = win.getBounds();
       const key = `${p.x - b.x},${p.y - b.y}`;
       if (key === lastPointer) return;
@@ -373,6 +394,8 @@ const settings = async () => ({
   glow: store.glow !== false,
   catJump: store.catJump !== false,
   intro: store.intro !== false,
+  closeKey: store.closeKey ?? null,
+  micSpectrum: !!store.micSpectrum,
   glowLevel: GLOW_LEVELS.includes(store.glowLevel) ? store.glowLevel : 'normal',
   weatherCity: typeof store.weatherCity === 'string' ? store.weatherCity : '',
 });
@@ -407,6 +430,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   let error = null;
   if (key === 'autostart' && app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!value });
   else if (key === 'hotkey') error = setHotkey(String(value));
+  else if (key === 'closeKey') error = setCloseKey(String(value ?? ''));
   else if (key === 'muted') store.muted = !!value;
   else if (key === 'sleepMin') store.sleepMin = Math.min(120, Math.max(1, Math.round(Number(value)) || 5));
   else if (key === 'hooks') await setHooks(!!value);
@@ -428,6 +452,10 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   else if (key === 'catPlaces') win?.webContents.send('cat-reset'); // her places live in the island's renderer
   else if (key === 'glow') {
     store.glow = !!value;
+    syncHelper();
+    syncSpectrum();
+  } else if (key === 'micSpectrum') {
+    store.micSpectrum = !!value;
     syncSpectrum();
   } else if (key === 'glowLevel' && GLOW_LEVELS.includes(value)) store.glowLevel = value;
   else if (key === 'weatherCity') {
@@ -550,9 +578,10 @@ let helperDelay = 1000;
 let helperBuild = null; // dev: build.cmd runs once when the exe is missing
 let mediaNow = null; // { app, title, artist, album, status, position, duration, updatedAt, cover: data URL | '' } | null
 let volumeNow = null; // { level 0-100, muted } | null
-const musicOn = () => !process.env.NIKKI_NO_HELPER && !quitting && store.modules.some((m) => m.id === 'music' && m.on);
+// the spectrum needs the helper too, with or without the music module
+const helperWanted = () => !process.env.NIKKI_NO_HELPER && !quitting && (store.glow !== false || store.modules.some((m) => m.id === 'music' && m.on));
 function syncHelper() {
-  if (musicOn()) startHelper();
+  if (helperWanted()) startHelper();
   else stopHelper();
 }
 function startHelper() {
@@ -571,7 +600,7 @@ function startHelper() {
   const p = (helper = spawn(helperExe, [], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }));
   p.stdin.on('error', () => {}); // a command sent while it dies must not take main down (EPIPE)
   readline.createInterface({ input: p.stdout, crlfDelay: Infinity }).on('line', onHelperLine);
-  spectrumSent = null; // a new helper starts with its spectrum off
+  spectrumSent = micSent = null; // a new helper starts with its spectrum off
   syncSpectrum();
   let gone = false;
   const restart = () => {
@@ -585,7 +614,7 @@ function startHelper() {
       send('volume', null);
       sendSpectrum(null);
     }
-    if (p.stopped || !musicOn()) return;
+    if (p.stopped || !helperWanted()) return;
     // a helper that ran a while starts over quickly; one that dies at once waits longer each time
     helperDelay = Date.now() - born > 30000 ? 1000 : Math.min(helperDelay * 2, 60000);
     setTimeout(syncHelper, helperDelay);
@@ -627,11 +656,14 @@ function onHelperLine(line) {
   else if (m.type === 'error') console.error('helper:', m.message);
 }
 // --- spectrum for the glow: the helper listens to what plays (WASAPI loopback) only while someone can see it:
-// glow on, music module on (the helper runs only then), the island not hidden
+// glow on, the island not hidden; the microphone joins in only when switched on in the settings
 let spectrumSent = null; // 'on' | 'off', last told to this helper
+let micSent = null;
 function syncSpectrum() {
   if (!helper) return;
   const want = store.glow !== false && alive() && win.isVisible() ? 'on' : 'off';
+  const mic = want === 'on' && store.micSpectrum ? 'on' : 'off';
+  if (mic !== micSent) helper.stdin.write(`mic ${(micSent = mic)}\n`);
   if (want === spectrumSent) return;
   spectrumSent = want;
   helper.stdin.write(`spectrum ${want}\n`);
@@ -1111,9 +1143,9 @@ let tray; // module-level so it isn't garbage-collected
 let hotkey = null;
 const hotkeyTip = () => tray?.setToolTip(hotkey ? `Nikki (${hotkey.replace('Control', 'Strg').replace('Space', 'Leertaste')})` : 'Nikki');
 // register() is false when another app holds the combo, and throws for one Electron cannot parse
-function register(acc) {
+function register(acc, fn = () => showNow()) {
   try {
-    return globalShortcut.register(acc, () => showNow());
+    return globalShortcut.register(acc, fn);
   } catch {
     return null;
   }
@@ -1121,11 +1153,47 @@ function register(acc) {
 // The new combo is taken first; only then the old one is let go, so a conflict never leaves Nikki without a hotkey.
 function setHotkey(acc) {
   if (acc === hotkey) return null;
+  if (acc === store.closeKey) return 'taken';
   const ok = register(acc);
   if (!ok) return ok === null ? 'invalid' : 'taken';
   if (hotkey) globalShortcut.unregister(hotkey);
   hotkey = store.hotkey = acc;
   hotkeyTip();
+  return null;
+}
+// The close key is held only while the island is open, so even a plain Esc stays with the other apps the rest of the time.
+let islandOpen = false;
+let closeKeyHeld = false;
+function syncCloseKey() {
+  const want = !!store.closeKey && islandOpen && alive() && win.isVisible();
+  if (want && !closeKeyHeld) closeKeyHeld = !!register(store.closeKey, () => send('close-key'));
+  if (!want && closeKeyHeld) {
+    globalShortcut.unregister(store.closeKey);
+    closeKeyHeld = false;
+  }
+}
+ipcMain.on('island-open', (_e, on) => {
+  islandOpen = on;
+  syncCloseKey();
+});
+// '' clears it. A trial registration, so a taken combo is said now and not silently the next time the island opens.
+function setCloseKey(acc) {
+  if (acc === (store.closeKey ?? '')) return null;
+  if (acc === hotkey) return 'taken';
+  if (closeKeyHeld) {
+    globalShortcut.unregister(store.closeKey);
+    closeKeyHeld = false;
+  }
+  if (acc) {
+    const ok = register(acc, () => {});
+    if (!ok) {
+      syncCloseKey();
+      return ok === null ? 'invalid' : 'taken';
+    }
+    globalShortcut.unregister(acc);
+  }
+  store.closeKey = acc || null;
+  syncCloseKey();
   return null;
 }
 function createTray() {
