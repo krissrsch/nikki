@@ -41,6 +41,7 @@ Unlike Coucou (which monitors many agents as notch pills and often needs an API 
 
 ## Brand Commitments
 
+- **Discord** (optional, needs the user's own Discord app): who is in the voice channel with you, over the local client, no bot.
 - Own mascot **Nikki**: a white cat with a grey-brown tabby cap and saddle, drawn after the real Nikki, 19 expressions; her head peeks out from behind the closed notch. She lives in the open island, reacts to Claude and music, jumps along with the tabs and can be dragged to any place.
 - The user likes Coucou's look and motion (soft, minimal mascot; clean black notch UI) as a style reference, not a template.
 

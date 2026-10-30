@@ -23,8 +23,12 @@ contextBridge.exposeInMainWorld('companion', {
   settingsGet: () => ipcRenderer.invoke('settings-get'),
   // returns all settings again, plus error: 'taken' | 'invalid' when a hotkey did not take
   settingsSet: (key, value) => ipcRenderer.invoke('settings-set', key, value),
-  openSettings: (page) => ipcRenderer.send('open-settings', page), // page: general | notch | today | modules | claude | nikki | keys
+  openSettings: (page) => ipcRenderer.send('open-settings', page), // page: general | notch | today | modules | claude | discord | nikki | keys
   onSettingsChanged: on('settings-changed'),
+  // Discord (lib/discord.js): the whole state, see renderer/modules/discord.js
+  discordGet: () => ipcRenderer.invoke('discord-get'),
+  discordAuthorize: () => ipcRenderer.send('discord-authorize'), // opens the dialog in Discord
+  onDiscord: on('discord'),
   onSettingsPage: on('settings-page'),
   onCatReset: on('cat-reset'),
   focus: () => ipcRenderer.send('focus'),

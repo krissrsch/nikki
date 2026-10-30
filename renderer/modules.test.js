@@ -5,21 +5,26 @@ import vm from 'node:vm';
 
 // classic renderer scripts share one global scope: run them in one sandbox, in index.html order, and take the pure parts
 const ctx = vm.createContext({});
-for (const f of ['modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js', 'modules/clipboard.js']) {
+for (const f of ['modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js', 'modules/clipboard.js', 'modules/discord.js']) {
   vm.runInContext(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
-const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText })', ctx);
+const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText, discordCount })', ctx);
 // objects from the sandbox have another Object.prototype: compare plain copies
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const MIN = 60 * 1000;
 
-test('registry: the modules register with a page, in tab order, and no globals collide; only music and calendar have a Home tile', () => {
-  assert.deepEqual([...g.NikkiModules.keys()], ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'clipboard']);
+test('Discord zählt Personen', () => {
+  assert.equal(g.discordCount(1), '1 Person');
+  assert.equal(g.discordCount(3), '3 Personen');
+});
+
+test('registry: the modules register with a page, in tab order, and no globals collide; only music, calendar and Discord have a Home tile', () => {
+  assert.deepEqual([...g.NikkiModules.keys()], ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'clipboard', 'discord']);
   for (const m of g.NikkiModules.values()) {
     assert.equal(typeof m.page, 'function', m.id);
     assert.match(m.icon, /^<svg class="ti"/, m.id);
   }
-  assert.deepEqual([...g.NikkiModules.values()].filter((m) => m.tile).map((m) => m.id), ['music', 'calendar']);
+  assert.deepEqual([...g.NikkiModules.values()].filter((m) => m.tile).map((m) => m.id), ['music', 'calendar', 'discord']);
 });
 
 test('moduleList: saved order, unknown ids dropped, new modules last and off', () => {

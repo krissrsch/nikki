@@ -152,6 +152,37 @@ describe('Notch und Glow', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Discord: Modul zeigt Zustände und die Leute im Kanal; das Secret bleibt verschlüsselt und kommt nicht zurück', async () => {
+    const modules = [{ id: 'discord', on: true }];
+    nikki = await launch({ state: { modules } });
+    const { page } = nikki;
+    await page.click('.tab[data-view="discord"]');
+    await page.waitForSelector('#view-discord .dcEmpty');
+    assert.match(await page.textContent('#view-discord'), /noch nicht verbunden/);
+    await fromMain('discord', { status: 'nodiscord', channel: null, people: [], error: null });
+    await until(async () => /Discord läuft nicht/.test(await page.textContent('#view-discord')), 'Zustand');
+    await fromMain('discord', { status: 'live', channel: { name: 'Lounge', guild: 'Server' }, people: [{ id: '1', name: 'Ali', avatar: null, muted: true, deaf: false, speaking: true }, { id: '2', name: 'Bo', avatar: null, muted: false, deaf: true, speaking: false }], error: null });
+    await until(async () => (await page.locator('.dcRow').count()) === 2, 'Liste');
+    assert.match(await page.textContent('.dcHead'), /Lounge.*Server.*2 Personen/s);
+    assert.equal(await page.locator('.dcRow .talk').count(), 1);
+    assert.match(await page.textContent('#view-discord'), /stumm.*taub/s);
+
+    const s = await nikki.settings('discord');
+    await s.fill('#setDiscordId', 'keine-zahl');
+    await s.press('#setDiscordId', 'Tab');
+    await until(async () => /keine gültige/.test(await s.textContent('#discordMsg')), 'Fehler bei falscher ID');
+    await s.fill('#setDiscordId', '1234567890');
+    await s.press('#setDiscordId', 'Tab');
+    await until(() => nikki.state().discord?.clientId === '1234567890', 'ID gespeichert');
+    await s.fill('#setDiscordSecret', 'streng-geheim');
+    await s.press('#setDiscordSecret', 'Tab');
+    await until(() => nikki.state().discord?.secret, 'Secret gespeichert');
+    assert.ok(!JSON.stringify(nikki.state()).includes('streng-geheim'), 'nicht im Klartext');
+    assert.equal(await s.inputValue('#setDiscordSecret'), '');
+    assert.equal(await s.getAttribute('#setDiscordSecret', 'placeholder'), 'gespeichert');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Mikrofon im Spektrum: ab Werk aus, gespeichert, aus mit dem Leuchten', async () => {
     nikki = await launch();
     const s = await nikki.settings('notch');
