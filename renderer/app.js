@@ -347,7 +347,6 @@ function show(s) {
     const wasBusy = busy;
     setBusy(false);
     refreshBranch(); // the task may have switched branches
-    if (s.state === 'idle' || s.state === 'done') setStepLine(STEP_IDLE);
     if (wasBusy) sendPlanFeedback();
   }
   renderState();
