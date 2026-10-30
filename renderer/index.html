@@ -53,62 +53,6 @@
           </nav>
 
           <section id="viewHome" class="view">
-            <div class="homeHead">
-              <div class="nikkiStage" id="homeStage" aria-label="Nikki">
-                <div class="walker nikkiBlob" id="homeWalker">
-                  <div class="sizer">
-                    <div class="face">
-                      <svg class="cat" viewBox="0 0 64 56">
-                        <g class="all">
-                          <g class="leg lb2 far"><rect x="22" y="43" width="6" height="11" rx="3" /></g>
-                          <g class="leg lf2 far"><rect x="36" y="43" width="6" height="11" rx="3" /></g>
-                          <g class="tail"><g class="sway"><path class="tailfur" d="M15 40 C8 38 5.5 31 7.5 24" /><circle class="tailtip" cx="7.6" cy="24.4" r="3" /></g></g>
-                          <g class="torso">
-                            <ellipse class="fur" cx="26" cy="41" rx="13" ry="8.5" />
-                            <ellipse class="spot" cx="22" cy="37.5" rx="6" ry="4.2" />
-                          </g>
-                          <g class="leg lb1"><rect x="16" y="43" width="6.2" height="11" rx="3.1" /></g>
-                          <g class="leg lf1"><rect x="30" y="43" width="6.2" height="11" rx="3.1" /></g>
-                          <g class="head">
-                            <g class="earB"><path class="fur" d="M29.5 21 L31 4.5 L40.5 12.5 Z" /><path class="inner" d="M32.4 17.5 L33.1 9.6 L37.8 13.4 Z" /></g>
-                            <g class="earF"><path class="fur" d="M44.5 11.5 L54 4 L56.5 20 Z" /><path class="inner" d="M47.6 12.4 L52.4 8.6 L53.6 16.6 Z" /></g>
-                            <ellipse class="fur" cx="42" cy="27" rx="15" ry="13" />
-                            <ellipse class="spot" cx="33.5" cy="19.5" rx="5.2" ry="4.2" />
-                            <ellipse class="cheek" cx="33.5" cy="32" rx="2.8" ry="1.7" />
-                            <ellipse class="cheek" cx="50.5" cy="32" rx="2.8" ry="1.7" />
-                            <g class="eyes">
-                              <g class="look">
-                                <ellipse class="eye" cx="37" cy="27" rx="3.1" ry="3.9" />
-                                <ellipse class="eye" cx="47" cy="27" rx="3.1" ry="3.9" />
-                                <circle class="glint" cx="38.1" cy="25.5" r="1.3" />
-                                <circle class="glint" cx="48.1" cy="25.5" r="1.3" />
-                              </g>
-                            </g>
-                            <g class="ex exHappy"><path d="M33.8 28.3 Q37 24 40.2 28.3" /><path d="M43.8 28.3 Q47 24 50.2 28.3" /></g>
-                            <g class="ex exClosed"><path d="M33.8 27.2 Q37 30 40.2 27.2" /><path d="M43.8 27.2 Q47 30 50.2 27.2" /></g>
-                            <g class="ex exSquint"><path d="M34.2 24.5 L39.6 27.2 L34.2 29.9" /><path d="M49.8 24.5 L44.4 27.2 L49.8 29.9" /></g>
-                            <g class="ex exDizzy">
-                              <path class="spiral" d="M37 27 m-3.2 0 a3.2 3.2 0 1 1 6.4 0 a2.2 2.2 0 1 1 -4.4 0 a1.2 1.2 0 1 1 2.4 0" />
-                              <path class="spiral" d="M47 27 m-3.2 0 a3.2 3.2 0 1 1 6.4 0 a2.2 2.2 0 1 1 -4.4 0 a1.2 1.2 0 1 1 2.4 0" />
-                            </g>
-                            <path class="nose" d="M40.4 31.3 h3.2 l-1.6 1.8 z" />
-                            <path class="mouth" d="M42 33.1 q-1.6 1.8 -3.2 .7 M42 33.1 q1.6 1.8 3.2 .7" />
-                            <ellipse class="mouthO" cx="42" cy="35" rx="1.7" ry="2" />
-                            <ellipse class="yawn" cx="42" cy="35.4" rx="2.4" ry="3" />
-                            <ellipse class="tongue" cx="42" cy="35.6" rx="1.4" ry="1.8" />
-                            <path class="mouthSad" d="M39.6 35.8 Q42 33.8 44.4 35.8" />
-                            <path class="whisker" d="M29.5 31 L25 30.2 M29.5 33.6 L25 34.4 M54.5 31 L59 30.2 M54.5 33.6 L59 34.4" />
-                          </g>
-                        </g>
-                        <g class="bubble"><rect x="56" y="-5" width="12" height="12" rx="4.5" /><text x="62" y="4.2">!</text></g>
-                        <g class="zzz"><text x="57" y="14">z</text><text x="62.5" y="8">z</text></g>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="greet"><strong id="greet">Hallo</strong><span id="today"></span></div>
-            </div>
             <!-- four glass tiles (canvas Glas): Claude, Musik, Wetter, Kalender; music and calendar only while their module is on (app.js) -->
             <div class="tiles" id="homeTiles">
               <div class="tile" data-tile="claude">
@@ -239,7 +183,6 @@
       <g class="bars"><use href="#specBars" filter="url(#soft)" opacity="0.55" /><g id="specBars" fill="url(#barFade)"></g></g>
     </svg>
 
-    <script src="../node_modules/gsap/dist/gsap.min.js"></script>
     <script src="../node_modules/marked/lib/marked.umd.js"></script>
     <script src="../node_modules/dompurify/dist/purify.min.js"></script>
     <script src="markdown-text.js"></script>
@@ -254,7 +197,6 @@
     <script src="modules/timer.js"></script>
     <script src="modules/clipboard.js"></script>
     <script src="hotkey.js"></script>
-    <script src="companion.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
