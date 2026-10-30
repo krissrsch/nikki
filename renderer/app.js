@@ -1105,7 +1105,7 @@ function renderTerminal() {
   renderState();
 }
 
-// ---- drop files onto the island: their quoted paths go into the prompt
+// ---- drop onto the island: in the chat tab quoted paths go into the prompt; in any other tab files and text go to the shelf
 document.addEventListener('dragover', (e) => {
   e.preventDefault();
   island.classList.toggle('drop', !!e.target.closest?.('.hit'));
@@ -1114,8 +1114,18 @@ document.addEventListener('dragleave', (e) => !e.relatedTarget && island.classLi
 document.addEventListener('drop', (e) => {
   e.preventDefault();
   island.classList.remove('drop');
+  if (!e.target.closest?.('.hit')) return;
   const paths = [...e.dataTransfer.files].map((f) => api.pathForFile(f)).filter(Boolean);
-  if (!paths.length || !e.target.closest?.('.hit')) return;
+  const dropped = paths.length ? '' : e.dataTransfer.getData('text/plain').trim();
+  // closed, the island counts as the tab it was last on
+  const taker = view !== 'chat' && [...live.keys()].find((id) => NikkiModules.get(id).drop);
+  if (taker && (paths.length || dropped)) {
+    setOpen(true);
+    setView(taker);
+    NikkiModules.get(taker).drop({ paths, text: dropped });
+    return;
+  }
+  if (!paths.length) return;
   setOpen(true);
   setView('chat');
   promptEl.focus();
@@ -1156,6 +1166,7 @@ function applySettings(s) {
   $('autostartHint').hidden = s.autostartAvailable;
   if (!capturing) $('setHotkey').textContent = hotkeyLabel(s.hotkey);
   $('setSound').checked = !s.muted;
+  $('setAwake').checked = s.keepAwake;
   $('setSleep').value = s.sleepMin;
   $('setHooks').checked = s.hooks;
   $('setRelay').checked = s.relay;
@@ -1170,6 +1181,7 @@ function applySettings(s) {
 const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
 $('setAutostart').addEventListener('change', (e) => setSetting('autostart', e.target.checked));
 $('setSound').addEventListener('change', (e) => setSetting('muted', !e.target.checked));
+$('setAwake').addEventListener('change', (e) => setSetting('keepAwake', e.target.checked));
 $('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.target.value)));
 $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));
 $('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
