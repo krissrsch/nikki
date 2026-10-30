@@ -11,7 +11,7 @@
   </head>
   <body data-state="idle" data-view="home">
     <div id="island" class="hit boot" data-mood="awake">
-      <!-- closed: only Nikki's eyes, whiskers at the edge, one info per side when something happens -->
+      <!-- closed: only Nikki's eyes and whiskers at the edge; what happens shows as the light edge (#glow) -->
       <button id="notch" type="button" aria-expanded="false" aria-controls="panel" aria-label="Nikki öffnen">
         <svg class="wh whL" viewBox="0 0 34 20" aria-hidden="true">
           <defs>
@@ -25,14 +25,12 @@
           </defs>
           <g stroke="url(#wgR)"><path d="M0 8 Q15 6.5 33 2" /><path d="M0 10 Q15 10 33 10" /><path d="M0 12 Q15 13.5 33 18" /></g>
         </svg>
-        <span id="glanceL" class="side"></span>
         <svg id="eyes" viewBox="0 0 44 36" aria-hidden="true">
           <g class="eOval"><rect x="12" y="13" width="6" height="9" rx="3" /><rect x="26" y="13" width="6" height="9" rx="3" /></g>
           <g class="eNeed"><circle cx="15" cy="17" r="4.2" /><circle cx="29" cy="17" r="4.2" /><circle class="glint" cx="16.4" cy="15.6" r="1.1" /><circle class="glint" cx="30.4" cy="15.6" r="1.1" /></g>
           <g class="eHappy"><path d="M11 19 Q15 13 19 19" /><path d="M25 19 Q29 13 33 19" /></g>
           <g class="eSleep"><path d="M11 17 Q15 20.5 19 17" /><path d="M25 17 Q29 20.5 33 17" /><text x="36" y="13">z</text><text x="36" y="13">z</text></g>
         </svg>
-        <span id="glanceR" class="side"></span>
       </button>
 
       <!-- open: the island; its height follows #panelBox -->
@@ -189,6 +187,9 @@
                   <label class="setRow"><span>Töne</span><input id="setSound" class="switch" type="checkbox" role="switch" /></label>
                   <label class="setRow"><span>PC wach halten<small>Solange Claude arbeitet, macht Nikki das von selbst</small></span><input id="setAwake" class="switch" type="checkbox" role="switch" /></label>
                   <label class="setRow"><span>Einschlafen nach<small>ohne Aktivität, in Minuten</small></span><input id="setSleep" class="num" type="number" min="1" max="120" step="1" /></label>
+                  <label class="setRow"><span>Leuchten<small>Lichtkante um die Notch, Spektrum bei Musik</small></span><input id="setGlow" class="switch" type="checkbox" role="switch" /></label>
+                  <label class="setRow"><span>Stärke</span><select id="setGlowLevel" class="num wide"><option value="dezent">dezent</option><option value="normal">normal</option><option value="kraeftig">kräftig</option></select></label>
+                  <label class="setRow"><span>Stadt für das Wetter<small>für die Kachel auf Heute</small></span><input id="setCity" class="num wide" type="text" maxlength="80" placeholder="z. B. Berlin" spellcheck="false" autocomplete="off" /></label>
                 </section>
                 <section class="setCard" aria-labelledby="setGit">
                   <h2 id="setGit">Git/GitHub</h2>
@@ -213,11 +214,34 @@
       </div>
     </div>
 
+    <!-- glow (canvas Glow, in its coordinates: screen 1264 wide, notch at 577–687, lower corners r 18): a light edge along the notch
+         that runs out as a hairline along the top of the screen, a reflex travelling along it, the spectrum growing down out of the notch.
+         Behind the island, never catches the mouse. data-glow: need | work | done | error | music | voice | '' (app.js) -->
+    <svg id="glow" data-glow="" data-level="normal" viewBox="0 0 1264 120" aria-hidden="true">
+      <defs>
+        <linearGradient id="rimFade" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1264" y2="0">
+          <stop offset="0" stop-opacity="0" /><stop offset="0.3" stop-opacity="0.12" /><stop offset="0.44" stop-opacity="0.85" /><stop class="hot" offset="0.5" stop-opacity="1" />
+          <stop offset="0.56" stop-opacity="0.85" /><stop offset="0.7" stop-opacity="0.12" /><stop offset="1" stop-opacity="0" />
+        </linearGradient>
+        <linearGradient id="barFade" x1="0" y1="0" x2="0" y2="1"><stop class="hot" offset="0" stop-opacity="1" /><stop offset="0.35" stop-opacity="0.95" /><stop offset="1" stop-opacity="0.08" /></linearGradient>
+        <filter id="soft" x="-5%" y="-200%" width="110%" height="500%"><feGaussianBlur stdDeviation="2.4" /></filter>
+        <filter id="softer" x="-5%" y="-200%" width="110%" height="500%"><feGaussianBlur stdDeviation="5" /></filter>
+      </defs>
+      <g class="rim" fill="none" stroke="url(#rimFade)" stroke-linejoin="round">
+        <path class="rimOuter" d="M 0 1 L 577 1 L 577 18 A 18 18 0 0 0 595 37 L 669 37 A 18 18 0 0 0 687 18 L 687 1 L 1264 1" stroke-width="7" filter="url(#softer)" opacity="0.55" />
+        <path class="rimSoft" d="M 0 1 L 577 1 L 577 18 A 18 18 0 0 0 595 37 L 669 37 A 18 18 0 0 0 687 18 L 687 1 L 1264 1" stroke-width="3" filter="url(#soft)" />
+        <path d="M 0 1 L 577 1 L 577 18 A 18 18 0 0 0 595 37 L 669 37 A 18 18 0 0 0 687 18 L 687 1 L 1264 1" stroke-width="1.2" />
+      </g>
+      <path class="sweep" d="M 0 1 L 577 1 L 577 18 A 18 18 0 0 0 595 37 L 669 37 A 18 18 0 0 0 687 18 L 687 1 L 1264 1" pathLength="1000" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="60 1000" stroke-dashoffset="1060" filter="url(#soft)" />
+      <g class="bars"><use href="#specBars" filter="url(#soft)" opacity="0.55" /><g id="specBars" fill="url(#barFade)"></g></g>
+    </svg>
+
     <script src="../node_modules/gsap/dist/gsap.min.js"></script>
     <script src="../node_modules/marked/lib/marked.umd.js"></script>
     <script src="../node_modules/dompurify/dist/purify.min.js"></script>
     <script src="markdown-text.js"></script>
     <script src="glance.js"></script>
+    <script src="spectrum.js"></script>
     <script src="modules.js"></script>
     <script src="modules/music.js"></script>
     <script src="modules/calendar.js"></script>

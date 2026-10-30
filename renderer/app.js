@@ -166,55 +166,20 @@ function renderState() {
   renderSessionPills();
 }
 
-// ---- closed notch: glance() (glance.js) ranks what shows; this only paints it
+// ---- closed notch: glance() (glance.js) ranks what shows; this paints the eyes' mood and the light edge (#glow)
 const MOOD_LABEL = { sleep: 'Nikki schläft', awake: 'Nikki ist wach', work: 'Nikki schaut zu', need: 'Nikki braucht dich', done: 'Nikki ist zufrieden', music: 'Nikki tanzt zur Musik' };
-const GLANCE_ICON = {
-  check: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>',
-  calendar: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>',
-  volume: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></svg>',
-  file: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z" /><path d="M14 3v4h4" /></svg>',
-  timer: '<svg class="gi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2M9 2h6" /></svg>',
-};
-function glanceSide(el, info) {
-  el.className = `side${info?.tone ? ` ${info.tone}` : ''}`;
-  el.title = info?.text ?? '';
-  el.replaceChildren();
-  if (!info) return;
-  const part = (cls) => el.appendChild(Object.assign(document.createElement('span'), { className: cls }));
-  if (info.icon === 'dot' || info.icon === 'spin') part(`g-${info.icon}`);
-  if (info.icon === 'cover' || info.icon === 'music') {
-    const c = part('g-cover');
-    if (info.cover) c.style.backgroundImage = `url("${info.cover}")`;
-  }
-  if (GLANCE_ICON[info.icon]) el.insertAdjacentHTML('beforeend', GLANCE_ICON[info.icon]);
-  if (info.icon === 'viz' || info.icon === 'music') for (let i = 0; i < (info.icon === 'viz' ? 4 : 3); i++) part('g-bar');
-  if (info.icon === 'level') part('g-level').appendChild(document.createElement('span')).style.width = `${Math.round((info.level ?? 0) * 100)}%`;
-  if (info.text) part('g-text').textContent = info.text;
-}
-let glanceKey = '';
+const glowEl = $('glow');
+// the spectrum (spectrum.js) hears system sound: the glow then shows its music edge
+const spectrum = createSpectrum($('specBars'), () => renderGlance());
+const showSpectrum = () => spectrum.show(!open && settings.glow !== false && !reduceMotion);
 function renderGlance() {
   const s = shown();
-  const cmd = perms[0]?.input?.command; // own approval: the command says more than "Nikki will OK!"
-  const cwd = s.observed ? s.cwd : current;
-  const fromModules = {}; // { event } from the calendar, { timer } from the timer
+  const fromModules = {}; // { music } from the music module
   for (const [id, ctx] of live) Object.assign(fromModules, NikkiModules.get(id).glance?.(ctx));
-  const g = glance({
-    ...fromModules,
-    status: s.observed ? s.state : ownState(),
-    text: cmd ? `${String(cmd).split('\n')[0]}?` : s.text,
-    project: cwd ? folderName(cwd) : '',
-    lastActivity,
-    hover,
-    sleepMin,
-  });
-  const key = JSON.stringify(g);
-  if (key === glanceKey) return;
-  glanceKey = key;
+  const g = glance({ ...fromModules, status: s.observed ? s.state : ownState(), sound: spectrum.sound, lastActivity, hover, sleepMin });
   island.dataset.mood = g.mood;
-  island.classList.toggle('wide', g.wide);
-  glanceSide($('glanceL'), g.left);
-  glanceSide($('glanceR'), g.right);
-  $('notch').setAttribute('aria-label', [MOOD_LABEL[g.mood], g.left?.text, g.right?.text].filter(Boolean).join(', '));
+  glowEl.dataset.glow = settings.glow === false ? '' : (g.glow ?? '');
+  $('notch').setAttribute('aria-label', MOOD_LABEL[g.mood]);
 }
 setInterval(renderGlance, 10 * 1000); // falling asleep needs no event
 const touch = () => (lastActivity = Date.now());
@@ -727,6 +692,7 @@ function setOpen(v, { instant = false, focus = true } = {}) {
   }
   island.classList.toggle('open', v);
   $('notch').setAttribute('aria-expanded', String(v));
+  showSpectrum();
   fitIsland();
   touch();
   renderState();
@@ -1232,6 +1198,12 @@ function applySettings(s) {
   $('setClaudePath').title = s.claudePath || '';
   $('setClaudePath').classList.toggle('bad', !s.claudePath);
   $('setBranch').checked = s.showBranch;
+  $('setGlow').checked = s.glow;
+  $('setGlowLevel').value = s.glowLevel;
+  $('setGlowLevel').disabled = !s.glow;
+  if (document.activeElement !== $('setCity')) $('setCity').value = s.weatherCity;
+  glowEl.dataset.level = s.glowLevel;
+  showSpectrum();
   applyModules(s.modules);
   renderGlance();
 }
@@ -1243,6 +1215,9 @@ $('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.
 $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));
 $('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
 $('setBranch').addEventListener('change', (e) => setSetting('showBranch', e.target.checked));
+$('setGlow').addEventListener('change', (e) => setSetting('glow', e.target.checked));
+$('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));
+$('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));
 
 // ---- modules (modules.js): tab, page and Home tile for each one switched on; switching works without a restart
 let modList = []; // [{ id, on }] in tab order, the switched off ones too (settings page)
@@ -1254,7 +1229,6 @@ function moduleCtx(mod) {
     load: () => api.moduleGet(mod.id),
     save: (data) => api.moduleSet(mod.id, data),
     changed: () => (renderTile(mod.id), renderGlance()), // data changed: its tile and the closed notch follow
-    notch: () => renderGlance(), // a countdown ticks: only the closed notch
     open: () => (setView(mod.id), setOpen(true)),
     shown: () => open && view === mod.id,
     project: () => current,
@@ -1484,6 +1458,7 @@ api.onShow?.((page) => {
   setOpen(true, { instant: true });
 });
 api.onStatus(show);
+api.onSpectrum((bands) => spectrum.set(bands));
 api.onSession?.(({ id }) => {
   if (!id) return;
   chatSessionId = id;

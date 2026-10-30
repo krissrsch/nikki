@@ -33,6 +33,11 @@ contextBridge.exposeInMainWorld('companion', {
   media: (cmd, value) => ipcRenderer.send('media-cmd', cmd, value), // toggle | next | prev | mute | unmute | volume (0-100)
   onMedia: on('media'),
   onVolume: on('volume'),
+  // glow: 12 spectrum bands 0-1 (bass first) of what plays, ~30/s while something sounds; null or zeros = quiet
+  onSpectrum: on('spectrum'),
+  // Home weather tile (Open-Meteo, fetched by main): null without a city, else { query, place?, temp?, text?, icon?, max?, min?, hours?, at?, error? }
+  weatherGet: () => ipcRenderer.invoke('weather-get'),
+  onWeather: on('weather'),
   // shelf: copies in userData/shelf; the renderer names items by id, main does every file operation
   shelfList: () => ipcRenderer.invoke('shelf-list'), // [{ id, name, size, path?, thumb?, text? }]
   shelfAdd: (paths) => ipcRenderer.invoke('shelf-add', paths), // { items, errors }

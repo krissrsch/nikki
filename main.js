@@ -50,7 +50,7 @@ function findClaude(again = false) {
       );
   return claudeLookup;
 }
-const WIDTH = 760; // open island (720) + room for its shadow
+const WIDTH = 1200; // open island (720) + its shadow; wider for the glow's hairline along the top edge (renderer #glow)
 const HEIGHT = 640; // the open island grows with its page up to ~580 (Home with three rows) plus its shadow; the rest lets clicks through
 
 // Usage must run on the user's own subscription, never on an API key or another endpoint that happens to be set (N10).
@@ -75,7 +75,12 @@ let store = {
   modules: DEFAULT_MODULES, // [{ id, on }] in tab order, see lib/modules.js
   keepAwake: false, // by hand: PC and screen stay awake (while our Claude run works they do anyway)
   clipKeep: false, // clipboard module: keep its history on disk (userData/clipboard.json); off, it lives in memory only
+  glow: true, // light edge around the closed notch, spectrum with music
+  glowLevel: 'normal', // dezent | normal | kraeftig
+  weatherCity: '', // Home weather tile; '' = none yet
+  weather: null, // last answer for weatherCity, see fetchWeather()
 };
+const GLOW_LEVELS = ['dezent', 'normal', 'kraeftig'];
 let storeNotice = null; // shown once the app is ready
 let storeWritable = true; // never overwrite a state.json we could not read: that is how chats got lost (H2)
 try {
@@ -361,6 +366,9 @@ const settings = async () => ({
   showBranch: store.showBranch !== false,
   modules: store.modules,
   keepAwake: !!store.keepAwake,
+  glow: store.glow !== false,
+  glowLevel: GLOW_LEVELS.includes(store.glowLevel) ? store.glowLevel : 'normal',
+  weatherCity: typeof store.weatherCity === 'string' ? store.weatherCity : '',
 });
 ipcMain.handle('settings-get', settings);
 ipcMain.handle('settings-set', async (_e, key, value) => {
@@ -383,7 +391,8 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   } else if (key === 'keepAwake') {
     store.keepAwake = !!value;
     applyAwake();
-  }
+  } else if (key === 'glow') store.glow = !!value;
+  else if (key === 'glowLevel' && GLOW_LEVELS.includes(value)) store.glowLevel = value;
   save();
   return { ...(await settings()), error };
 });
