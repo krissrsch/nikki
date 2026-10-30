@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('companion', {
   stop: () => ipcRenderer.send('stop'),
   // answer: { answer: 'allow' | 'always' | 'deny', picks?: string[][], message?: string, interrupt?: boolean }
   answerPermission: (id, answer) => ipcRenderer.send('permission-answer', { id, ...answer }),
+  // a message for a terminal session that still works; Claude gets it when its turn ends (Stop hook)
+  queueMessage: (sessionId, text) => ipcRenderer.invoke('queue-message', { sessionId, text }),
   setClickThrough: (on) => ipcRenderer.send('click-through', on),
   settingsGet: () => ipcRenderer.invoke('settings-get'),
   // returns all settings again, plus error: 'taken' | 'invalid' when a hotkey did not take
@@ -29,6 +31,7 @@ contextBridge.exposeInMainWorld('companion', {
   onSession: on('session'),
   onPermissionRequest: on('permission-request'),
   onPermissionCancel: on('permission-cancel'),
+  onQueued: on('queued'), // { sessionId, text | null (delivered) }
   onToggle: on('toggle'),
   onShow: on('show'), // data: the page to open on, or undefined
   onPointer: on('pointer'), // mouse position for the eyes and click-through, { x, y } window-relative

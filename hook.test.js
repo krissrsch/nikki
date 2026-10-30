@@ -46,7 +46,7 @@ test('decision: allow, always with the suggested rules, deny with a reason (rela
 
 test('decision: question picks go back inside the tool input; no or unknown answer stays silent', () => {
   const raw = { tool_name: 'AskUserQuestion', tool_input: { questions: [{ question: 'Tee oder Kaffee?' }] } };
-  const d = decision(raw, { answer: 'allow', answers: { 'Tee oder Kaffee?': 'Tee' } }).hookSpecificOutput.decision;
+  const d = decision(raw, { answer: 'allow', picks: [['Tee']] }).hookSpecificOutput.decision;
   assert.deepEqual(d.updatedInput, { questions: [{ question: 'Tee oder Kaffee?' }], answers: { 'Tee oder Kaffee?': 'Tee' } });
   assert.equal(decision(raw, null), null);
   assert.equal(decision(raw, { answer: 'terminal' }), null);
