@@ -375,6 +375,32 @@ const settings = async () => ({
   weatherCity: typeof store.weatherCity === 'string' ? store.weatherCity : '',
 });
 ipcMain.handle('settings-get', settings);
+// the settings live in their own normal window; closing it changes nothing else
+let settingsWin = null;
+function openSettings(page = 'general') {
+  if (settingsWin) {
+    settingsWin.webContents.send('settings-page', page);
+    settingsWin.show();
+    return settingsWin.focus();
+  }
+  settingsWin = new BrowserWindow({
+    width: 860,
+    height: 600,
+    minWidth: 700,
+    minHeight: 460,
+    title: 'Nikki Einstellungen',
+    icon: path.join(dir, 'assets', 'icon.png'),
+    backgroundColor: '#0c0d10',
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#0c0d10', symbolColor: '#a3a3ad', height: 36 },
+    show: false,
+    webPreferences: { preload: path.join(dir, 'preload.cjs') },
+  });
+  settingsWin.once('ready-to-show', () => settingsWin.show());
+  settingsWin.on('closed', () => (settingsWin = null));
+  settingsWin.loadFile(path.join(dir, 'renderer', 'settings.html'), { hash: page });
+}
+ipcMain.on('open-settings', (_e, page) => openSettings(page));
 ipcMain.handle('settings-set', async (_e, key, value) => {
   let error = null;
   if (key === 'autostart' && app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!value });
@@ -396,6 +422,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     store.keepAwake = !!value;
     applyAwake();
   } else if (key === 'catJump') store.catJump = !!value;
+  else if (key === 'catPlaces') win?.webContents.send('cat-reset'); // her places live in the island's renderer
   else if (key === 'glow') {
     store.glow = !!value;
     syncSpectrum();
@@ -408,7 +435,9 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     }
   }
   save();
-  return { ...(await settings()), error };
+  const all = await settings();
+  for (const w of BrowserWindow.getAllWindows()) w.webContents.send('settings-changed', all); // the island and the settings window
+  return { ...all, error };
 });
 ipcMain.handle('get-state', async () => ({
   ...store,
@@ -1111,7 +1140,7 @@ function createTray() {
           if (!userHidden && !win.isVisible()) showNow();
         },
       },
-      { label: 'Einstellungen', click: () => showNow('settings') },
+      { label: 'Einstellungen', click: () => openSettings() },
       { type: 'separator' },
       { label: 'Beenden', click: () => app.quit() },
     ]),

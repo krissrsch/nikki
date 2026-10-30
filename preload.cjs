@@ -23,6 +23,10 @@ contextBridge.exposeInMainWorld('companion', {
   settingsGet: () => ipcRenderer.invoke('settings-get'),
   // returns all settings again, plus error: 'taken' | 'invalid' when a hotkey did not take
   settingsSet: (key, value) => ipcRenderer.invoke('settings-set', key, value),
+  openSettings: (page) => ipcRenderer.send('open-settings', page), // page: general | notch | today | modules | claude | nikki | keys
+  onSettingsChanged: on('settings-changed'),
+  onSettingsPage: on('settings-page'),
+  onCatReset: on('cat-reset'),
   focus: () => ipcRenderer.send('focus'),
   // module data: userData/modules/<id>.json (null when there is none yet); set resolves false when it was not saved
   moduleGet: (id) => ipcRenderer.invoke('module-get', id),

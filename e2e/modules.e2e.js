@@ -14,7 +14,7 @@ afterEach(async () => {
   dirs.splice(0).forEach(rm);
 });
 // an event from main, as main would send it
-const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d]) => BrowserWindow.getAllWindows()[0].webContents.send(c, d), [channel, data]);
+const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d]) => BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop()).webContents.send(c, d), [channel, data]);
 // a text dragged from another app and dropped on the island
 async function dropText(text) {
   const dataTransfer = await nikki.page.evaluateHandle((t) => {
@@ -125,11 +125,11 @@ describe('Module aus Phase 3', () => {
       powerSaveBlocker.start = (type) => (globalThis.awake.push(type), 7);
       powerSaveBlocker.stop = (id) => globalThis.awake.push(`stop ${id}`);
     });
-    await page.click('#tabs .tab[data-view="settings"]');
-    await page.click('#setAwake');
+    const s = await nikki.settings('general');
+    await s.click('#setAwake');
     await until(async () => (await app.evaluate(() => globalThis.awake)).length === 1, 'Wachhalten an');
     assert.equal(nikki.state().keepAwake, true);
-    await page.click('#setAwake');
+    await s.click('#setAwake');
     await until(async () => (await app.evaluate(() => globalThis.awake)).length === 2, 'Wachhalten aus');
     assert.deepEqual(await app.evaluate(() => globalThis.awake), ['prevent-display-sleep', 'stop 7']);
   });

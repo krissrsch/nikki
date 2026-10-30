@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
+    />
+    <title>Nikki Einstellungen</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="cat.css" />
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <nav id="side" aria-label="Einstellungen">
+      <p class="sideTitle">Einstellungen</p>
+      <div id="sideList"></div>
+      <div id="sideCat" aria-hidden="true"></div>
+    </nav>
+
+    <main id="content">
+      <section class="sPage" data-page="general" aria-labelledby="pGeneral" hidden>
+        <h1 id="pGeneral">Allgemein</h1>
+        <div class="setCard">
+          <label class="setRow"><span>Mit Windows starten<small id="autostartHint" hidden>nur in der installierten App</small></span><input id="setAutostart" class="switch" type="checkbox" role="switch" /></label>
+          <label class="setRow"><span>Töne<small>Hinweise bei Fertig und Freigaben, Nikkis Laute</small></span><input id="setSound" class="switch" type="checkbox" role="switch" /></label>
+          <label class="setRow"><span>PC wach halten<small>Solange Claude arbeitet, macht Nikki das von selbst</small></span><input id="setAwake" class="switch" type="checkbox" role="switch" /></label>
+        </div>
+      </section>
+
+      <section class="sPage" data-page="notch" aria-labelledby="pNotch" hidden>
+        <h1 id="pNotch">Notch &amp; Leuchten</h1>
+        <div class="setCard">
+          <label class="setRow"><span>Leuchten<small>Lichtkante am oberen Bildschirmrand, Spektrum bei Musik</small></span><input id="setGlow" class="switch" type="checkbox" role="switch" /></label>
+          <label class="setRow"><span>Stärke</span><select id="setGlowLevel" class="num wide"><option value="dezent">dezent</option><option value="normal">normal</option><option value="kraeftig">kräftig</option></select></label>
+        </div>
+      </section>
+
+      <section class="sPage" data-page="today" aria-labelledby="pToday" hidden>
+        <h1 id="pToday">Heute</h1>
+        <div class="setCard">
+          <label class="setRow"><span>Stadt für das Wetter<small>für die Kachel auf Heute</small></span><input id="setCity" class="num wide" type="text" maxlength="80" placeholder="z. B. Berlin" spellcheck="false" autocomplete="off" /></label>
+        </div>
+      </section>
+
+      <section class="sPage" data-page="modules" aria-labelledby="pModules" hidden>
+        <h1 id="pModules">Module</h1>
+        <p class="sLead">Jedes Modul ist ein Reiter in der Insel. Die Reihenfolge hier ist die Reihenfolge dort.</p>
+        <div class="setCard"><div id="setModuleList"></div></div>
+      </section>
+
+      <section class="sPage" data-page="claude" aria-labelledby="pClaude" hidden>
+        <h1 id="pClaude">Claude</h1>
+        <div class="setCard">
+          <label class="setRow"><span>Terminal-Sessions beobachten<small>trägt Nikkis Hooks in ~/.claude/settings.json ein</small></span><input id="setHooks" class="switch" type="checkbox" role="switch" /></label>
+          <label class="setRow"><span>Freigaben in Nikki beantworten<small>Terminal-Sessions fragen auch hier; antwortest du nicht, entscheidet das Terminal</small></span><input id="setRelay" class="switch" type="checkbox" role="switch" /></label>
+          <label class="setRow"><span>Branch im Chat zeigen</span><input id="setBranch" class="switch" type="checkbox" role="switch" /></label>
+          <div class="setRow"><span>Claude-Pfad<small id="setClaudePath" class="mono"></small></span></div>
+        </div>
+      </section>
+
+      <section class="sPage" data-page="nikki" aria-labelledby="pNikki" hidden>
+        <h1 id="pNikki">Nikki</h1>
+        <div class="setCard">
+          <label class="setRow"><span>Einschlafen nach<small>ohne Aktivität, in Minuten</small></span><input id="setSleep" class="num" type="number" min="1" max="120" step="1" /></label>
+          <label class="setRow"><span>Nikki springt mit<small>Beim Tabwechsel springt sie ins Icon und taucht in der neuen Ansicht auf</small></span><input id="setCatJump" class="switch" type="checkbox" role="switch" /></label>
+          <div class="setRow"><span>Nikkis Plätze<small>Zieh sie mit der Maus, wohin du willst. Doppelklick schickt sie zurück.</small></span><button id="setCatPlaces" type="button" class="btn">Zurücksetzen</button></div>
+        </div>
+      </section>
+
+      <section class="sPage" data-page="keys" aria-labelledby="pKeys" hidden>
+        <h1 id="pKeys">Tastenkürzel</h1>
+        <div class="setCard">
+          <div class="setRow">
+            <span>Nikki öffnen und schließen<small id="hotkeyMsg" role="status"></small></span>
+            <button id="setHotkey" type="button" class="btn mono" aria-pressed="false" title="Klicken, dann die neue Kombination drücken"></button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="hotkey.js"></script>
+    <script src="cat.js"></script>
+    <script src="modules.js"></script>
+    <script src="modules/music.js"></script>
+    <script src="modules/calendar.js"></script>
+    <script src="modules/shelf.js"></script>
+    <script src="modules/todo.js"></script>
+    <script src="modules/notes.js"></script>
+    <script src="modules/timer.js"></script>
+    <script src="modules/clipboard.js"></script>
+    <script src="settings.js"></script>
+  </body>
+</html>

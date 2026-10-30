@@ -8,7 +8,7 @@ afterEach(async () => {
   await nikki?.close();
   nikki = null;
 });
-const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d]) => BrowserWindow.getAllWindows()[0].webContents.send(c, d), [channel, data]);
+const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d]) => BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop()).webContents.send(c, d), [channel, data]);
 // the tiles in the order they show (CSS order keeps their places)
 const tiles = () => nikki.page.$$eval('#homeTiles > .tile', (t) => t.sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order).map((x) => x.dataset.tile));
 
@@ -21,9 +21,9 @@ describe('Home „Heute“', () => {
     assert.equal(await page.textContent('[data-tile="calendar"] .calNum'), String(new Date().getDate()));
     assert.match(await page.textContent('[data-tile="calendar"]'), /Heute steht nichts an/);
     assert.match(await page.textContent('#weatherTile'), /Stadt in den Einstellungen eintragen/);
-    await page.click('#weatherTile button:has-text("Stadt eintragen")');
-    assert.equal(await page.getAttribute('#tabs .tab[data-view="settings"]', 'aria-pressed'), 'true');
-    assert.equal(await page.evaluate(() => document.activeElement.id), 'setCity');
+    const [s] = await Promise.all([nikki.app.waitForEvent('window'), page.click('#weatherTile button:has-text("Stadt eintragen")')]);
+    await s.waitForFunction(() => document.activeElement?.id === 'setCity');
+    assert.equal(await s.isVisible('#setCity'), true);
     assert.deepEqual(nikki.errors, []);
   });
 
@@ -41,15 +41,15 @@ describe('Home „Heute“', () => {
         return json({ current: { time: '2026-10-30T09:15', temperature_2m: 14.6, weather_code: 61, is_day: 1 }, hourly: { time: times, temperature_2m: times.map((_, i) => i) }, daily: { temperature_2m_max: [16.7], temperature_2m_min: [8.6] } });
       };
     });
-    await page.click('#tabs .tab[data-view="settings"]');
-    await page.fill('#setCity', 'Testhausen');
-    await page.press('#setCity', 'Enter');
+    const s = await nikki.settings('today');
+    await s.fill('#setCity', 'Testhausen');
+    await s.press('#setCity', 'Enter');
     await until(() => nikki.state().weather?.temp === 15, 'Wetter im Store');
     const urls = await app.evaluate(() => globalThis.urls);
     assert.match(urls[0], /geocoding-api\.open-meteo\.com\/v1\/search\?name=Testhausen&count=1&language=de/);
     assert.match(urls[1], /api\.open-meteo\.com\/v1\/forecast\?latitude=52\.5&longitude=13\.4/);
     assert.equal(nikki.state().weatherCity, 'Testhausen');
-    await page.click('#tabs .tab[data-view="home"]');
+    await page.click('#notch');
     await page.waitForSelector('#weatherTile .wTemp');
     assert.equal(await page.textContent('#weatherTile .tileHead'), 'TesthausenH 17° · T 9°');
     assert.equal(await page.textContent('#weatherTile .wTemp'), '15°');

@@ -48,7 +48,7 @@
             </button>
             <div id="moduleTabs"></div><!-- tabs of the modules switched on (app.js) -->
             <span class="grow"></span>
-            <button type="button" class="tab" data-view="settings" aria-pressed="false" aria-label="Einstellungen" title="Einstellungen">
+            <button id="openSettings" type="button" class="tab" aria-label="Einstellungen" title="Einstellungen">
               <svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
             </button>
           </nav>
@@ -121,45 +121,6 @@
               </button>
             </form>
           </section>
-
-          <section id="viewSettings" class="view" hidden>
-            <div class="setCols">
-              <div class="setCol">
-                <section class="setCard" aria-labelledby="setGeneral">
-                  <h2 id="setGeneral">Allgemein</h2>
-                  <label class="setRow"><span>Mit Windows starten<small id="autostartHint" hidden>nur in der installierten App</small></span><input id="setAutostart" class="switch" type="checkbox" role="switch" /></label>
-                  <div class="setRow">
-                    <span>Tastenkürzel<small id="hotkeyMsg" role="status"></small></span>
-                    <button id="setHotkey" type="button" class="btn mono" aria-pressed="false" title="Klicken, dann die neue Kombination drücken"></button>
-                  </div>
-                  <label class="setRow"><span>Töne</span><input id="setSound" class="switch" type="checkbox" role="switch" /></label>
-                  <label class="setRow"><span>PC wach halten<small>Solange Claude arbeitet, macht Nikki das von selbst</small></span><input id="setAwake" class="switch" type="checkbox" role="switch" /></label>
-                  <label class="setRow"><span>Einschlafen nach<small>ohne Aktivität, in Minuten</small></span><input id="setSleep" class="num" type="number" min="1" max="120" step="1" /></label>
-                  <label class="setRow"><span>Nikki springt mit<small>Beim Tabwechsel springt sie ins Icon und taucht in der neuen Ansicht auf</small></span><input id="setCatJump" class="switch" type="checkbox" role="switch" /></label>
-                  <div class="setRow"><span>Nikkis Plätze<small>Zieh sie mit der Maus, wohin du willst. Doppelklick schickt sie zurück.</small></span><button id="setCatPlaces" type="button" class="btn">Zurücksetzen</button></div>
-                  <label class="setRow"><span>Leuchten<small>Lichtkante um die Notch, Spektrum bei Musik</small></span><input id="setGlow" class="switch" type="checkbox" role="switch" /></label>
-                  <label class="setRow"><span>Stärke</span><select id="setGlowLevel" class="num wide"><option value="dezent">dezent</option><option value="normal">normal</option><option value="kraeftig">kräftig</option></select></label>
-                  <label class="setRow"><span>Stadt für das Wetter<small>für die Kachel auf Heute</small></span><input id="setCity" class="num wide" type="text" maxlength="80" placeholder="z. B. Berlin" spellcheck="false" autocomplete="off" /></label>
-                </section>
-                <section class="setCard" aria-labelledby="setGit">
-                  <h2 id="setGit">Git/GitHub</h2>
-                  <label class="setRow"><span>Branch im Chat zeigen</span><input id="setBranch" class="switch" type="checkbox" role="switch" /></label>
-                </section>
-              </div>
-              <div class="setCol">
-                <section class="setCard" aria-labelledby="setClaude">
-                  <h2 id="setClaude">Claude</h2>
-                  <label class="setRow"><span>Terminal-Sessions beobachten<small>trägt Nikkis Hooks in ~/.claude/settings.json ein</small></span><input id="setHooks" class="switch" type="checkbox" role="switch" /></label>
-                  <label class="setRow"><span>Freigaben in Nikki beantworten<small>Terminal-Sessions fragen auch hier; antwortest du nicht, entscheidet das Terminal</small></span><input id="setRelay" class="switch" type="checkbox" role="switch" /></label>
-                  <div class="setRow"><span>Claude-Pfad<small id="setClaudePath" class="mono"></small></span></div>
-                </section>
-                <section class="setCard" aria-labelledby="setModules">
-                  <h2 id="setModules">Module</h2>
-                  <div id="setModuleList"></div>
-                </section>
-              </div>
-            </div>
-          </section>
         </div>
       </div>
     </div>
@@ -203,7 +164,6 @@
     <script src="modules/notes.js"></script>
     <script src="modules/timer.js"></script>
     <script src="modules/clipboard.js"></script>
-    <script src="hotkey.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

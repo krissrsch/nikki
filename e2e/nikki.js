@@ -61,8 +61,17 @@ export async function launch({ state, settings, realHome = false } = {}) {
     errors,
     state: () => JSON.parse(fs.readFileSync(path.join(userData, 'state.json'), 'utf8')),
     // a status from the Claude backend, as main would send it
-    status: (s) => app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0].webContents.send('status', s), s),
-    permission: (r) => app.evaluate(({ BrowserWindow }, r) => BrowserWindow.getAllWindows()[0].webContents.send('permission-request', r), r),
+    status: (s) => app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop()).webContents.send('status', s), s),
+    permission: (r) => app.evaluate(({ BrowserWindow }, r) => BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop()).webContents.send('permission-request', r), r),
+    // opens the settings window with the gear, on the given sidebar page (the island closes for it)
+    settings: async (pageId) => {
+      const [s] = await Promise.all([app.waitForEvent('window'), page.click('#openSettings')]);
+      s.on('console', (m) => m.type() === 'error' && errors.push(`settings: ${m.text()}`));
+      s.on('pageerror', (e) => errors.push(`settings: ${e.message}`));
+      await s.waitForSelector('.sideBtn');
+      if (pageId) await s.click(`.sideBtn[data-page="${pageId}"]`);
+      return s;
+    },
     // offline stand-in for Claude: records start/stop instead of running the CLI
     fakeClaude: () =>
       app.evaluate(({ ipcMain }) => {

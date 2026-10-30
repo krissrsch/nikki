@@ -127,16 +127,17 @@ describe('Nikki offline', () => {
     const tabs = () => page.$$eval('#moduleTabs .tab', (b) => b.map((x) => x.dataset.view));
     assert.deepEqual(await tabs(), ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer']);
     assert.equal(await page.locator('#homeTiles .tile').count(), 4, 'Claude, Musik, Wetter, Kalender');
-    await page.click('#tabs .tab[data-view="settings"]');
-    await page.click('#mod-calendar');
+    const s = await nikki.settings('modules');
+    await s.click('#mod-calendar');
     await page.waitForFunction(() => !document.querySelector('#moduleTabs .tab[data-view="calendar"]'));
     assert.equal(await page.locator('#homeTiles .tile').count(), 3, 'its tile goes with it');
     assert.deepEqual(nikki.state().modules.find((m) => m.id === 'calendar'), { id: 'calendar', on: false });
-    await page.click('#mod-calendar');
-    await page.waitForSelector('#moduleTabs .tab[data-view="calendar"]');
+    await s.click('#mod-calendar');
+    await page.waitForSelector('#moduleTabs .tab[data-view="calendar"]', { state: 'attached' });
     assert.equal(await page.locator('#homeTiles .tile').count(), 4);
 
     await nikki.fakeClaude();
+    await page.click('#notch');
     await page.click('#tabs .tab[data-view="todo"]');
     await page.fill('.todoNew', 'Milch holen');
     await page.press('.todoNew', 'Enter');
