@@ -10,3 +10,4 @@ latest.yml
 *.log
 .DS_Store
 Thumbs.db
+.icon-ico/

@@ -565,8 +565,6 @@ body:not([data-view='home']) .shimmer { display: none; }
 #go.stop { background: var(--raised-hover); color: var(--text); }
 
 /* ---------- Settings ---------- */
-.setCols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
-.setCol { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .setCard { display: flex; flex-direction: column; padding: 12px 14px; border-radius: 16px; background: var(--card); }
 .setCard h2 { margin: 0 0 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .setRow { display: flex; align-items: center; gap: 12px; min-height: 38px; }
@@ -574,7 +572,6 @@ body:not([data-view='home']) .shimmer { display: none; }
 .setRow small { overflow: hidden; color: var(--faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .setRow small:empty { display: none; }
 .setRow small.bad { color: var(--bad); }
-.setNote { margin: 4px 0 6px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 #setHotkey { flex: none; font-size: 11px; }
 .modRow { gap: 4px; }
 .modName { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; cursor: pointer; }

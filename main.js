@@ -67,7 +67,6 @@ const storeFile = path.join(app.getPath('userData'), 'state.json');
 let store = {
   projects: [],
   models: {},
-  favorites: { claude: [] },
   chats: [],
   lastChatId: null,
   muted: false,
@@ -101,7 +100,6 @@ try {
   const saved = readJson(storeFile, (moved) => (storeNotice = `Nikkis Daten waren beschädigt und wurden nach\n${moved}\nverschoben. Nikki startet mit leerem Stand.`));
   if (saved && typeof saved === 'object') store = { ...store, ...saved };
   store.projects = Array.isArray(store.projects) ? store.projects : [];
-  store.favorites = { claude: store.favorites?.claude ?? [] };
   // 1.0 chats from Cursor or Gemini carry a session id Claude does not know
   store.chats = (Array.isArray(store.chats) ? store.chats : []).map((c) => (c?.backend && c.backend !== 'claude' ? { ...c, backend: 'claude', sessionId: null } : c));
   store.lastChatId = store.lastChatId ?? null;
@@ -517,13 +515,6 @@ ipcMain.handle('get-state', async () => ({
   claudeFound: !!(await findClaude()),
   terminal: [...terminal.values()],
 }));
-ipcMain.handle('toggle-favorite', (_e, { modelId }) => {
-  const id = modelId == null || modelId === '' ? '__auto__' : String(modelId);
-  const list = store.favorites.claude;
-  store.favorites.claude = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
-  save();
-  return store.favorites;
-});
 // per project { claude: model }: the shape the renderer already reads
 const setModel = (cwd, model) => (store.models[cwd] = { claude: model ?? null });
 ipcMain.handle('set-model', (_e, { cwd, model }) => {

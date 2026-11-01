@@ -6,7 +6,6 @@ contextBridge.exposeInMainWorld('companion', {
   getState: () => ipcRenderer.invoke('get-state'),
   pickFolder: () => ipcRenderer.invoke('pick-folder'),
   branch: (cwd) => ipcRenderer.invoke('branch', cwd), // `git branch --show-current` or null
-  toggleFavorite: (_backend, modelId) => ipcRenderer.invoke('toggle-favorite', { modelId }),
   setModel: (cwd, _backend, model) => ipcRenderer.invoke('set-model', { cwd, model }),
   chatsList: () => ipcRenderer.invoke('chats-list'),
   chatsSave: (chat) => ipcRenderer.invoke('chats-save', chat),
