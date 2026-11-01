@@ -15,6 +15,29 @@ const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d
 const tiles = () => nikki.page.$$eval('#homeTiles > .tile', (t) => t.sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order).map((x) => x.dataset.tile));
 
 describe('Home „Heute“', () => {
+  test('Augen folgen der Maus; die ruhende Maus öffnet die Notch nur mit Einstellung, wegziehen bricht ab', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    const s = await nikki.settings('notch');
+    await s.selectOption('#setHoverOpen', '300');
+    await s.close();
+    await until(() => page.evaluate(() => document.getElementById('notch').getAttribute('aria-expanded') === 'false'), 'Insel zu');
+    const c = await page.evaluate(() => {
+      const r = document.getElementById('notch').getBoundingClientRect();
+      return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) };
+    });
+    await fromMain('pointer', { x: c.x + 400, y: 300 });
+    await until(() => page.evaluate(() => document.getElementById('eyes').style.translate.startsWith('1.')), 'Augen rechts');
+    await fromMain('pointer', c);
+    await fromMain('pointer', { x: c.x + 400, y: 300 });
+    await new Promise((r) => setTimeout(r, 450));
+    assert.equal(await page.getAttribute('#notch', 'aria-expanded'), 'false');
+    await fromMain('pointer', c);
+    await until(() => page.evaluate(() => document.getElementById('notch').getAttribute('aria-expanded') === 'true'), 'Insel offen');
+    await page.waitForFunction(() => document.querySelector('.c-gaze')?.style.transform);
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Sounds-Ordner: eine Datei ersetzt den Ton sofort, und der Ordner gibt nur Töne heraus', async () => {
     nikki = await launch();
     const { page, app } = nikki;

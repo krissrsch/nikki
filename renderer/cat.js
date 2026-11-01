@@ -120,10 +120,17 @@ function catHead() {
 <g clip-path="url(#nbHeadClip)">${cap}${mirror(cap)}</g>
 <ellipse class="c-blush" cx="33" cy="34" rx="2.6" ry="1.5" fill="#f4afbe"/><ellipse class="c-blush" cx="51" cy="34" rx="2.6" ry="1.5" fill="#f4afbe"/>
 ${whisk('L', ['M31 32.5 Q27 31.4 24 30', 'M31 34.4 Q27 34.6 24 35.4'])}${whisk('R', ['M53 32.5 Q57 31.4 60 30', 'M53 34.4 Q57 34.6 60 35.4'])}
-<g class="fb c-eyes">${eyes}</g>
+<g class="c-gaze"><g class="fb c-eyes">${eyes}</g></g>
 <path d="M40.6 31.2 h2.8 q.3 0 .1 .4 l-1.2 1.4 q-.3 .3 -.6 0 l-1.2 -1.4 q-.2 -.4 .1 -.4z" fill="#efa6b4"/>
 <g transform="translate(42 33.6) scale(.55) translate(-60 -72)">${CAT_MOUTHS.map((k) => `<g class="cm cm-${k}">${mouths[k]}</g>`).join('')}</g>
 </g>`;
+}
+
+// where her eyes go for a pointer dx/dy away from them: a small step that shrinks close to her, flatter than wide
+function catGaze(dx, dy) {
+  const d = Math.hypot(dx, dy) || 1;
+  const r = Math.min(1, d / 160) * 1.6;
+  return { x: Math.round((dx / d) * r * 100) / 100, y: Math.round((dy / d) * r * 60) / 100 };
 }
 
 // just her head, for the closed notch

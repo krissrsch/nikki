@@ -1489,8 +1489,25 @@ api.onSession?.(({ id }) => {
   chatSessionId = id;
   if (chatId) persistChat();
 });
+// her eyes follow the pointer, in the island and in the closed notch
+function followPointer(x, y) {
+  for (const g of document.querySelectorAll('.c-gaze')) {
+    const r = g.getBoundingClientRect();
+    if (!r.width) continue;
+    const { x: gx, y: gy } = catGaze(x - r.x - r.width / 2, y - r.y - r.height / 2);
+    g.style.transform = `translate(${gx}px, ${gy}px)`;
+  }
+  const r = $('notch').getBoundingClientRect();
+  const { x: ex, y: ey } = catGaze(x - r.x - r.width / 2, y - r.y - r.height / 2);
+  $('eyes').style.translate = `${ex}px ${ey}px`;
+}
+let hoverTimer = null; // the pointer rests on the closed notch (setting hoverOpen)
 api.onPointer(({ x, y }) => {
+  followPointer(x, y);
   const over = document.elementFromPoint(x, y);
+  const resting = !open && !drag && settings.hoverOpen > 0 && !!over?.closest('#notch');
+  if (resting && !hoverTimer) hoverTimer = setTimeout(() => ((hoverTimer = null), setOpen(true, { focus: false })), settings.hoverOpen);
+  if (!resting && hoverTimer) hoverTimer = clearTimeout(hoverTimer) ?? null;
   // the pointer over the notch wakes Nikki; while it rests there she stays awake
   const nowOver = !!over?.closest('#island');
   if (nowOver) touch();

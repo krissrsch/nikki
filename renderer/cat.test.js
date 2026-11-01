@@ -5,7 +5,16 @@ import vm from 'node:vm';
 
 // classic renderer script: the pure part runs in a sandbox, the stage needs a DOM (e2e/cat.e2e.js)
 const src = readFileSync(new URL('./cat.js', import.meta.url), 'utf8');
-const cat = vm.runInNewContext(`${src}\n({ catClamp, CAT_MOODS, CAT_LOOK, CAT_IDLE, catMoodFor, catCss, catSvg, catDefs, catSpot, catOffset, catHeadSvg, catPeekShow })`);
+const cat = vm.runInNewContext(`${src}\n({ catClamp, CAT_MOODS, CAT_LOOK, CAT_IDLE, catMoodFor, catCss, catSvg, catDefs, catSpot, catOffset, catHeadSvg, catPeekShow, catGaze })`);
+
+test('catGaze: Augen folgen der Maus, nie weiter als 1,6, dicht bei ihr kaum', () => {
+  assert.equal(cat.catGaze(1000, 0).x, 1.6);
+  assert.equal(cat.catGaze(-1000, 0).x, -1.6);
+  assert.equal(cat.catGaze(0, 1000).y, 0.96);
+  assert.ok(Math.hypot(cat.catGaze(700, 700).x, cat.catGaze(700, 700).y) <= 1.6);
+  assert.ok(cat.catGaze(16, 0).x < 0.2);
+  assert.deepEqual({ ...cat.catGaze(0, 0) }, { x: 0, y: 0 });
+});
 
 test('alle 19 Stimmungen haben Aussehen, Beschriftung und Bewegung', () => {
   assert.equal(cat.CAT_MOODS.length, 19);

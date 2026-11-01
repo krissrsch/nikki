@@ -41,7 +41,7 @@ Coucous eigene Sounds fallen aus, sie stehen unter Urheberrecht von Louis Raill�
 
 | Was | Warum | Aufwand |
 |---|---|---|
-| Öffnen beim Drüberfahren (mit Verzögerung einstellbar) | Notch-Tools fühlen sich so an | S |
+| Öffnen beim Drüberfahren (mit Verzögerung einstellbar) | gebaut am 2026-11-01, unter Notch & Leuchten | S |
 | Frei belegbare Kürzel: Freigabe anspringen, Tabs vor/zurück, stumm, Strg+1–9, Strg+K, Strg+Enter | Bedienung ohne Maus | M |
 | Tray: Pause, Update-Status, schnelle Schalter | wie bei Coucou | S |
 | Tastatur-Tabwechsel ohne Sprung der Katze | bei Tastatur stört jede Wartezeit | S |
@@ -52,7 +52,7 @@ Coucous eigene Sounds fallen aus, sie stehen unter Urheberrecht von Louis Raill�
 
 | Was | Warum | Aufwand |
 |---|---|---|
-| Augen folgen der Maus | kleiner Effekt, macht sie deutlich lebendiger | S |
+| Augen folgen der Maus | gebaut am 2026-11-01 | S |
 | Kleine Katze lugt beim Drüberfahren aus der geschlossenen Notch | stand auf der Liste | M |
 | Mehr Reaktionen: Tageszeit (nachts müde), lange Claude-Läufe, Timer fertig | „als ob sie lebt“ | S |
 | Kleiderschrank: Mützen, saisonale Outfits, frei schaltbar | Bindung, macht Spaß | M |

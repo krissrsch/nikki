@@ -92,6 +92,7 @@ function applySettings(s) {
   $('setCatJump').checked = s.catJump;
   $('setIntro').checked = s.intro;
   $('setGlowLevel').value = s.glowLevel;
+  $('setHoverOpen').value = String(s.hoverOpen);
   $('setGlowLevel').disabled = !s.glow;
   if (document.activeElement !== $('setCity')) $('setCity').value = s.weatherCity;
   renderModules(s.modules);
@@ -111,6 +112,7 @@ $('setCatPlaces').addEventListener('click', () => setSetting('catPlaces', null))
 $('setGlow').addEventListener('change', (e) => setSetting('glow', e.target.checked));
 $('setMic').addEventListener('change', (e) => setSetting('micSpectrum', e.target.checked));
 $('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));
+$('setHoverOpen').addEventListener('change', (e) => setSetting('hoverOpen', Number(e.target.value)));
 $('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));
 async function setDiscord(key, value) {
   const s = await api.settingsSet(key, value);

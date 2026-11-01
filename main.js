@@ -89,6 +89,7 @@ let store = {
   clipKeep: false, // clipboard module: keep its history on disk (userData/clipboard.json); off, it lives in memory only
   glow: true, // light edge around the closed notch, spectrum with music
   glowLevel: 'normal', // dezent | normal | kraeftig
+  hoverOpen: 0, // ms the pointer rests on the closed notch until it opens; 0: only by click
   catJump: true, // Nikki jumps through the tab icons when the page changes
   intro: true, // she arrives with a small show when Nikki starts
   closeKey: null, // closes the open island without focus; held only while it is open
@@ -416,6 +417,7 @@ const settings = async () => ({
   keepAwake: !!store.keepAwake,
   glow: store.glow !== false,
   catJump: store.catJump !== false,
+  hoverOpen: store.hoverOpen ?? 0,
   intro: store.intro !== false,
   closeKey: store.closeKey ?? null,
   micSpectrum: !!store.micSpectrum,
@@ -496,6 +498,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     store.keepAwake = !!value;
     applyAwake();
   } else if (key === 'catJump') store.catJump = !!value;
+  else if (key === 'hoverOpen' && [0, 300, 600, 1000].includes(value)) store.hoverOpen = value;
   else if (key === 'intro') store.intro = !!value;
   else if (key === 'catPlaces') win?.webContents.send('cat-reset'); // her places live in the island's renderer
   else if (key === 'glow') {

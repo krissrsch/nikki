@@ -373,6 +373,8 @@ button.sRow:focus-visible { outline: 2px solid var(--text); outline-offset: 2px;
 .tileHead #usage { display: flex; gap: 10px; font-variant-numeric: tabular-nums; }
 .tileHead #usage[hidden] { display: none; }
 .tileHead #usage:not([hidden]) + #claudeMeta { display: none; }
+.c-gaze { transition: transform 0.15s ease-out; }
+#eyes { transition: translate 0.15s ease-out; }
 .uRing { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; --u: var(--text); }
 .uRing[data-level='warn'] { --u: var(--warn); }
 .uRing[data-level='bad'] { --u: var(--bad); }

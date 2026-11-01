@@ -9,6 +9,7 @@ Die Insel sitzt oben mittig. Zugeklappt zeigt sie nur Nikkis Augen; was los ist,
 - Claude Code starten, mit Live-Status, Schritten und Antworten in der Insel
 - Berechtigungen, Fragen und Pläne beantworten (Erlauben / Immer / Ablehnen), auch für Claude-Code-Sessions im Terminal. Antwortest du nicht, entscheidet das Terminal
 - Nachrichten an eine laufende Terminal-Session vormerken
+- Claude-Kachel: 5-Stunden- und Wochenlimit als Ringe, Warnung ab 90 %. Klick auf eine Terminal-Session holt ihr Fenster nach vorn
 - Projekte, Chats und Modelle pro Projekt; Dateien per Drag & Drop anhängen
 - Module, in den Einstellungen einzeln schaltbar:
   - **Kalender:** lokal, mit Hinweis 15 Minuten vorher
@@ -22,7 +23,7 @@ Die Insel sitzt oben mittig. Zugeklappt zeigt sie nur Nikkis Augen; was los ist,
 - Spracheingabe (optional): Taste halten und sprechen, lokal erkannt. Befehle beginnen mit „Hey Nikki“
 - Allgemeiner Chat: Fragen an Claude ohne Projekt
 - Eigenes Einstellungsfenster mit Seitenleiste (Zahnrad in der Insel oder Tray)
-- Hotkey frei belegbar, Autostart, Töne, Leuchten an/aus und Stärke. Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
+- Hotkey frei belegbar, Autostart, Töne mit eigenem Sounds-Ordner, Leuchten an/aus und Stärke, Öffnen beim Drüberfahren. Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
 
 ## Voraussetzung
 
