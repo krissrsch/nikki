@@ -72,6 +72,9 @@ contextBridge.exposeInMainWorld('companion', {
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
   onTerminal: on('terminal'),
   onUsage: on('usage'),
+  soundFiles: () => ipcRenderer.invoke('sound-files'),
+  soundsOpen: () => ipcRenderer.send('sounds-open'),
+  onSoundsChanged: on('sounds-changed'),
   usageRefresh: () => ipcRenderer.send('usage-refresh'),
   focusTerminal: (id) => ipcRenderer.send('terminal-focus', id),
   onStatus: on('status'),

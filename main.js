@@ -21,6 +21,7 @@ import { createRelay } from './lib/relay.js';
 import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
 import { onHook, sessionPid, sweep } from './lib/terminal.js';
 import { limitWarnings, toUsage } from './lib/usage.js';
+import { soundFiles, soundsReadme } from './lib/sounds.js';
 import { cleanTranscript, OLD_MODEL, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs, whisperThreads } from './lib/voice.js';
 import { forecastUrl, geocodeUrl, parseForecast, parsePlace } from './lib/weather.js';
 
@@ -34,10 +35,17 @@ else if (!app.isPackaged) app.setPath('userData', path.join(app.getPath('appData
 // Serve the app from app://bundle/ so fetch() works for the Rive file and wasm (Chromium blocks fetch on file://).
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 function serveApp(req) {
-  const file = path.normalize(path.join(dir, decodeURIComponent(new URL(req.url).pathname)));
+  const { pathname } = new URL(req.url);
+  if (pathname.startsWith('/user-sounds/')) {
+    const name = decodeURIComponent(pathname.slice(13));
+    if (!Object.values(soundFiles(soundsDir())).includes(name)) return new Response('not found', { status: 404 });
+    return net.fetch(pathToFileURL(path.join(soundsDir(), name)).toString());
+  }
+  const file = path.normalize(path.join(dir, decodeURIComponent(pathname)));
   if (!file.startsWith(dir + path.sep) || !fs.existsSync(file)) return new Response('not found', { status: 404 });
   return net.fetch(pathToFileURL(file).toString());
 }
+const soundsDir = () => path.join(app.getPath('userData'), 'sounds');
 // Claude Code CLI: the native installer's path, else what `where claude` finds (npm, WinGet) (M11).
 // Looked up once, not on every get-state (B15); looked up again only while it is missing.
 const nativeClaude = path.join(os.homedir(), '.local', 'bin', 'claude.exe');
@@ -1356,6 +1364,30 @@ ipcMain.on('usage-refresh', () => {
 });
 setInterval(refreshUsage, USAGE_MS).unref();
 
+// --- the sounds folder (lib/sounds.js): the island plays what lies there; a changed file counts at once
+ipcMain.handle('sound-files', () => soundFiles(soundsDir()));
+ipcMain.on('sounds-open', () => {
+  try {
+    const readme = path.join(soundsDir(), 'LIESMICH.txt');
+    if (!fs.existsSync(readme)) fs.writeFileSync(readme, soundsReadme());
+  } catch (e) {
+    console.error('sounds:', e);
+  }
+  shell.openPath(soundsDir());
+});
+function watchSounds() {
+  try {
+    fs.mkdirSync(soundsDir(), { recursive: true });
+    let timer;
+    fs.watch(soundsDir(), () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => send('sounds-changed'), 300); // a copy fires many times and must be done first
+    }).on('error', () => {});
+  } catch (e) {
+    console.error('sounds:', e);
+  }
+}
+
 let hookServer;
 function startHookServer() {
   hookServer = http.createServer((req, res) => {
@@ -1567,6 +1599,7 @@ app.whenReady().then(() => {
   watchFullscreen();
   feedPointer();
   startHookServer();
+  watchSounds();
   syncHelper();
   syncClipboard();
   syncDiscord();

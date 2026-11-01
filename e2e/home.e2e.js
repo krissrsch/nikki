@@ -1,5 +1,7 @@
 // Home "Heute" (canvas Glas): exactly four tiles, and the weather from main. Open-Meteo is replaced in main (net.fetch), so the run stays offline.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, test } from 'node:test';
 import { launch, until } from './nikki.js';
 
@@ -13,6 +15,34 @@ const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d
 const tiles = () => nikki.page.$$eval('#homeTiles > .tile', (t) => t.sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order).map((x) => x.dataset.tile));
 
 describe('Home „Heute“', () => {
+  test('Sounds-Ordner: eine Datei ersetzt den Ton sofort, und der Ordner gibt nur Töne heraus', async () => {
+    nikki = await launch();
+    const { page, app } = nikki;
+    const dir = path.join(await app.evaluate(({ app: a }) => a.getPath('userData')), 'sounds');
+    await page.evaluate(() => {
+      window.ownPlayed = 0;
+      const make = AudioContext.prototype.createBufferSource;
+      AudioContext.prototype.createBufferSource = function () {
+        window.ownPlayed++;
+        return make.call(this);
+      };
+    });
+    const wav = Buffer.alloc(44 + 800);
+    wav.write('RIFF', 0); wav.writeUInt32LE(36 + 800, 4); wav.write('WAVEfmt ', 8); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+    wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(8000, 28); wav.writeUInt16LE(1, 32); wav.writeUInt16LE(8, 34); wav.write('data', 36); wav.writeUInt32LE(800, 40);
+    fs.writeFileSync(path.join(dir, 'done.wav'), wav);
+    fs.writeFileSync(path.join(dir, 'secret.wav'), wav);
+    await until(async () => {
+      await fromMain('terminal', { sessions: [], changed: 'done' });
+      return page.evaluate(() => window.ownPlayed > 0);
+    }, 'eigener Ton gespielt');
+    const status = (url) => page.evaluate((u) => fetch(u).then((r) => r.status), url);
+    assert.equal(await status('/user-sounds/done.wav'), 200);
+    assert.equal(await status('/user-sounds/secret.wav'), 404);
+    assert.equal(await status('/user-sounds/..%2F..%2Fstate.json'), 404);
+    assert.deepEqual(nikki.errors.filter((e) => !e.includes('404')), []); // the two refused files above
+  });
+
   test('Claude-Kachel: Limits als zwei Ringe statt Session-Zahl, ohne Daten keine Ringe; Terminal-Zeile springt zum Fenster und schließt die Insel', async () => {
     nikki = await launch();
     const { page, app } = nikki;

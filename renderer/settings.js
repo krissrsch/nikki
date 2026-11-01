@@ -99,6 +99,7 @@ function applySettings(s) {
 const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
 $('setAutostart').addEventListener('change', (e) => setSetting('autostart', e.target.checked));
 $('setSound').addEventListener('change', (e) => setSetting('muted', !e.target.checked));
+$('soundsOpen').addEventListener('click', () => api.soundsOpen());
 $('setAwake').addEventListener('change', (e) => setSetting('keepAwake', e.target.checked));
 $('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.target.value)));
 $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));

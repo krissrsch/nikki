@@ -286,8 +286,31 @@ function ensureAudio() {
   audio.resume();
   return audio;
 }
+const ownSounds = new Map(); // name → decoded file from the sounds folder; a file that does not decode leaves her own sound
+async function loadOwnSounds() {
+  const files = await api.soundFiles();
+  const ctx = ensureAudio();
+  ownSounds.clear();
+  for (const [name, file] of Object.entries(files)) {
+    try {
+      const res = await fetch(`/user-sounds/${encodeURIComponent(file)}`, { cache: 'no-store' });
+      ownSounds.set(name, await ctx.decodeAudioData(await res.arrayBuffer()));
+    } catch (e) {
+      console.warn('Ton nicht lesbar:', file, e);
+    }
+  }
+}
+loadOwnSounds();
+api.onSoundsChanged(loadOwnSounds);
 function play(name) {
-  if (!muted) playSound(ensureAudio(), room, name);
+  if (muted) return;
+  const ctx = ensureAudio();
+  const own = ownSounds.get(name);
+  if (!own) return playSound(ctx, room, name);
+  const src = ctx.createBufferSource();
+  src.buffer = own;
+  src.connect(ctx.destination);
+  src.start();
 }
 const chime = play; // needsYou | done
 // Electron still gates AudioContext until a gesture — unlock so later sounds can play

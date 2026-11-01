@@ -19,7 +19,7 @@ Alles Neue seit 1.1.0 ist nur lokal: Katze, Sprung, Glas-Dashboard mit Lichtkant
 
 | Was | Warum | Aufwand |
 |---|---|---|
-| Sounds-Ordner: eigene Dateien je Ereignis, Knopf „Ordner öffnen“ | wie bei Coucou, du bestimmst den Klang selbst | M |
+| Sounds-Ordner: eigene Dateien je Ereignis, Knopf „Ordner öffnen“ | gebaut am 2026-11-01: `userData/sounds`, Knopf unter Allgemein | M |
 | Frei nutzbare echte Aufnahmen (CC0) als Standard | klingt natürlicher als alles Erzeugte | M |
 | Ruhezeiten, und still, solange das Terminal im Vordergrund ist | man hört nichts, was man gerade selbst sieht | S |
 
