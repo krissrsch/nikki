@@ -70,7 +70,7 @@ function applySettings(s) {
   for (const key of ['hotkey', 'closeKey', 'voiceKey']) if (capturing?.key !== key) KEYS[key].btn.textContent = hotkeyLabel(s[key]);
   $('setVoice').checked = s.voice;
   const setup = s.voiceSetup;
-  $('voiceMsg').textContent = setup.state === 'loading' ? `Lädt die Erkennung, ${setup.percent} %` : setup.state === 'error' ? 'Das Laden hat nicht geklappt. Schalte sie aus und wieder ein.' : s.voice ? 'Bereit' : 'Beim Einschalten lädt Nikki einmalig etwa 150 MB';
+  $('voiceMsg').textContent = setup.state === 'loading' ? `Lädt die Erkennung, ${setup.percent} %` : setup.state === 'error' ? 'Das Laden hat nicht geklappt. Schalte sie aus und wieder ein.' : s.voice ? 'Bereit' : 'Beim Einschalten lädt Nikki einmalig etwa 600 MB';
   $('voiceMsg').classList.toggle('bad', setup.state === 'error');
   renderHooks(s.voiceHooks);
   $('setSound').checked = !s.muted;
