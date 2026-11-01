@@ -77,7 +77,7 @@ contextBridge.exposeInMainWorld('companion', {
   soundsOpen: () => ipcRenderer.send('sounds-open'),
   onSoundsChanged: on('sounds-changed'),
   usageRefresh: () => ipcRenderer.send('usage-refresh'),
-  focusTerminal: (id) => ipcRenderer.send('terminal-focus', id),
+  focusTerminal: (id, hint) => ipcRenderer.send('terminal-focus', id, hint),
   onStatus: on('status'),
   onSession: on('session'),
   onPermissionRequest: on('permission-request'),

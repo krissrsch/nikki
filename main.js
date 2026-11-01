@@ -13,6 +13,7 @@ import { addClip, removeClip, restoreClips } from './lib/clipboard.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
 import { avatarUrl, createDiscord, DISCORD_REDIRECT, pipePath } from './lib/discord.js';
 import { friendlyError } from './lib/errors.js';
+import { coversMonitor, fullscreenScript, parseCovered, powershellArgs } from './lib/fullscreen.js';
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
 import { mediaCommand } from './lib/media.js';
@@ -321,10 +322,8 @@ function showNow(view) {
   send('show', view);
 }
 
-// Asks Windows itself whether a fullscreen app runs (SHQueryUserNotificationState), once a second.
-// 2 = busy/fullscreen, 3 = D3D fullscreen, 4 = presentation mode, 7 = Store app fullscreen. Exits on its own once the app is gone.
-const FULLSCREEN_PS = `Add-Type -Namespace W -Name N -MemberDefinition '[DllImport("shell32.dll")] public static extern int SHQueryUserNotificationState(out int s);'
-while (Get-Process -Id ${process.pid} -ErrorAction SilentlyContinue) { $s = 0; [void][W.N]::SHQueryUserNotificationState([ref]$s); [Console]::WriteLine($s); Start-Sleep -Milliseconds 1000 }`;
+// Once a second the watcher says which monitors have a fullscreen window (lib/fullscreen.js). It only counts if it is the island's
+// own monitor, whether or not the game has the focus. Exits on its own once the app is gone.
 let fullscreenWatcher;
 let watcherDelay = 1000;
 function setFullscreen(on) {
@@ -334,11 +333,13 @@ function setFullscreen(on) {
 }
 function watchFullscreen() {
   if (quitting) return;
-  const ps = (fullscreenWatcher = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', FULLSCREEN_PS], { windowsHide: true }));
+  const ps = (fullscreenWatcher = spawn('powershell.exe', powershellArgs(fullscreenScript(process.pid)), { windowsHide: true }));
   ps.stdout.on('data', (d) => {
-    if (quitting) return;
+    if (quitting || !alive()) return;
     watcherDelay = 1000;
-    setFullscreen(['2', '3', '4', '7'].includes(d.toString().trim().split(/\s+/).pop()));
+    const line = d.toString().split(/\r?\n/).filter((l) => l !== '').pop() ?? '';
+    const mine = screen.dipToScreenRect(null, screen.getDisplayMatching(win.getBounds()).bounds);
+    setFullscreen(coversMonitor(parseCovered(line), mine));
   });
   // a dead watcher (blocked PowerShell, killed) must not leave the island hidden for good: assume no fullscreen, retry later (M9)
   let gone = false;
@@ -371,6 +372,7 @@ ipcMain.on('notch-drag', (_e, on) => {
 let lastPointer = '';
 let pointerTimer;
 function feedPointer() {
+  if (process.env.NIKKI_NO_POINTER) return; // e2e runs place the pointer themselves; a real mouse moving meanwhile would spoil them
   // 50ms was chatty for eye-tracking + click-through hit tests; 100ms is plenty
   pointerTimer = setInterval(() => {
     try {
@@ -485,7 +487,10 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   else if (key === 'hookRemove') store.voiceHooks = voiceHooks().filter((h) => h.name !== value);
   else if (key === 'muted') store.muted = !!value;
   else if (key === 'sleepMin') store.sleepMin = Math.min(120, Math.max(1, Math.round(Number(value)) || 5));
-  else if (key === 'hooks') await setHooks(!!value);
+  else if (key === 'hooks') {
+    await setHooks(!!value);
+    syncHelper(); // the jump into a terminal needs the helper
+  }
   else if (key === 'relay') {
     store.relay = !!value;
     if (store.hooks) await setHooks(true); // rewrite our hooks with or without the waiting ones
@@ -705,7 +710,7 @@ function onHelperLine(line) {
   else if (m.type === 'ptt') m.down ? voiceDown() : voiceUp();
   else if (m.type === 'rec') voiceHeard(m.ms);
   else if (m.type === 'voice' && Array.isArray(m.bands)) pill?.webContents.send('pill-bands', m.bands);
-  else if (m.type === 'focus' && !m.ok) notify('Das Terminal-Fenster habe ich nicht gefunden.', true);
+  else if (m.type === 'focus' && !m.ok) notify(NO_TERMINAL, true);
   else if (m.type === 'error') console.error('helper:', m.message);
 }
 // --- spectrum for the glow: the helper listens to what plays (WASAPI loopback) only while someone can see it:
@@ -1331,10 +1336,13 @@ function takeQueued(sid) {
   return msg || null;
 }
 // jump to a terminal session: the helper walks up from its Claude process to the window that holds it
-ipcMain.on('terminal-focus', (_e, id) => {
+const NO_TERMINAL = 'Das Terminal-Fenster habe ich nicht gefunden.';
+ipcMain.on('terminal-focus', (_e, id, hint) => {
   const pid = sessionPid(path.join(os.homedir(), '.claude', 'sessions'), String(id));
-  if (pid && helper) helper.stdin.write(`focus ${pid}\n`);
-  else notify('Das Terminal-Fenster habe ich nicht gefunden.', true);
+  // the project's folder name picks the right window when one program (VS Code) holds several
+  const title = String(hint ?? '').replace(/[\r\n]/g, ' ').slice(0, 80);
+  if (pid && helper) helper.stdin.write(`focus ${pid} ${title}\n`);
+  else notify(NO_TERMINAL, true);
 });
 
 ipcMain.handle('queue-message', (_e, { sessionId, text }) => {
@@ -1353,7 +1361,8 @@ let usageAt = 0;
 let usageBusy = false;
 const usageWarned = new Set();
 async function refreshUsage() {
-  if (usageBusy || quitting || process.env.NIKKI_NO_HELPER) return; // test runs never reach the real account
+  // test runs never reach the real account; the island asks on every opening and card, once a minute is enough
+  if (usageBusy || quitting || process.env.NIKKI_NO_HELPER || Date.now() - usageAt < 60 * 1000) return;
   usageBusy = true;
   usageAt = Date.now();
   try {
@@ -1365,9 +1374,7 @@ async function refreshUsage() {
     usageBusy = false;
   }
 }
-ipcMain.on('usage-refresh', () => {
-  if (Date.now() - usageAt > 60 * 1000) refreshUsage();
-});
+ipcMain.on('usage-refresh', refreshUsage);
 setInterval(refreshUsage, USAGE_MS).unref();
 
 // --- the sounds folder (lib/sounds.js): the island plays what lies there; a changed file counts at once

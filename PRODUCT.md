@@ -20,7 +20,7 @@ Unlike Coucou (which monitors many agents as notch pills and often needs an API 
 
 ## Operating Context
 
-- Sits at the top-center of the primary display, always visible over normal windows, hidden while a fullscreen app (games, video) runs.
+- Sits at the top-center of the primary display, always visible over normal windows, hidden while a fullscreen app (games, video) covers its monitor, focused or not.
 - Opened by clicking the island, the tray icon, or the global hotkey (Ctrl+Alt+Space, fallback Ctrl+Alt+K).
 - Shows the git branch of the selected project; Home **Git** pill glances dirty/ahead/behind (optional open PR count via local `gh`) and opens the remote in the browser — no GitHub OAuth.
 - Home **AI Studio** pill offers **Chat** (Gemini CLI via Google login / optional user `GEMINI_API_KEY`) or **Browser** (aistudio.google.com; composer text copied to clipboard).

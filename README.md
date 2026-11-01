@@ -23,7 +23,7 @@ Die Insel sitzt oben mittig. Zugeklappt zeigt sie nur Nikkis Augen; was los ist,
 - Spracheingabe (optional): Taste halten und sprechen, lokal erkannt. Befehle beginnen mit „Hey Nikki“
 - Allgemeiner Chat: Fragen an Claude ohne Projekt
 - Eigenes Einstellungsfenster mit Seitenleiste (Zahnrad in der Insel oder Tray)
-- Hotkey frei belegbar, Autostart, Töne mit eigenem Sounds-Ordner, Leuchten an/aus und Stärke, Öffnen beim Drüberfahren. Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
+- Hotkey frei belegbar, Autostart, Töne mit eigenem Sounds-Ordner, Leuchten an/aus und Stärke, Öffnen beim Drüberfahren. Bei Spiel oder Video im Vollbild auf dem Monitor der Notch geht Nikki aus dem Weg, auch wenn gerade ein Fenster auf dem anderen Monitor den Fokus hat
 
 ## Voraussetzung
 

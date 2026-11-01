@@ -1,7 +1,7 @@
 // Nikki's Windows helper: long-running, talks JSON lines over stdio.
 // stdout: {"type":"ready"} | {"type":"media",...} | {"type":"volume","level":0-100,"muted":bool} | {"type":"error","message":...}
 //         | {"type":"spectrum","bands":[12 numbers 0-1]} (~30/s while something sounds, see Spectrum) | {"type":"focus","ok":bool}
-// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off | mic on | mic off | ptt <virtual keys, comma separated> | ptt off | rec start <wav path> | rec stop | focus <pid>
+// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off | mic on | mic off | ptt <virtual keys, comma separated> | ptt off | rec start <wav path> | rec stop | focus <pid> [part of the window title]
 // NikkiHelper.exe --spectrum-test: checks the analysis on a test tone and silence, exit code 0 when it is right
 // Built with the C# 5 compiler that ships with Windows (see build.cmd): no C# 6+ syntax, and WinRT
 // async calls are waited on directly because .NET Framework's await bridge does not bind to the system .winmd files.
@@ -95,8 +95,10 @@ class NikkiHelper
         }
         if (line.StartsWith("focus "))
         {
+            // "focus <pid> [title part]": the title picks the window when one program holds several (VS Code)
+            var parts = line.Substring(6).Split(new[] { ' ' }, 2);
             int pid;
-            Emit("{\"type\":\"focus\",\"ok\":" + (int.TryParse(line.Substring(6), out pid) && WindowFocus.Raise(pid) ? "true" : "false") + "}");
+            Emit("{\"type\":\"focus\",\"ok\":" + (int.TryParse(parts[0], out pid) && WindowFocus.Raise(pid, parts.Length > 1 ? parts[1].Trim() : "") ? "true" : "false") + "}");
             return;
         }
         if (line.StartsWith("rec start "))
@@ -361,6 +363,7 @@ static class WindowFocus
     [DllImport("user32.dll")] static extern int GetWindowThreadProcessId(IntPtr hwnd, out int pid);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll")] static extern int GetWindowTextLength(IntPtr hwnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int size);
     [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hwnd, int cmd);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder name, int size);
     [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hwnd);
@@ -380,9 +383,11 @@ static class WindowFocus
         return all;
     }
 
-    static IntPtr WindowOf(int pid)
+    // the process's window; with several, the one whose title holds the hint (else the topmost)
+    static IntPtr WindowOf(int pid, string hint)
     {
         var found = IntPtr.Zero;
+        var first = IntPtr.Zero;
         EnumWindows((hwnd, _) =>
         {
             int owner;
@@ -399,20 +404,25 @@ static class WindowFocus
                 return false;
             }
             if (!IsWindowVisible(hwnd) || GetWindow(hwnd, GwOwner) != IntPtr.Zero || GetWindowTextLength(hwnd) == 0) return true;
+            if (first == IntPtr.Zero) first = hwnd;
+            if (hint.Length == 0) return false;
+            var title = new StringBuilder(GetWindowTextLength(hwnd) + 1);
+            GetWindowText(hwnd, title, title.Capacity);
+            if (title.ToString().IndexOf(hint, StringComparison.OrdinalIgnoreCase) < 0) return true;
             found = hwnd;
             return false;
         }, IntPtr.Zero);
-        return found;
+        return found != IntPtr.Zero ? found : first;
     }
 
-    public static bool Raise(int pid)
+    public static bool Raise(int pid, string hint)
     {
         var all = Processes();
         for (var hops = 0; hops < 16 && all.ContainsKey(pid); hops++)
         {
             var p = all[pid];
             if (string.Equals(p.exe, "explorer.exe", StringComparison.OrdinalIgnoreCase)) return false; // the desktop started it: its windows are not the terminal
-            var hwnd = WindowOf(pid);
+            var hwnd = WindowOf(pid, hint);
             if (hwnd != IntPtr.Zero) return Front(hwnd);
             pid = p.parent;
         }

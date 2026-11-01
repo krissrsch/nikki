@@ -38,6 +38,10 @@ let unseen = null; // 'done' | 'error' of our own task, until the chat was looke
 let lastActivity = Date.now();
 let hover = false; // pointer over the island: Nikki wakes up
 let drag = null; // the closed notch under the mouse: { off, moved }
+// hover opening (setting hoverOpen): armed once the pointer has left the notch; hoverOpened: opened that way and not touched since
+let hoverArmed = true;
+let hoverOpened = false;
+let lastPt = null; // the last pointer position: events come only when it moves, and while the island closes the old panel is still under it
 let peek = null; // her head behind the closed notch
 let listening = false; // the voice key is held
 let generalDir = null; // the folder of the general chat: no project needed
@@ -92,42 +96,53 @@ function sessionDot(state) {
 }
 
 // Home "Heute": the Claude tile (status only; the chat lives in its own tab)
-function renderHome() {
-  const rows = [
-    ...(current ? [{ name: folderName(current), state: ownState(), title: current }] : []),
-    ...[...terminal]
-      .sort((a, b) => (RANK[b.state] || 0) - (RANK[a.state] || 0) || b.at - a.at)
-      .map((t) => ({ name: `${folderName(t.cwd)} · Terminal`, state: t.state || 'idle', title: `${t.cwd}: Terminal nach vorn holen`, terminal: t.id })),
-  ];
-  $('claudeMeta').textContent = rows.length === 1 ? '1 Session' : rows.length ? `${rows.length} Sessions` : '';
-  const nodes = rows.slice(0, 3).map((r) => {
-    const row = document.createElement(r.terminal ? 'button' : 'div');
+// a session's row stays the same element between renders (hook events come often): a click in progress and the keyboard focus survive
+let sessionRows = new Map(); // key → row
+function sessionRow(r) {
+  let row = sessionRows.get(r.key);
+  if (!row) {
+    row = document.createElement(r.terminal ? 'button' : 'div');
     row.className = 'sRow';
-    row.title = r.title;
     if (r.terminal) {
       row.type = 'button';
       row.addEventListener('click', () => {
         setOpen(false);
-        api.focusTerminal(r.terminal);
+        api.focusTerminal(r.terminal, folderName(r.cwd)); // the folder name picks the window when one program holds several
       });
     }
-    const name = document.createElement('span');
-    name.className = 'sName';
-    name.textContent = r.name;
     const dot = sessionDot(r.state);
     dot.setAttribute('role', 'img');
-    dot.setAttribute('aria-label', STATE_LABEL[r.state] ?? r.state);
-    dot.title = STATE_LABEL[r.state] ?? r.state;
+    const name = document.createElement('span');
+    name.className = 'sName';
     row.append(dot, name);
-    return row;
-  });
+  }
+  const [dot, name] = row.children;
+  row.title = r.title;
+  name.textContent = r.name;
+  dot.dataset.state = r.state;
+  dot.setAttribute('aria-label', STATE_LABEL[r.state] ?? r.state);
+  dot.title = STATE_LABEL[r.state] ?? r.state;
+  return row;
+}
+function renderHome() {
+  const rows = [
+    ...(current ? [{ key: 'own', name: folderName(current), state: ownState(), title: current }] : []),
+    ...[...terminal]
+      .sort((a, b) => (RANK[b.state] || 0) - (RANK[a.state] || 0) || b.at - a.at)
+      .map((t) => ({ key: t.id, name: `${folderName(t.cwd)} · Terminal`, state: t.state || 'idle', title: `${t.cwd}: Terminal nach vorn holen`, terminal: t.id, cwd: t.cwd })),
+  ];
+  $('claudeMeta').textContent = rows.length === 1 ? '1 Session' : rows.length ? `${rows.length} Sessions` : '';
+  const nodes = rows.slice(0, 3).map(sessionRow);
+  sessionRows = new Map(rows.slice(0, 3).map((r, i) => [r.key, nodes[i]]));
   if (!nodes.length) {
     const empty = document.createElement('p');
     empty.className = 'tileHint';
     empty.textContent = 'Noch kein Projekt. Im Chat wählst du eins.';
     nodes.push(empty);
   }
-  $('claudeSessions').replaceChildren(...nodes);
+  const list = $('claudeSessions');
+  // touching the children (even the same ones) would drop the focus: only when the rows themselves changed
+  if (list.children.length !== nodes.length || nodes.some((n, i) => list.children[i] !== n)) list.replaceChildren(...nodes);
 }
 
 // ---- plan limits: two small rings in the Claude tile, the details in their tooltip
@@ -145,14 +160,24 @@ function usageRing(label, short, w, week) {
   r.innerHTML = RING;
   r.querySelector('.uFill').setAttribute('stroke-dasharray', `${Math.min(100, w.percent)} 100`);
   r.append(`${short} ${w.percent} %`);
-  r.title = `${label}: ${w.percent} % verbraucht${w.resets ? untilText(w.resets, week) : ''}`;
+  // the details come up on hover and on keyboard focus (style.css), not only in a native tooltip
+  r.dataset.tip = `${label}: ${w.percent} % verbraucht${w.resets ? untilText(w.resets, week) : ''}`;
+  r.tabIndex = 0;
   r.setAttribute('role', 'img');
-  r.setAttribute('aria-label', r.title);
+  r.setAttribute('aria-label', r.dataset.tip);
   return r;
 }
+// the last reading; a window whose reset time has passed is no longer true, so it goes (a failed reading keeps the old one)
+let usage = null;
+const stillOn = (w) => w && !(w.resets && Date.parse(w.resets) <= Date.now());
+function renderUsage() {
+  const rings = [stillOn(usage?.session) && usageRing('5-Stunden-Limit', '5 h', usage.session, false), stillOn(usage?.week) && usageRing('Wochenlimit', 'Woche', usage.week, true)].filter(Boolean);
+  $('usage').replaceChildren(...rings);
+  $('usage').hidden = !rings.length;
+}
 api.onUsage((u) => {
-  $('usage').replaceChildren(...[u.session && usageRing('5-Stunden-Limit', '5 h', u.session, false), u.week && usageRing('Wochenlimit', 'Woche', u.week, true)].filter(Boolean));
-  $('usage').hidden = false;
+  usage = u;
+  renderUsage();
 });
 
 // ---- weather tile: main fetches it (Open-Meteo, lib/weather.js); null = no city yet
@@ -290,18 +315,20 @@ const ownSounds = new Map(); // name → decoded file from the sounds folder; a 
 async function loadOwnSounds() {
   const files = await api.soundFiles();
   const ctx = ensureAudio();
-  ownSounds.clear();
+  const next = new Map(); // swapped in at the end: the old sounds keep playing while the new ones decode
   for (const [name, file] of Object.entries(files)) {
     try {
       const res = await fetch(`/user-sounds/${encodeURIComponent(file)}`, { cache: 'no-store' });
-      ownSounds.set(name, await ctx.decodeAudioData(await res.arrayBuffer()));
+      next.set(name, await ctx.decodeAudioData(await res.arrayBuffer()));
     } catch (e) {
       console.warn('Ton nicht lesbar:', file, e);
     }
   }
+  ownSounds.clear();
+  for (const [name, buf] of next) ownSounds.set(name, buf);
 }
-loadOwnSounds();
-api.onSoundsChanged(loadOwnSounds);
+let soundsLoaded = loadOwnSounds(); // the hello at the start waits for it (see the start below)
+api.onSoundsChanged(() => (soundsLoaded = loadOwnSounds()));
 function play(name) {
   if (muted) return;
   const ctx = ensureAudio();
@@ -733,9 +760,11 @@ function setBusy(b) {
 // the close key is free for other apps while a card waits: it would do nothing here
 const tellOpen = () => api.islandOpen(open && !perms.length);
 function setOpen(v, { instant = false, focus = true } = {}) {
-  if (v) api.usageRefresh();
   if (v === open) return;
   if (v) {
+    api.usageRefresh(); // main reads at most once a minute
+    renderUsage(); // a window may have run out since the last look
+    hoverArmed = false; // the pointer is on the notch now: it must leave before hovering opens it again
     endDrag(); // a card arrived mid-drag
     delete document.documentElement.dataset.drag; // the spring rule holds only translate: the opening keeps its own glide
   }
@@ -754,6 +783,8 @@ function setOpen(v, { instant = false, focus = true } = {}) {
   renderState();
   renderGlance();
   if (!v) {
+    hoverOpened = false;
+    setTimeout(() => lastPt && pointerAt(lastPt.x, lastPt.y), 600); // closed by now: look again at where the pointer rests
     closeMenu();
     closeModelMenu();
     closeChatsMenu();
@@ -1235,6 +1266,7 @@ function endDrag() {
   const { moved } = drag;
   drag = null;
   if (!moved) return;
+  hoverArmed = false; // let go on the notch: no hover opening until the pointer left it once
   api.notchDrag(false);
   justDragged = true; // the click of this release is not an opening click
   dragRoot.dataset.drag = 'back';
@@ -1392,6 +1424,7 @@ function applyModules(saved) {
   }
   // tabs follow the order of the list; the tiles keep their fixed place on Home
   $('moduleTabs').replaceChildren(...on.map((id) => moduleTab(NikkiModules.get(id))));
+  tabKeys();
   $('homeTiles').append(...on.filter((id) => tileOf.has(id)).map((id) => tileOf.get(id)));
   for (const id of on) renderTile(id);
   if (!VIEWS[view]) setView('home');
@@ -1460,8 +1493,14 @@ addEventListener('keydown', (e) => {
   const tab = [...document.querySelectorAll('#tabs .tab[data-view]')][Number(e.key) - 1];
   if (!tab) return;
   e.preventDefault();
+  cat?.cancelJump(); // a jump from a tab click would commit its page over this one
   setView(perms.length ? 'chat' : tab.dataset.view);
 });
+// the keys are in the accessibility tree too, in the order of the tabs
+function tabKeys() {
+  document.querySelectorAll('#tabs .tab[data-view]').forEach((b, i) => (i < 9 ? b.setAttribute('aria-keyshortcuts', `Control+${i + 1}`) : b.removeAttribute('aria-keyshortcuts')));
+}
+tabKeys();
 
 api.onToggle(() => setOpen(!open, { instant: true }));
 api.onShow?.((page) => {
@@ -1499,26 +1538,49 @@ api.onSession?.(({ id }) => {
   if (chatId) persistChat();
 });
 // her eyes follow the pointer, in the island and in the closed notch
+const gazeAt = (el, x, y) => {
+  const r = el.getBoundingClientRect();
+  return r.width ? catGaze(x - r.x - r.width / 2, y - r.y - r.height / 2) : null;
+};
 function followPointer(x, y) {
+  if (reduceMotion) return; // eyes that stay where they are
   for (const g of document.querySelectorAll('.c-gaze')) {
-    const r = g.getBoundingClientRect();
-    if (!r.width) continue;
-    const { x: gx, y: gy } = catGaze(x - r.x - r.width / 2, y - r.y - r.height / 2);
-    g.style.transform = `translate(${gx}px, ${gy}px)`;
+    const d = gazeAt(g, x, y);
+    if (d) g.style.transform = `translate(${d.x}px, ${d.y}px)`;
   }
-  const r = $('notch').getBoundingClientRect();
-  const { x: ex, y: ey } = catGaze(x - r.x - r.width / 2, y - r.y - r.height / 2);
-  $('eyes').style.translate = `${ex}px ${ey}px`;
+  const d = gazeAt($('notch'), x, y);
+  if (d) $('eyes').style.translate = `${d.x}px ${d.y}px`;
 }
 let hoverTimer = null; // the pointer rests on the closed notch (setting hoverOpen)
-api.onPointer(({ x, y }) => {
+let hoverLeave = null; // opened by hovering, the pointer left: it closes again after a short while
+// touching the island, typing, or a card that arrived makes it an opened island like any other
+island.addEventListener('pointerdown', () => (hoverOpened = false));
+addEventListener('keydown', () => (hoverOpened = false), true);
+function pointerAt(x, y) {
+  lastPt = { x, y };
   followPointer(x, y);
   const over = document.elementFromPoint(x, y);
-  const resting = !open && !drag && settings.hoverOpen > 0 && !!over?.closest('#notch');
-  if (resting && !hoverTimer) hoverTimer = setTimeout(() => ((hoverTimer = null), setOpen(true, { focus: false })), settings.hoverOpen);
+  const overNotch = !!over?.closest('#notch');
+  if (!open && !overNotch) hoverArmed = true;
+  const resting = !open && !drag && !introRunning && hoverArmed && settings.hoverOpen > 0 && overNotch;
+  if (resting && !hoverTimer)
+    hoverTimer = setTimeout(() => {
+      hoverTimer = null;
+      hoverOpened = true;
+      setOpen(true, { focus: false });
+    }, settings.hoverOpen);
   if (!resting && hoverTimer) hoverTimer = clearTimeout(hoverTimer) ?? null;
   // the pointer over the notch wakes Nikki; while it rests there she stays awake
   const nowOver = !!over?.closest('#island');
+  if (perms.length) hoverOpened = false;
+  if (hoverOpened && open && !nowOver)
+    hoverLeave ??= setTimeout(() => {
+      hoverLeave = null;
+      if (!hoverOpened || !open) return;
+      setOpen(false);
+      hoverArmed = true; // the pointer is away: it may open it again
+    }, 500);
+  else if (hoverLeave) hoverLeave = clearTimeout(hoverLeave) ?? null;
   if (nowOver) touch();
   if (nowOver !== hover) {
     hover = nowOver;
@@ -1526,7 +1588,8 @@ api.onPointer(({ x, y }) => {
   }
   // also during a drag from Explorer, where no mousemove arrives: catch the drop only over the island
   setThrough(!over?.closest('.hit'));
-});
+}
+api.onPointer(({ x, y }) => pointerAt(x, y));
 api.onTerminal(({ sessions, changed }) => {
   terminal = sessions;
   if (changed) touch();
@@ -1598,6 +1661,7 @@ async function startUp() {
 
   // main keeps the window hidden while a fullscreen app runs: say hello once it can be seen
   while (document.visibilityState !== 'visible') await new Promise((r) => document.addEventListener('visibilitychange', r, { once: true }));
+  await Promise.race([soundsLoaded.catch(() => {}), new Promise((r) => setTimeout(r, 1500))]); // her own hello, if there is one; never a long wait
   await startUp();
 
   if (!claudeFound) {

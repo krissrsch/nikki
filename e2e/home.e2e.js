@@ -38,6 +38,44 @@ describe('Home „Heute“', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Hover-Öffnen: nach Esc nicht gleich wieder auf; per Hover geöffnet schließt beim Wegfahren, nach einem Klick hinein nicht', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    const s = await nikki.settings('notch');
+    await s.selectOption('#setHoverOpen', '300');
+    await s.close();
+    let step = 0;
+    const expanded = (v) => until(() => page.evaluate((x) => document.getElementById('notch').getAttribute('aria-expanded') === x, String(v)), `Insel ${v ? 'offen' : 'zu'} (Schritt ${++step})`);
+    const c = await page.evaluate(() => {
+      const r = document.getElementById('notch').getBoundingClientRect();
+      return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) };
+    });
+    const away = { x: c.x + 700, y: 500 };
+    await expanded(false);
+    // opened by a click, closed by Esc, the pointer rests on the notch: it must stay closed
+    await page.click('#notch');
+    await expanded(true);
+    await page.keyboard.press('Escape');
+    await expanded(false);
+    await fromMain('pointer', c);
+    await new Promise((r) => setTimeout(r, 700));
+    assert.equal(await page.getAttribute('#notch', 'aria-expanded'), 'false');
+    // away and back: opens; away again: closes by itself
+    await fromMain('pointer', away);
+    await fromMain('pointer', c);
+    await expanded(true);
+    await fromMain('pointer', away);
+    await expanded(false);
+    // away, back, open; a click into it makes it an ordinary open island: it stays when the pointer leaves
+    await fromMain('pointer', c);
+    await expanded(true);
+    await page.click('#island');
+    await fromMain('pointer', away);
+    await new Promise((r) => setTimeout(r, 900));
+    assert.equal(await page.getAttribute('#notch', 'aria-expanded'), 'true');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Sounds-Ordner: eine Datei ersetzt den Ton sofort, und der Ordner gibt nur Töne heraus', async () => {
     nikki = await launch();
     const { page, app } = nikki;
@@ -73,15 +111,27 @@ describe('Home „Heute“', () => {
     await page.waitForSelector('button.sRow');
     assert.equal(await page.isVisible('#usage'), false);
     assert.equal(await page.isVisible('#claudeMeta'), true);
-    await fromMain('usage', { session: { percent: 10, resets: '2026-11-01T12:30:00Z' }, week: { percent: 98, resets: '2026-11-01T12:00:00Z' } });
+    const soon = (h) => new Date(Date.now() + h * 3600e3).toISOString();
+    // a window whose time has passed is not shown any more; the other one is
+    await fromMain('usage', { session: { percent: 10, resets: '2020-01-01T00:00:00Z' }, week: { percent: 98, resets: soon(30) } });
     await page.waitForSelector('#usage .uRing');
+    assert.deepEqual(await page.$$eval('.uRing', (r) => r.map((x) => x.textContent)), ['Woche 98 %']);
+    await fromMain('usage', { session: { percent: 10, resets: soon(2) }, week: { percent: 98, resets: soon(30) } });
+    await page.waitForFunction(() => document.querySelectorAll('.uRing').length === 2);
     assert.deepEqual(await page.$$eval('.uRing', (r) => r.map((x) => [x.textContent, x.dataset.level])), [['5 h 10 %', 'ok'], ['Woche 98 %', 'bad']]);
+    await page.focus('.uRing >> nth=1'); // by keyboard the details show too
+    await page.waitForFunction(() => getComputedStyle(document.querySelectorAll('.uRing')[1], '::after').visibility === 'visible');
     assert.match(await page.getAttribute('.uRing >> nth=1', 'aria-label'), /^Wochenlimit: 98 % verbraucht, wieder frei \w+, \d\d:\d\d Uhr$/);
     assert.equal(await page.isVisible('#claudeMeta'), false);
     if (process.env.NIKKI_SHOT) await page.locator('#island').screenshot({ path: process.env.NIKKI_SHOT });
-    await app.evaluate(({ ipcMain }) => ipcMain.on('terminal-focus', (_e, id) => (globalThis.focused = id)));
+    await app.evaluate(({ ipcMain }) => ipcMain.on('terminal-focus', (_e, id, hint) => (globalThis.focused = `${id}|${hint}`)));
+    // hook events rebuild the tile all the time: the row stays the same element, so the keyboard focus is not lost
+    await page.focus('button.sRow');
+    await fromMain('terminal', { sessions: [{ id: 'term-1', cwd: 'C:/p/demo', state: 'needsYou', text: 'y', at: 2 }] });
+    await page.waitForFunction(() => document.querySelector('button.sRow .sDot')?.dataset.state === 'needsYou');
+    assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('sRow')), true);
     await page.click('button.sRow');
-    await until(() => app.evaluate(() => globalThis.focused === 'term-1'), 'Sprung gemeldet');
+    await until(() => app.evaluate(() => globalThis.focused === 'term-1|demo'), 'Sprung gemeldet, mit dem Ordnernamen für das richtige Fenster');
     await until(() => page.evaluate(() => document.getElementById('notch').getAttribute('aria-expanded') === 'false'), 'Insel zu');
     assert.deepEqual(nikki.errors, []);
   });

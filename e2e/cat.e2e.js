@@ -49,6 +49,20 @@ describe('Nikki die Katze', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Strg+Ziffer mitten im Sprung: der Sprung bricht ab, die Seite des Kürzels bleibt stehen', async () => {
+    nikki = await launch({ state: { catJump: true } });
+    const { page } = nikki;
+    await page.waitForTimeout(400);
+    await page.click('#tabs .tab[data-view="chat"]'); // she starts to jump to Chat
+    await page.waitForTimeout(150);
+    await page.keyboard.press('Control+1'); // Heute, at once
+    assert.deepEqual(await shown(), ['viewHome']);
+    await page.waitForTimeout(1500); // the jump's own page change would have come by now
+    assert.deepEqual(await shown(), ['viewHome']);
+    assert.equal(await page.$eval('.catFly', (e) => e.hidden), true, 'kein Flug mehr');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('ziehen: sie bleibt dort, je Ansicht und nach dem Neustart des Fensters; Doppelklick schickt sie zurück', async () => {
     nikki = await launch();
     const { page } = nikki;

@@ -375,7 +375,33 @@ button.sRow:focus-visible { outline: 2px solid var(--text); outline-offset: 2px;
 .tileHead #usage:not([hidden]) + #claudeMeta { display: none; }
 .c-gaze { transition: transform 0.15s ease-out; }
 #eyes { transition: translate 0.15s ease-out; }
-.uRing { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; --u: var(--text); }
+.uRing { position: relative; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; --u: var(--text); }
+.uRing:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; border-radius: 6px; }
+/* the details (limit, how much, when it is free again): on hover and on keyboard focus, wrapped so they stay inside the island */
+.uRing::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  width: max-content;
+  max-width: 190px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  white-space: normal;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.4);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.uRing:last-child::after { right: 0; left: auto; }
+.uRing:is(:hover, :focus-visible)::after { opacity: 1; visibility: visible; }
 .uRing[data-level='warn'] { --u: var(--warn); }
 .uRing[data-level='bad'] { --u: var(--bad); }
 .uRing svg { width: 14px; height: 14px; fill: none; stroke-width: 3.5; }
@@ -583,7 +609,7 @@ button.sRow:focus-visible { outline: 2px solid var(--text); outline-offset: 2px;
 .setCard h2 { margin: 0 0 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .setRow { display: flex; align-items: center; gap: 12px; min-height: 38px; }
 .setRow > span:first-child { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
-.setRow small { overflow: hidden; color: var(--faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.setRow small { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .setRow small:empty { display: none; }
 .setRow small.bad { color: var(--bad); }
 #setHotkey { flex: none; font-size: 11px; }
@@ -1132,6 +1158,8 @@ kbd.key {
   .sheet,
   .view { animation: none !important; translate: none !important; scale: none !important; }
   .timerArc { transition: none; }
+  .c-gaze,
+  #eyes { transition: none; }
   #eyes .eSleep text { opacity: 0.8; }
   #eyes .eSleep text + text { transform: translate(4px, -6px); }
   #island,

@@ -24,7 +24,7 @@
         <div class="setCard">
           <label class="setRow"><span>Mit Windows starten<small id="autostartHint" hidden>nur in der installierten App</small></span><input id="setAutostart" class="switch" type="checkbox" role="switch" /></label>
           <label class="setRow"><span>Töne<small>Hinweise bei Fertig und Freigaben, Nikkis Laute</small></span><input id="setSound" class="switch" type="checkbox" role="switch" /></label>
-          <div class="setRow"><span>Eigene Töne<small>Dateien im Ordner ersetzen Nikkis Klänge, die Namen stehen in LIESMICH.txt</small></span><button id="soundsOpen" type="button" class="btn">Ordner öffnen</button></div>
+          <div class="setRow"><span>Eigene Töne<small>Dateien im Ordner ersetzen Nikkis Klänge, die Namen stehen in LIESMICH.txt</small></span><button id="soundsOpen" type="button" class="btn" aria-label="Ordner mit eigenen Tönen öffnen">Ordner öffnen</button></div>
           <label class="setRow"><span>PC wach halten<small>Solange Claude arbeitet, macht Nikki das von selbst</small></span><input id="setAwake" class="switch" type="checkbox" role="switch" /></label>
         </div>
       </section>
@@ -105,8 +105,8 @@
       <section class="sPage" data-page="about" aria-labelledby="pAbout" hidden>
         <h1 id="pAbout">Über</h1>
         <div class="setCard">
-          <div class="setRow"><span>Nikki<small id="aboutVersion"></small></span><button id="aboutReleases" type="button" class="btn">Neuigkeiten</button></div>
-          <div class="setRow"><span>Daten<small id="aboutDir"></small></span><button id="aboutOpenDir" type="button" class="btn">Ordner öffnen</button></div>
+          <div class="setRow"><span>Nikki<small id="aboutVersion"></small></span><button id="aboutReleases" type="button" class="btn" aria-label="Neuigkeiten ansehen, öffnet den Browser">Neuigkeiten</button></div>
+          <div class="setRow"><span>Daten<small id="aboutDir"></small></span><button id="aboutOpenDir" type="button" class="btn" aria-label="Datenordner öffnen">Ordner öffnen</button></div>
         </div>
       </section>
 
@@ -116,6 +116,10 @@
           <div class="setRow">
             <span>Nikki öffnen und schließen<small id="hotkeyMsg" role="status"></small></span>
             <button id="setHotkey" type="button" class="btn mono" aria-pressed="false" title="Klicken, dann die neue Kombination drücken"></button>
+          </div>
+          <div class="setRow">
+            <span>Reiter wechseln<small>Strg+1 bis Strg+9: der n-te Reiter, ohne Sprung</small></span>
+            <span class="mono" aria-hidden="true">Strg+1–9</span>
           </div>
           <div class="setRow">
             <span>Nikki schließen ohne Fokus<small id="closeKeyMsg" role="status"></small></span>

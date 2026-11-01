@@ -29,11 +29,14 @@ export async function launch({ state, settings, realHome = false } = {}) {
   const userData = tmpDir('data');
   const home = realHome ? null : tmpDir('home');
   // no start show, no jump between tabs in the tests: the page switches at once, as the assertions expect (cat.e2e.js turns it on)
-  fs.writeFileSync(path.join(userData, 'state.json'), JSON.stringify({ catJump: false, intro: false, ...state }));
+  // NIKKI_E2E_DISPLAY: id of the display to run on, e.g. when a game is fullscreen on the main one (the island hides itself there)
+  const display = Number(process.env.NIKKI_E2E_DISPLAY) || null;
+  fs.writeFileSync(path.join(userData, 'state.json'), JSON.stringify({ catJump: false, intro: false, ...(display && { display }), ...state }));
   // started like the user would: no nested Claude Code session, no API key, no node mode
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(CLAUDECODE|CLAUDE_CODE_|ANTHROPIC_|ELECTRON_RUN_AS_NODE)/.test(k)));
   env.NIKKI_USER_DATA = userData;
   env.NIKKI_NO_HELPER = '1'; // no NikkiHelper.exe: the user's real media session and volume stay out of every run
+  env.NIKKI_NO_POINTER = '1'; // the real mouse stays out too: tests send the pointer positions themselves
   if (home) {
     env.HOME = env.USERPROFILE = home;
     // Claude counts as installed on every machine; the offline tests replace it before anything would run it

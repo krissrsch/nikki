@@ -709,6 +709,10 @@ function createCatStage({ box, tabs, ctx, reduceMotion = false, canJump = () => 
   return {
     sync,
     switchTo,
+    // a page switch by keyboard while she is mid-jump: the jump stops, its delayed page change never comes
+    cancelJump() {
+      if (busy) stop();
+    },
     touch,
     setView(v) {
       if (!busy) view = v;
