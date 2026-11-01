@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('companion', {
   settingsGet: () => ipcRenderer.invoke('settings-get'),
   // returns all settings again, plus error: 'taken' | 'invalid' when a hotkey did not take
   settingsSet: (key, value) => ipcRenderer.invoke('settings-set', key, value),
+  openDataDir: () => ipcRenderer.send('open-data-dir'),
   openSettings: (page) => ipcRenderer.send('open-settings', page), // page: general | notch | today | modules | claude | discord | nikki | keys
   onSettingsChanged: on('settings-changed'),
   // Spracheingabe: the capsule, the "she listens" signal and what was said (kind: claude | general | text)

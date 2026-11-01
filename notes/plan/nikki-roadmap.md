@@ -44,8 +44,8 @@ Coucous eigene Sounds fallen aus, sie stehen unter Urheberrecht von Louis Raill�
 | Öffnen beim Drüberfahren (mit Verzögerung einstellbar) | gebaut am 2026-11-01, unter Notch & Leuchten | S |
 | Frei belegbare Kürzel: Freigabe anspringen, Tabs vor/zurück, stumm, Strg+1–9, Strg+K, Strg+Enter | Bedienung ohne Maus | M |
 | Tray: Pause, Update-Status, schnelle Schalter | wie bei Coucou | S |
-| Tastatur-Tabwechsel ohne Sprung der Katze | bei Tastatur stört jede Wartezeit | S |
-| Seite „Über“: Version, Update, Daten-Ordner | fehlt noch im Einstellungsfenster | S |
+| Tastatur-Tabwechsel ohne Sprung der Katze | gebaut am 2026-11-01: Strg+1–9 | S |
+| Seite „Über“: Version, Update, Daten-Ordner | gebaut am 2026-11-01 ohne Update-Status (der Updater ist eine eigene exe) | S |
 | Erster Start: kurze Einführung (Projekt wählen, Hooks erklären, Kürzel) | Neue wissen sonst nicht, was geht | M |
 
 ## 5. Katze und Charakter

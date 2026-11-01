@@ -418,6 +418,8 @@ const settings = async () => ({
   glow: store.glow !== false,
   catJump: store.catJump !== false,
   hoverOpen: store.hoverOpen ?? 0,
+  version: app.getVersion(),
+  dataDir: app.getPath('userData'),
   intro: store.intro !== false,
   closeKey: store.closeKey ?? null,
   micSpectrum: !!store.micSpectrum,
@@ -458,6 +460,7 @@ function openSettings(page = 'general') {
   settingsWin.loadFile(path.join(dir, 'renderer', 'settings.html'), { hash: page });
 }
 ipcMain.on('open-settings', (_e, page) => openSettings(page));
+ipcMain.on('open-data-dir', () => shell.openPath(app.getPath('userData')));
 ipcMain.handle('settings-set', async (_e, key, value) => {
   let error = null;
   if (key === 'autostart' && app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!value });

@@ -21,6 +21,22 @@ const item = (dir) => `#projectMenu button:has-text("${path.basename(dir)}")`;
 const isOpen = () => nikki.page.evaluate(() => document.getElementById('island').classList.contains('open'));
 
 describe('Nikki offline', () => {
+  test('Strg+1-9 wechselt den Reiter ohne Sprung; Über zeigt Version und Datenordner', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    const view = () => page.evaluate(() => document.body.dataset.view);
+    await page.keyboard.press('Control+2');
+    await until(async () => (await view()) === 'chat', 'Chat');
+    await page.keyboard.press('Control+1');
+    await until(async () => (await view()) === 'home', 'Heute');
+    await page.keyboard.press('Control+9');
+    assert.equal(await view(), 'home');
+    const s = await nikki.settings('about');
+    assert.match(await s.textContent('#aboutVersion'), /^Version \d+\.\d+\.\d+$/);
+    assert.ok((await s.textContent('#aboutDir')).length > 3);
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Kaltstart ohne Konsolenfehler, Daten nur im Temp-Ordner', async () => {
     nikki = await launch();
     const where = await nikki.app.evaluate(({ app }) => ({ userData: app.getPath('userData'), home: process.getBuiltinModule('node:os').homedir() }));

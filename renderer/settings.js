@@ -14,6 +14,7 @@ const PAGES = [
   ['discord', 'Discord', DISCORD_MARK, 'listen'],
   ['voice', 'Sprache', '<rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" />', 'listen'],
   ['nikki', 'Nikki', '<path d="M5 20V8l3-4 2 3h4l2-3 3 4v12z" /><path d="M9.5 12v1M14.5 12v1" />', 'wave'],
+  ['about', 'Über', '<circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.01" />', 'purr'],
   ['keys', 'Tastenkürzel', '<rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />', 'think'],
 ];
 
@@ -93,6 +94,8 @@ function applySettings(s) {
   $('setIntro').checked = s.intro;
   $('setGlowLevel').value = s.glowLevel;
   $('setHoverOpen').value = String(s.hoverOpen);
+  $('aboutVersion').textContent = `Version ${s.version}`;
+  $('aboutDir').textContent = s.dataDir;
   $('setGlowLevel').disabled = !s.glow;
   if (document.activeElement !== $('setCity')) $('setCity').value = s.weatherCity;
   renderModules(s.modules);
@@ -101,6 +104,8 @@ const setSetting = async (key, value) => applySettings(await api.settingsSet(key
 $('setAutostart').addEventListener('change', (e) => setSetting('autostart', e.target.checked));
 $('setSound').addEventListener('change', (e) => setSetting('muted', !e.target.checked));
 $('soundsOpen').addEventListener('click', () => api.soundsOpen());
+$('aboutOpenDir').addEventListener('click', () => api.openDataDir());
+$('aboutReleases').addEventListener('click', () => api.openExternal('https://github.com/krissrsch/nikki/releases'));
 $('setAwake').addEventListener('change', (e) => setSetting('keepAwake', e.target.checked));
 $('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.target.value)));
 $('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));

@@ -1454,6 +1454,15 @@ addEventListener('keydown', (e) => {
   target.click();
 });
 
+// Ctrl+1-9: the n-th tab, without the cat's jump (with the keyboard every wait is a bother)
+addEventListener('keydown', (e) => {
+  if (!open || !e.ctrlKey || e.altKey || e.metaKey || e.shiftKey || !/^[1-9]$/.test(e.key)) return;
+  const tab = [...document.querySelectorAll('#tabs .tab[data-view]')][Number(e.key) - 1];
+  if (!tab) return;
+  e.preventDefault();
+  setView(perms.length ? 'chat' : tab.dataset.view);
+});
+
 api.onToggle(() => setOpen(!open, { instant: true }));
 api.onShow?.((page) => {
   if (page) setView(page);
