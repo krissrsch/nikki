@@ -13,6 +13,26 @@ const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d
 const tiles = () => nikki.page.$$eval('#homeTiles > .tile', (t) => t.sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order).map((x) => x.dataset.tile));
 
 describe('Home „Heute“', () => {
+  test('Claude-Kachel: Limits als zwei Ringe statt Session-Zahl, ohne Daten keine Ringe; Terminal-Zeile springt zum Fenster und schließt die Insel', async () => {
+    nikki = await launch();
+    const { page, app } = nikki;
+    await fromMain('terminal', { sessions: [{ id: 'term-1', cwd: 'C:/p/demo', state: 'working', text: 'x', at: 1 }] });
+    await page.waitForSelector('button.sRow');
+    assert.equal(await page.isVisible('#usage'), false);
+    assert.equal(await page.isVisible('#claudeMeta'), true);
+    await fromMain('usage', { session: { percent: 10, resets: '2026-11-01T12:30:00Z' }, week: { percent: 98, resets: '2026-11-01T12:00:00Z' } });
+    await page.waitForSelector('#usage .uRing');
+    assert.deepEqual(await page.$$eval('.uRing', (r) => r.map((x) => [x.textContent, x.dataset.level])), [['5 h 10 %', 'ok'], ['Woche 98 %', 'bad']]);
+    assert.match(await page.getAttribute('.uRing >> nth=1', 'aria-label'), /^Wochenlimit: 98 % verbraucht, wieder frei \w+, \d\d:\d\d Uhr$/);
+    assert.equal(await page.isVisible('#claudeMeta'), false);
+    if (process.env.NIKKI_SHOT) await page.locator('#island').screenshot({ path: process.env.NIKKI_SHOT });
+    await app.evaluate(({ ipcMain }) => ipcMain.on('terminal-focus', (_e, id) => (globalThis.focused = id)));
+    await page.click('button.sRow');
+    await until(() => app.evaluate(() => globalThis.focused === 'term-1'), 'Sprung gemeldet');
+    await until(() => page.evaluate(() => document.getElementById('notch').getAttribute('aria-expanded') === 'false'), 'Insel zu');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('genau vier Kacheln: Claude, Musik, Wetter, Kalender; ohne Stadt fragt das Wetter nach einer', async () => {
     nikki = await launch();
     const { page } = nikki;

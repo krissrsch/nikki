@@ -1,7 +1,7 @@
 // Nikki's Windows helper: long-running, talks JSON lines over stdio.
 // stdout: {"type":"ready"} | {"type":"media",...} | {"type":"volume","level":0-100,"muted":bool} | {"type":"error","message":...}
-//         | {"type":"spectrum","bands":[12 numbers 0-1]} (~30/s while something sounds, see Spectrum)
-// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off | mic on | mic off | ptt <virtual keys, comma separated> | ptt off | rec start <wav path> | rec stop
+//         | {"type":"spectrum","bands":[12 numbers 0-1]} (~30/s while something sounds, see Spectrum) | {"type":"focus","ok":bool}
+// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off | mic on | mic off | ptt <virtual keys, comma separated> | ptt off | rec start <wav path> | rec stop | focus <pid>
 // NikkiHelper.exe --spectrum-test: checks the analysis on a test tone and silence, exit code 0 when it is right
 // Built with the C# 5 compiler that ships with Windows (see build.cmd): no C# 6+ syntax, and WinRT
 // async calls are waited on directly because .NET Framework's await bridge does not bind to the system .winmd files.
@@ -91,6 +91,12 @@ class NikkiHelper
         if (line.StartsWith("ptt "))
         {
             Ptt.Set(line.Substring(4));
+            return;
+        }
+        if (line.StartsWith("focus "))
+        {
+            int pid;
+            Emit("{\"type\":\"focus\",\"ok\":" + (int.TryParse(line.Substring(6), out pid) && WindowFocus.Raise(pid) ? "true" : "false") + "}");
             return;
         }
         if (line.StartsWith("rec start "))
@@ -329,6 +335,101 @@ static class Volume
         var ep = Endpoint();
         Guid ctx = Guid.Empty;
         if (ep != null) ep.SetMute(mute, ref ctx);
+    }
+}
+
+// Brings the window that holds a process to the front: walks up its parents to the first one with a window.
+// shortcut: raises the terminal window, not the tab inside it; Windows Terminal has no call for that from outside.
+// shortcut: a dead parent's reused pid could point elsewhere; check process start times if a wrong window ever shows up.
+static class WindowFocus
+{
+    delegate bool EnumProc(IntPtr hwnd, IntPtr arg);
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct ProcessEntry
+    {
+        public int size, usage, pid;
+        public IntPtr heap;
+        public int module, threads, parent, priority, flags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string exe;
+    }
+    [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr CreateToolhelp32Snapshot(int flags, int pid);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool Process32FirstW(IntPtr snap, ref ProcessEntry e);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool Process32NextW(IntPtr snap, ref ProcessEntry e);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+    [DllImport("kernel32.dll")] static extern int GetCurrentThreadId();
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc proc, IntPtr arg);
+    [DllImport("user32.dll")] static extern int GetWindowThreadProcessId(IntPtr hwnd, out int pid);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern int GetWindowTextLength(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hwnd, int cmd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder name, int size);
+    [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hwnd, int cmd);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern bool AttachThreadInput(int from, int to, bool attach);
+    const int GwOwner = 4, SwRestore = 9;
+
+    static Dictionary<int, ProcessEntry> Processes()
+    {
+        var all = new Dictionary<int, ProcessEntry>();
+        var snap = CreateToolhelp32Snapshot(2, 0);
+        var e = new ProcessEntry { size = Marshal.SizeOf(typeof(ProcessEntry)) };
+        for (var more = Process32FirstW(snap, ref e); more; more = Process32NextW(snap, ref e)) all[e.pid] = e;
+        CloseHandle(snap);
+        return all;
+    }
+
+    static IntPtr WindowOf(int pid)
+    {
+        var found = IntPtr.Zero;
+        EnumWindows((hwnd, _) =>
+        {
+            int owner;
+            GetWindowThreadProcessId(hwnd, out owner);
+            if (owner != pid) return true;
+            var cls = new StringBuilder(32);
+            GetClassName(hwnd, cls, cls.Capacity);
+            // a terminal's hidden pseudo console: it says which window it belongs to, even when that is no parent (Windows Terminal as default terminal)
+            if (cls.ToString() == "PseudoConsoleWindow")
+            {
+                var host = GetWindow(hwnd, GwOwner);
+                if (host == IntPtr.Zero) return true;
+                found = host;
+                return false;
+            }
+            if (!IsWindowVisible(hwnd) || GetWindow(hwnd, GwOwner) != IntPtr.Zero || GetWindowTextLength(hwnd) == 0) return true;
+            found = hwnd;
+            return false;
+        }, IntPtr.Zero);
+        return found;
+    }
+
+    public static bool Raise(int pid)
+    {
+        var all = Processes();
+        for (var hops = 0; hops < 16 && all.ContainsKey(pid); hops++)
+        {
+            var p = all[pid];
+            if (string.Equals(p.exe, "explorer.exe", StringComparison.OrdinalIgnoreCase)) return false; // the desktop started it: its windows are not the terminal
+            var hwnd = WindowOf(pid);
+            if (hwnd != IntPtr.Zero) return Front(hwnd);
+            pid = p.parent;
+        }
+        return false;
+    }
+
+    // Windows only lets the foreground owner hand over the focus, so we borrow its input queue for the call
+    static bool Front(IntPtr hwnd)
+    {
+        if (IsIconic(hwnd)) ShowWindow(hwnd, SwRestore);
+        int ignored;
+        var other = GetWindowThreadProcessId(GetForegroundWindow(), out ignored);
+        var me = GetCurrentThreadId();
+        var attached = other != 0 && other != me && AttachThreadInput(me, other, true);
+        var ok = SetForegroundWindow(hwnd);
+        if (attached) AttachThreadInput(me, other, false);
+        return ok;
     }
 }
 

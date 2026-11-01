@@ -71,6 +71,9 @@ contextBridge.exposeInMainWorld('companion', {
   openExternal: (url) => ipcRenderer.send('open-external', url),
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
   onTerminal: on('terminal'),
+  onUsage: on('usage'),
+  usageRefresh: () => ipcRenderer.send('usage-refresh'),
+  focusTerminal: (id) => ipcRenderer.send('terminal-focus', id),
   onStatus: on('status'),
   onSession: on('session'),
   onPermissionRequest: on('permission-request'),

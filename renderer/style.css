@@ -367,6 +367,18 @@ body:not([data-view='home']) .shimmer { display: none; }
   .glassBtn:hover { background: rgb(255 255 255 / 0.14); }
 }
 .sRow { display: flex; align-items: center; gap: 10px; min-width: 0; }
+button.sRow { width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+button.sRow:hover .sName { text-decoration: underline; text-underline-offset: 2px; }
+button.sRow:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; border-radius: 4px; }
+.tileHead #usage { display: flex; gap: 10px; font-variant-numeric: tabular-nums; }
+.tileHead #usage[hidden] { display: none; }
+.tileHead #usage:not([hidden]) + #claudeMeta { display: none; }
+.uRing { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; --u: var(--text); }
+.uRing[data-level='warn'] { --u: var(--warn); }
+.uRing[data-level='bad'] { --u: var(--bad); }
+.uRing svg { width: 14px; height: 14px; fill: none; stroke-width: 3.5; }
+.uRing circle { stroke: var(--glass-sub); opacity: 0.35; }
+.uRing .uFill { stroke: var(--u); opacity: 1; stroke-linecap: round; }
 .sName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sRow .sDot[data-state='needsYou'] { box-shadow: 0 0 10px var(--warn); }
 /* Wetter: faint rings top right, the temperature big, four hours below */

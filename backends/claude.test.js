@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createClaudeAgent } from './claude.js';
+import { createClaudeAgent, readLimits } from './claude.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 5));
 const init = { type: 'system', subtype: 'init', session_id: 's1', claude_code_version: '2.1.308' };
@@ -120,4 +120,23 @@ test('stop: a CLI that ignores interrupt is aborted after killAfterMs (M5)', asy
   await new Promise((r) => setTimeout(r, 40));
   assert.equal(aborted, true);
   assert.deepEqual(closing(), [{ state: 'idle', text: 'Nikki stoppte.' }]);
+});
+
+test('readLimits: no prompt goes out, the CLI is released; no plan, a missing call or a hang give null', async () => {
+  const limits = { five_hour: { utilization: 3 } };
+  let sent = 0;
+  const fake = (method) => ({ prompt, options }) => {
+    (async () => {
+      for await (const _ of prompt) sent++;
+    })();
+    fake.abort = options.abortController;
+    return method;
+  };
+  const USAGE = 'usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET';
+  assert.deepEqual(await readLimits('c', { query: fake({ [USAGE]: async () => ({ rate_limits_available: true, rate_limits: limits }) }) }), limits);
+  assert.equal(fake.abort.signal.aborted, true);
+  assert.equal(sent, 0);
+  assert.equal(await readLimits('c', { query: fake({ [USAGE]: async () => ({ rate_limits_available: false, rate_limits: null }) }) }), null);
+  assert.equal(await readLimits('c', { query: fake({}) }), null);
+  assert.equal(await readLimits('c', { query: fake({ [USAGE]: () => new Promise(() => {}) }), timeoutMs: 5 }), null);
 });

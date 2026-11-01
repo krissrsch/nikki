@@ -1,10 +1,36 @@
 // Runs one task at a time through the installed, logged-in Claude Code CLI via the Agent SDK.
+import { tmpdir } from 'node:os';
 import { query as sdkQuery } from '@anthropic-ai/claude-agent-sdk';
 import { toAnswers, toStatus } from '../lib/status.js';
 
 // shortcut: mismatch is warn-only (no hard fail). ceiling: wrong SDK/CLI pair may break tools. upgrade: when canUseTool/stream fails after a CLI bump, pin both to matching patch and fail start.
 const TESTED_CLI = '2.1.308';
 const STOPPED = { state: 'idle', text: 'Nikki stoppte.' };
+
+// The plan limits behind /usage. A CLI that never gets a prompt spends no tokens. EXPERIMENTAL in the SDK: any failure means null, the rings just stay away.
+export async function readLimits(claudePath, { query = sdkQuery, timeoutMs = 15000 } = {}) {
+  const abort = new AbortController();
+  let release;
+  const never = new Promise((r) => (release = r));
+  let timer;
+  try {
+    const q = query({
+      prompt: (async function* () {
+        await never;
+      })(),
+      options: { cwd: tmpdir(), pathToClaudeCodeExecutable: claudePath, abortController: abort, settingSources: [], env: { ...process.env, DESKTOPCOMPANION_AGENT: '1' } },
+    });
+    const late = new Promise((_, no) => (timer = setTimeout(() => no(new Error('timeout')), timeoutMs)));
+    const u = await Promise.race([q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }), late]);
+    return u?.rate_limits_available ? u.rate_limits : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+    release();
+    abort.abort();
+  }
+}
 
 // Every turn ends with exactly one closing status (done | error | idle), whatever the CLI does (H4).
 // query is injectable for tests; killAfterMs: how long stop() waits for interrupt() before it aborts the CLI.

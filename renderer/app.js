@@ -97,13 +97,20 @@ function renderHome() {
     ...(current ? [{ name: folderName(current), state: ownState(), title: current }] : []),
     ...[...terminal]
       .sort((a, b) => (RANK[b.state] || 0) - (RANK[a.state] || 0) || b.at - a.at)
-      .map((t) => ({ name: `${folderName(t.cwd)} · Terminal`, state: t.state || 'idle', title: t.cwd })),
+      .map((t) => ({ name: `${folderName(t.cwd)} · Terminal`, state: t.state || 'idle', title: `${t.cwd}: Terminal nach vorn holen`, terminal: t.id })),
   ];
   $('claudeMeta').textContent = rows.length === 1 ? '1 Session' : rows.length ? `${rows.length} Sessions` : '';
   const nodes = rows.slice(0, 3).map((r) => {
-    const row = document.createElement('div');
+    const row = document.createElement(r.terminal ? 'button' : 'div');
     row.className = 'sRow';
     row.title = r.title;
+    if (r.terminal) {
+      row.type = 'button';
+      row.addEventListener('click', () => {
+        setOpen(false);
+        api.focusTerminal(r.terminal);
+      });
+    }
     const name = document.createElement('span');
     name.className = 'sName';
     name.textContent = r.name;
@@ -122,6 +129,31 @@ function renderHome() {
   }
   $('claudeSessions').replaceChildren(...nodes);
 }
+
+// ---- plan limits: two small rings in the Claude tile, the details in their tooltip
+const RING = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" /><circle class="uFill" cx="10" cy="10" r="8" pathLength="100" transform="rotate(-90 10 10)" /></svg>';
+const untilText = (iso, week) => {
+  const d = new Date(iso);
+  if (Number.isNaN(+d)) return '';
+  const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  return `, wieder frei ${week ? `${d.toLocaleDateString('de-DE', { weekday: 'long' })}, ` : ''}${time} Uhr`;
+};
+function usageRing(label, short, w, week) {
+  const r = document.createElement('span');
+  r.className = 'uRing';
+  r.dataset.level = w.percent >= 95 ? 'bad' : w.percent >= 80 ? 'warn' : 'ok';
+  r.innerHTML = RING;
+  r.querySelector('.uFill').setAttribute('stroke-dasharray', `${Math.min(100, w.percent)} 100`);
+  r.append(`${short} ${w.percent} %`);
+  r.title = `${label}: ${w.percent} % verbraucht${w.resets ? untilText(w.resets, week) : ''}`;
+  r.setAttribute('role', 'img');
+  r.setAttribute('aria-label', r.title);
+  return r;
+}
+api.onUsage((u) => {
+  $('usage').replaceChildren(...[u.session && usageRing('5-Stunden-Limit', '5 h', u.session, false), u.week && usageRing('Wochenlimit', 'Woche', u.week, true)].filter(Boolean));
+  $('usage').hidden = false;
+});
 
 // ---- weather tile: main fetches it (Open-Meteo, lib/weather.js); null = no city yet
 const WEATHER_ICON = {
@@ -678,6 +710,7 @@ function setBusy(b) {
 // the close key is free for other apps while a card waits: it would do nothing here
 const tellOpen = () => api.islandOpen(open && !perms.length);
 function setOpen(v, { instant = false, focus = true } = {}) {
+  if (v) api.usageRefresh();
   if (v === open) return;
   if (v) {
     endDrag(); // a card arrived mid-drag

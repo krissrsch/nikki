@@ -29,9 +29,9 @@ Coucous eigene Sounds fallen aus, sie stehen unter Urheberrecht von Louis Raill�
 
 | Was | Warum | Aufwand |
 |---|---|---|
-| Usage-Ring: 5-Stunden- und Wochenlimit im Dashboard, Warnung nahe am Limit | stand schon in Phase 3, haben viele Konkurrenten | M |
+| Usage-Ring: 5-Stunden- und Wochenlimit im Dashboard, Warnung nahe am Limit | gebaut am 2026-11-01, Quelle ist der experimentelle `/usage`-Aufruf des SDK | M |
 | Session-Diff: welche Dateien Claude geändert hat, direkt in der Insel | schneller Überblick, bevor man freigibt | L |
-| Sprung ins Terminal: Klick auf die Session holt das richtige Fenster nach vorn | spart Suchen bei mehreren Sessions | M |
+| Sprung ins Terminal: Klick auf die Session holt das richtige Fenster nach vorn | gebaut am 2026-11-01, holt das Fenster, nicht den Tab | M |
 | Fragen-Karten für Rückfragen von Terminal-Sessions in der Insel prüfen und ausbauen | antworten ohne Fensterwechsel | M |
 | Plan-Modus: Plan in der Insel lesen und annehmen, Auto-Freigabe je Session | weniger Klicks bei langen Läufen | M |
 | Mehrere Projekte: Sessions gruppiert, Ordner auf die Notch ziehen startet Claude dort | natürlicher Einstieg | M |

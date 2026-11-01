@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createClaudeAgent } from './backends/claude.js';
+import { createClaudeAgent, readLimits } from './backends/claude.js';
 import { addClip, removeClip, restoreClips } from './lib/clipboard.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
 import { avatarUrl, createDiscord, DISCORD_REDIRECT, pipePath } from './lib/discord.js';
@@ -19,7 +19,8 @@ import { mediaCommand } from './lib/media.js';
 import { DEFAULT_MODULES, moduleFile, normalizeModules, withNewModules } from './lib/modules.js';
 import { createRelay } from './lib/relay.js';
 import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
-import { onHook, sweep } from './lib/terminal.js';
+import { onHook, sessionPid, sweep } from './lib/terminal.js';
+import { limitWarnings, toUsage } from './lib/usage.js';
 import { cleanTranscript, OLD_MODEL, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs, whisperThreads } from './lib/voice.js';
 import { forecastUrl, geocodeUrl, parseForecast, parsePlace } from './lib/weather.js';
 
@@ -612,7 +613,7 @@ let helperBuild = null; // dev: build.cmd runs once when the exe is missing
 let mediaNow = null; // { app, title, artist, album, status, position, duration, updatedAt, cover: data URL | '' } | null
 let volumeNow = null; // { level 0-100, muted } | null
 // the spectrum needs the helper too, with or without the music module
-const helperWanted = () => !process.env.NIKKI_NO_HELPER && !quitting && (store.glow !== false || store.voice || store.modules.some((m) => m.id === 'music' && m.on));
+const helperWanted = () => !process.env.NIKKI_NO_HELPER && !quitting && (store.glow !== false || store.voice || store.hooks || store.modules.some((m) => m.id === 'music' && m.on));
 function syncHelper() {
   if (helperWanted()) startHelper();
   else stopHelper();
@@ -690,6 +691,7 @@ function onHelperLine(line) {
   else if (m.type === 'ptt') m.down ? voiceDown() : voiceUp();
   else if (m.type === 'rec') voiceHeard(m.ms);
   else if (m.type === 'voice' && Array.isArray(m.bands)) pill?.webContents.send('pill-bands', m.bands);
+  else if (m.type === 'focus' && !m.ok) notify('Das Terminal-Fenster habe ich nicht gefunden.', true);
   else if (m.type === 'error') console.error('helper:', m.message);
 }
 // --- spectrum for the glow: the helper listens to what plays (WASAPI loopback) only while someone can see it:
@@ -1314,6 +1316,13 @@ function takeQueued(sid) {
   if (msg) send('queued', { sessionId: String(sid), text: null });
   return msg || null;
 }
+// jump to a terminal session: the helper walks up from its Claude process to the window that holds it
+ipcMain.on('terminal-focus', (_e, id) => {
+  const pid = sessionPid(path.join(os.homedir(), '.claude', 'sessions'), String(id));
+  if (pid && helper) helper.stdin.write(`focus ${pid}\n`);
+  else notify('Das Terminal-Fenster habe ich nicht gefunden.', true);
+});
+
 ipcMain.handle('queue-message', (_e, { sessionId, text }) => {
   const t = String(text ?? '').trim();
   if (!sessionId || !t || !store.hooks || store.relay === false) return false;
@@ -1323,6 +1332,29 @@ ${t}` : t);
   send('queued', { sessionId: String(sessionId), text: queued.get(String(sessionId)) });
   return true;
 });
+
+// --- plan limits for the Claude tile; every five minutes, and when the island opens on an older reading
+const USAGE_MS = 5 * 60 * 1000;
+let usageAt = 0;
+let usageBusy = false;
+const usageWarned = new Set();
+async function refreshUsage() {
+  if (usageBusy || quitting || process.env.NIKKI_NO_HELPER) return; // test runs never reach the real account
+  usageBusy = true;
+  usageAt = Date.now();
+  try {
+    const claudePath = await findClaude();
+    const usage = claudePath ? toUsage(await readLimits(claudePath)) : null;
+    if (usage) send('usage', usage); // a failed reading keeps the last one
+    for (const text of limitWarnings(usage, usageWarned)) notify(text, true);
+  } finally {
+    usageBusy = false;
+  }
+}
+ipcMain.on('usage-refresh', () => {
+  if (Date.now() - usageAt > 60 * 1000) refreshUsage();
+});
+setInterval(refreshUsage, USAGE_MS).unref();
 
 let hookServer;
 function startHookServer() {
@@ -1545,6 +1577,7 @@ app.whenReady().then(() => {
   // a watcher that is slow to start (Add-Type) must not keep the island away for long
   setTimeout(() => fullscreen === null && setFullscreen(false), 3000);
   findClaude();
+  setTimeout(refreshUsage, 8000); // the island's page is up by then
   // a display that went away or changed: put the island back on the display it overlaps most (or the nearest)
   const replace = () => alive() && place(screen.getDisplayMatching(win.getBounds()));
   screen.on('display-removed', replace);
