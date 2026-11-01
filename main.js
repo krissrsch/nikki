@@ -20,7 +20,7 @@ import { DEFAULT_MODULES, moduleFile, normalizeModules, withNewModules } from '.
 import { createRelay } from './lib/relay.js';
 import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
 import { onHook, sweep } from './lib/terminal.js';
-import { cleanTranscript, OLD_MODEL, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs } from './lib/voice.js';
+import { cleanTranscript, OLD_MODEL, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs, whisperThreads } from './lib/voice.js';
 import { forecastUrl, geocodeUrl, parseForecast, parsePlace } from './lib/weather.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -902,7 +902,9 @@ function voiceHeard(ms) {
     setVoice('idle');
     return pillDone('Nichts gehört. Halt die Taste beim Sprechen.', 'bad');
   }
-  execFile(whisperExe, whisperArgs(whisperModel(), voiceWav, voiceHooks().map((h) => h.name)), { cwd: path.dirname(whisperExe), windowsHide: true, timeout: 60000, encoding: 'utf8', maxBuffer: 1024 * 1024 }, (err, out) => {
+  const started = Date.now();
+  execFile(whisperExe, whisperArgs(whisperModel(), voiceWav, voiceHooks().map((h) => h.name), { ms, threads: whisperThreads(os.availableParallelism()) }), { cwd: path.dirname(whisperExe), windowsHide: true, timeout: 60000, encoding: 'utf8', maxBuffer: 1024 * 1024 }, (err, out) => {
+    console.log(`voice: ${ms} ms gesprochen, ${Date.now() - started} ms erkannt`);
     fs.rmSync(voiceWav, { force: true });
     setVoice('idle');
     if (err) {
