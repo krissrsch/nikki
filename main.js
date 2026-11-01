@@ -20,7 +20,7 @@ import { DEFAULT_MODULES, moduleFile, normalizeModules, withNewModules } from '.
 import { createRelay } from './lib/relay.js';
 import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
 import { onHook, sweep } from './lib/terminal.js';
-import { cleanTranscript, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs } from './lib/voice.js';
+import { cleanTranscript, OLD_MODEL, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs } from './lib/voice.js';
 import { forecastUrl, geocodeUrl, parseForecast, parsePlace } from './lib/weather.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -821,11 +821,15 @@ ipcMain.on('discord-authorize', () => discord?.authorize());
 // --- Spracheingabe: hold the key, speak, let go. The helper records, whisper.cpp writes it down, lib/voice.js says what it means.
 const voiceDir = path.join(app.getPath('userData'), 'voice');
 const whisperExe = path.join(voiceDir, 'Release', 'whisper-cli.exe');
-const whisperModel = path.join(voiceDir, 'ggml-base.bin');
+const voiceModelFile = VOICE_ASSETS[1].file;
+const whisperModelNew = path.join(voiceDir, voiceModelFile);
+const whisperModelOld = path.join(voiceDir, OLD_MODEL);
+const whisperModel = () => (fs.existsSync(whisperModelNew) ? whisperModelNew : whisperModelOld);
 const voiceWav = path.join(voiceDir, 'take.wav');
 const VOICE_MIN_MS = 350;
 const VOICE_MAX_MS = 60000;
-const voiceInstalled = () => fs.existsSync(whisperExe) && fs.existsSync(whisperModel);
+const voiceInstalled = () => fs.existsSync(whisperExe) && fs.existsSync(whisperModel());
+const voiceComplete = () => fs.existsSync(whisperExe) && fs.existsSync(whisperModelNew);
 let voiceSetup = { state: voiceInstalled() ? 'ready' : 'idle', percent: 0 }; // idle | loading | ready | error
 let voiceState = 'idle'; // idle | listening | thinking
 let voiceStop = null;
@@ -898,7 +902,7 @@ function voiceHeard(ms) {
     setVoice('idle');
     return pillDone('Nichts gehört. Halt die Taste beim Sprechen.', 'bad');
   }
-  execFile(whisperExe, whisperArgs(whisperModel, voiceWav, voiceHooks().map((h) => h.name)), { cwd: path.dirname(whisperExe), windowsHide: true, timeout: 60000, encoding: 'utf8', maxBuffer: 1024 * 1024 }, (err, out) => {
+  execFile(whisperExe, whisperArgs(whisperModel(), voiceWav, voiceHooks().map((h) => h.name)), { cwd: path.dirname(whisperExe), windowsHide: true, timeout: 60000, encoding: 'utf8', maxBuffer: 1024 * 1024 }, (err, out) => {
     fs.rmSync(voiceWav, { force: true });
     setVoice('idle');
     if (err) {
@@ -967,22 +971,27 @@ async function voiceFetch({ file, url, sha256 }, done, total) {
   fs.renameSync(part, to);
 }
 async function voiceInstall() {
-  if (voiceLoading || voiceInstalled()) return;
+  if (voiceLoading || voiceComplete()) return;
   voiceLoading = true;
   try {
     fs.mkdirSync(voiceDir, { recursive: true });
-    const total = VOICE_ASSETS.reduce((n, a) => n + a.size, 0);
+    // what is still missing: the program once (its zip is deleted after unpacking), the model
+    const missing = VOICE_ASSETS.filter((a) => !fs.existsSync(path.join(voiceDir, a.file)) && !(a.file === 'whisper.zip' && fs.existsSync(whisperExe)));
+    const total = missing.reduce((n, a) => n + a.size, 0);
     let done = 0;
-    for (const a of VOICE_ASSETS) {
-      if (!fs.existsSync(path.join(voiceDir, a.file))) await voiceFetch(a, done, total);
+    for (const a of missing) {
+      await voiceFetch(a, done, total);
       done += a.size;
     }
     const zip = path.join(voiceDir, 'whisper.zip');
     // Windows' own tar: one from Git on the PATH reads C: as a remote host
     const tar = path.join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'tar.exe');
-    await new Promise((ok, fail) => execFile(tar, ['-xf', zip, '-C', voiceDir], { windowsHide: true, timeout: 60000 }, (e) => (e ? fail(e) : ok())));
-    fs.rmSync(zip, { force: true });
-    if (!voiceInstalled()) throw new Error('whisper-cli fehlt im Paket');
+    if (fs.existsSync(zip)) {
+      await new Promise((ok, fail) => execFile(tar, ['-xf', zip, '-C', voiceDir], { windowsHide: true, timeout: 60000 }, (e) => (e ? fail(e) : ok())));
+      fs.rmSync(zip, { force: true });
+    }
+    if (!voiceComplete()) throw new Error('whisper-cli oder Modell fehlt');
+    fs.rmSync(whisperModelOld, { force: true });
     voiceSetup = { state: 'ready', percent: 100 };
     syncVoice();
   } catch (e) {
