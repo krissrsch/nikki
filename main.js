@@ -35,6 +35,8 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 if (process.env.NIKKI_USER_DATA) app.setPath('userData', path.resolve(process.env.NIKKI_USER_DATA));
 else if (!app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'Nikki-dev'));
 
+// test runs (NIKKI_MUTE): every window plays its sounds as usual, only nobody hears them
+if (process.env.NIKKI_MUTE) app.on('web-contents-created', (_e, wc) => wc.setAudioMuted(true));
 // Serve the app from app://bundle/ so fetch() works for the Rive file and wasm (Chromium blocks fetch on file://).
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 function serveApp(req) {

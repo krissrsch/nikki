@@ -41,6 +41,7 @@ export async function launch({ state, settings, realHome = false } = {}) {
     env.HOME = env.USERPROFILE = home;
     // Claude counts as installed on every machine; the offline tests replace it before anything would run it
     fs.mkdirSync(path.join(home, '.local', 'bin'), { recursive: true });
+  env.NIKKI_MUTE = '1'; // sounds still play (the tests count them), but muted: nobody at the PC hears a test run
     fs.writeFileSync(path.join(home, '.local', 'bin', 'claude.exe'), '');
     if (settings) {
       fs.mkdirSync(path.join(home, '.claude'));

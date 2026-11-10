@@ -39,6 +39,7 @@ Im Standardlauf ersetzt `fakeClaude()` (in `nikki.js`) die IPCs `start` und `sto
 - Der Claude-Lauf braucht das echte Home, weil dort der Login liegt. Er arbeitet in einem Temp-Projekt und löscht danach dessen Transkripte unter `~/.claude/projects/`.
 - `NikkiHelper.exe` startet in keinem Lauf (`NIKKI_NO_HELPER`): Die echte Wiedergabe, die Lautstärke und der Audio-Ausgang (Spektrum) bleiben unberührt.
 - Das Wetter geht nie ins Netz: `home.e2e.js` ersetzt `net.fetch` im Hauptprozess, alle anderen Läufe haben keine Stadt.
+- Alle Fenster sind stumm (`NIKKI_MUTE`): Nikkis Töne laufen wie sonst und werden gezählt, aber am PC hört man nichts.
 - Alle Temp-Ordner (`%TEMP%\nikki-e2e-*`) werden nach jedem Test gelöscht.
 - `clipboard.e2e.js` braucht die echte Zwischenablage. Vorher sichert `win-clipboard.js` jedes Format (Win32 über PowerShell), danach kommt alles byte-gleich zurück, aber nur, solange noch ein Testtext drinsteht: Was du währenddessen kopierst, bleibt. Testtexte und Wiederherstellung tragen die Windows-Marker `CanIncludeInClipboardHistory` und `CanUploadToCloudClipboard` (= 0), landen also weder im Verlauf (Win+V) noch in der Cloud. Nikkis eigenes „Klick kopiert“ wird im Test nur aufgezeichnet. Die OLE-Hilfsformate „DataObject“ und „Ole Private Data“ (ein Fensterhandle der kopierenden App, kein Inhalt) werden nicht gesichert; OLE baut sie aus den übrigen Formaten neu.
 
