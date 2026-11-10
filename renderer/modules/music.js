@@ -112,7 +112,7 @@ function musicApp(id) {
             h(
               'div',
               { className: 'musicMain' },
-              h('div', { className: 'musicHead' }, h('span', { className: 'musicTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'musicSub', title: sub }, sub), lyricLine()),
+              h('div', { className: 'musicHead' }, h('span', { className: 'musicTitle', title: media.title, translate: !media.title }, media.title || 'Ohne Titel'), h('span', { className: 'musicSub', title: sub }, sub), lyricLine()),
               media.duration > 0 && h('div', { className: 'musicBar' }, h('span', { className: 'musicNow' }), track(), h('span', {}, musicTime(media.duration))),
               h('div', { className: 'musicCtrl' }, round('Zurück', ICON_PREV, '', () => send('prev')), playBtn(''), round('Weiter', ICON_NEXT, '', () => send('next')), h('span', { className: 'grow' }), volume()),
             ),
@@ -187,7 +187,7 @@ function musicApp(id) {
         h(
           'div',
           { className: 'musicTileMain' },
-          h('div', { className: 'tileStack' }, h('span', { className: 'musicTileTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'tileSub', title: sub }, sub), lyricLine()),
+          h('div', { className: 'tileStack' }, h('span', { className: 'musicTileTitle', title: media.title, translate: !media.title }, media.title || 'Ohne Titel'), h('span', { className: 'tileSub', title: sub }, sub), lyricLine()),
           track(),
           h('div', { className: 'musicCtrl' }, round('Zurück', ICON_PREV, '', () => send('prev')), playBtn(''), round('Weiter', ICON_NEXT, '', () => send('next'))),
         ),

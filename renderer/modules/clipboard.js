@@ -31,7 +31,7 @@
         h('button', {
           type: 'button',
           className: 'clipText',
-          title: `${c.text.slice(0, 400)}${c.text.length > 400 ? '…' : ''}\nKlick kopiert`,
+          title: `${c.text.slice(0, 400)}${c.text.length > 400 ? '…' : ''}`,
           onclick: () => api.clipCopy(c.text).then((s) => ((info = 'Kopiert.'), take(s, 'item:0'))),
         }, line(c.text)),
         `item:${i}`,

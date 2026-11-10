@@ -33,6 +33,7 @@ test('i18n: patterns translate what they capture, the most specific one wins', (
   assert.equal(t('Stand 14:05 Uhr'), 'as of 14:05');
   assert.equal(t('Stand gestern'), 'status gestern');
   assert.equal(t('nur Text'), 'nur Text');
+  assert.equal(ctx.i18nTranslator({ '{0} %': 'never: no words in it' })('42 %'), '42 %', 'numbers and times are left alone');
 });
 
 test('i18n: en.json is flat text, and every placeholder of a pattern comes back in its English', () => {

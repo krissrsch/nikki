@@ -5,7 +5,7 @@
 
 const I18N_ATTRS = ['title', 'aria-label', 'placeholder', 'alt', 'data-tip']; // data-tip: a tooltip CSS shows with attr()
 // what people wrote or got (chat, notifications, lyrics, file and to-do names) stays as it is, even when it equals a UI word
-const I18N_KEEP = '[translate="no"], .msg, .toastTitle, .toastBody, .musicLyric, .shelfName, .todoText span, .calChipTitle';
+const I18N_KEEP = '[translate="no"], .msg, .toastApp, .toastTitle, .toastBody, .musicLyric, .shelfName, .todoText span, .calChipTitle, .calTitle, .clipText';
 
 // dict { German: English }; a key with {0}, {1}… is a pattern: the parts it captures are translated themselves
 function i18nTranslator(dict) {
@@ -28,7 +28,7 @@ function i18nTranslator(dict) {
   return function t(text, depth = 0) {
     const s = String(text ?? '');
     const key = s.trim();
-    if (!key || depth > 4) return s;
+    if (!key || depth > 4 || !/\p{L}/u.test(key)) return s; // 1:07, 42 %, 3 / 5: nothing to translate
     let out = exact.get(key);
     if (out === undefined)
       for (const p of patterns) {

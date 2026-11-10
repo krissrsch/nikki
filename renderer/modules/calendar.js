@@ -93,10 +93,10 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
       const soon = e.at >= now && e.at - now < CAL_REMIND_MS;
       const row = h(
         'div',
-        { className: `calEvent${e.at + e.dur * 60000 < now ? ' past' : ''}` },
+        { className: `calEvent${e.at + e.dur * 60000 < now ? ' past' : ''}`, title: `${time(e.at)} bis ${time(e.at + e.dur * 60000)}` },
         h('span', { className: `calBar c${i % 3}${soon ? ' soon' : ''}` }),
         h('span', { className: 'calTime' }, time(e.at)),
-        h('span', { className: 'calTitle', title: `${e.title}, ${time(e.at)} bis ${time(e.at + e.dur * 60000)}` }, e.title),
+        h('span', { className: 'calTitle' }, e.title),
         soon && h('span', { className: 'calMeta' }, inMin(e.at - now)),
         iconBtn(`${e.title} löschen`, ICON_DEL, () => {
           data.events = data.events.filter((x) => x !== e);
