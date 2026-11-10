@@ -25,6 +25,7 @@
       "**/*",
       "!**/*.test.js",
       "!notes/**",
+      "!docs/**",
       "!*.md",
       "!installer.nsh",
       "!dist/**",

@@ -16,8 +16,8 @@ Ziel: Nikki als öffentliches Vorzeige-Repo. Erst das Repo sauber, dann drei Fea
 
 ## Schritte
 
-- [ ] LICENSE, CI, Repo-Beschreibung und Topics
-- [ ] Albumfarben: `lib/cover-color.js` (rein, getestet), Farbe in `mediaNow`, CSS-Variable an `#glow` und Musik-Kachel
-- [ ] Songtexte: `lib/lyrics.js` (LRC parsen, Zeile zur Position, URL), Abruf und Cache in main, Zeile in Musik-Seite und Kachel, Schalter in den Einstellungen
-- [ ] Benachrichtigungen: Helper pollt, main reicht neue weiter, Anzeige in der Insel, Schalter in den Einstellungen
-- [ ] README neu, Screenshots mit Demodaten
+- [x] LICENSE, CI, Repo-Beschreibung und Topics
+- [x] Albumfarben: `lib/cover-color.js` (rein, getestet), Farbe in `mediaNow`, CSS-Variable an `#glow` und Musik-Kachel
+- [x] Songtexte: `lib/lyrics.js` (LRC parsen, Zeile zur Position, URL), Abruf und Cache in main, Zeile in Musik-Seite und Kachel, Schalter in den Einstellungen
+- [x] Benachrichtigungen: Helper pollt, main reicht neue weiter, Anzeige in der Insel, Schalter in den Einstellungen
+- [x] README neu, Screenshots mit Demodaten
