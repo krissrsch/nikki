@@ -88,6 +88,10 @@ npm run dist             # builds Nikki-Setup.exe
 
 Default hotkey: `Ctrl+Alt+Space` (fallback `Ctrl+Alt+K`), changeable in the settings.
 
+## What's next
+
+Nikki is going to become an iOS app as well. The iPhone already has its notch, the Dynamic Island, so the cat would live there as a Live Activity. Claude Code cannot run on the phone itself, so the app would be a companion to Nikki on the PC: it shows how a running task is doing and lets you answer permissions and questions on the go. Not started yet.
+
 ---
 
 ## Deutsch
@@ -107,6 +111,8 @@ Zugeklappt zeigt die Insel nur Nikkis Augen. Was los ist, zeigt eine schmale Lic
 - Oberfläche auf Deutsch oder Englisch (Einstellungen › Allgemein), ohne Neustart
 
 Voraussetzung: Windows 11 und ein installiertes, eingeloggtes Claude Code. Installer: **Nikki-Setup.exe** unter [Releases](https://github.com/krissrsch/nikki/releases).
+
+**Geplant:** Nikki wird später zur iOS-App ausgebaut. Das iPhone hat seine Notch schon, die Dynamic Island, dort lebt die Katze dann als Live Activity. Claude Code selbst läuft nicht auf dem Handy, deshalb begleitet die App Nikki auf dem PC: Sie zeigt, wie eine laufende Aufgabe steht, und du kannst Berechtigungen und Fragen unterwegs beantworten. Noch nicht begonnen.
 
 ## License
 
