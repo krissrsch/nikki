@@ -13,7 +13,11 @@ const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d
 const glow = () => nikki.page.getAttribute('#glow', 'data-glow');
 const close = async () => {
   await nikki.page.keyboard.press('Escape');
-  await nikki.page.waitForFunction(() => document.getElementById('island').getBoundingClientRect().width === 110);
+  // closed and settled: after the start the island still slides down from above, a box measured then misses the notch
+  await nikki.page.waitForFunction(() => {
+    const island = document.getElementById('island');
+    return island.getBoundingClientRect().width === 110 && !island.getAnimations().length;
+  });
 };
 const bars = () => nikki.page.$$eval('#specBars rect', (r) => r.map((x) => Number(x.getAttribute('height'))));
 
@@ -216,10 +220,6 @@ describe('Notch und Glow', () => {
     await s.click('.sideBtn[data-page="voice"]');
     assert.equal(await s.isChecked('#setVoice'), false, 'ab Werk aus, nichts wird geladen');
     assert.equal(await s.textContent('#setVoiceKey'), 'Strg+Alt+V');
-    assert.deepEqual(nikki.errors, []);
-  });
-
-  test('Mikrofon im Spektrum: ab Werk aus, gespeichert, aus mit dem Leuchten', async () => {
     // a mouse button works too (the side buttons cannot be pressed from Playwright; the unit tests cover them)
     await s.click('#setVoiceKey');
     await s.mouse.move(40, 40);
@@ -231,6 +231,10 @@ describe('Notch und Glow', () => {
     await s.click('#setVoiceKey');
     await s.click('#setVoiceKey'); // a left click on the button ends the capture, it is never the key
     assert.equal(nikki.state().voiceKey, 'MouseMiddle');
+    assert.deepEqual(nikki.errors, []);
+  });
+
+  test('Mikrofon im Spektrum: ab Werk aus, gespeichert, aus mit dem Leuchten', async () => {
     nikki = await launch();
     const s = await nikki.settings('notch');
     assert.equal(await s.isChecked('#setMic'), false);
