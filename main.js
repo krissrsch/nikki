@@ -28,6 +28,7 @@ import { limitWarnings, toUsage } from './lib/usage.js';
 import { soundFiles, soundsReadme } from './lib/sounds.js';
 import { cleanTranscript, OLD_MODEL, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs, whisperThreads } from './lib/voice.js';
 import { forecastUrl, geocodeUrl, parseForecast, parsePlace } from './lib/weather.js';
+import { moveDataDir } from './lib/data-dir.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,6 +36,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 // Must run before anything asks for userData.
 if (process.env.NIKKI_USER_DATA) app.setPath('userData', path.resolve(process.env.NIKKI_USER_DATA));
 else if (!app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'Nikki-dev'));
+else app.setPath('userData', moveDataDir(app.getPath('appData'), process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'))); // not the package name
 // test runs (NIKKI_MUTE): every window plays its sounds as usual, only nobody hears them
 if (process.env.NIKKI_MUTE) app.on('web-contents-created', (_e, wc) => wc.setAudioMuted(true));
 
