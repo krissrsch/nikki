@@ -220,6 +220,17 @@ describe('Notch und Glow', () => {
   });
 
   test('Mikrofon im Spektrum: ab Werk aus, gespeichert, aus mit dem Leuchten', async () => {
+    // a mouse button works too (the side buttons cannot be pressed from Playwright; the unit tests cover them)
+    await s.click('#setVoiceKey');
+    await s.mouse.move(40, 40);
+    await s.mouse.down({ button: 'middle' });
+    await s.mouse.up({ button: 'middle' });
+    await until(() => nikki.state().voiceKey === 'MouseMiddle', 'mittlere Maustaste gespeichert');
+    assert.equal(await s.textContent('#setVoiceKey'), 'Mittlere Maustaste');
+    assert.match(await s.textContent('#voiceKeyMsg'), /Halte Mittlere Maustaste zum Sprechen/);
+    await s.click('#setVoiceKey');
+    await s.click('#setVoiceKey'); // a left click on the button ends the capture, it is never the key
+    assert.equal(nikki.state().voiceKey, 'MouseMiddle');
     nikki = await launch();
     const s = await nikki.settings('notch');
     assert.equal(await s.isChecked('#setMic'), false);

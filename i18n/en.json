@@ -472,5 +472,12 @@
   "Zum Chat": "Go to chat",
   "Zurück": "Back",
   "Zurücksetzen": "Reset",
-  "Zwischenablage": "Clipboard"
+  "Zwischenablage": "Clipboard",
+  "Auch die mittlere oder eine seitliche Maustaste. Esc bricht ab.": "The middle or a side mouse button works too. Esc cancels.",
+  "Mittlere Maustaste": "Middle mouse button",
+  "Maustaste Zurück": "Mouse Back",
+  "Maustaste Vor": "Mouse Forward",
+  "{0}+Mittlere Maustaste": "{0}+Middle mouse button",
+  "{0}+Maustaste Zurück": "{0}+Mouse Back",
+  "{0}+Maustaste Vor": "{0}+Mouse Forward"
 }

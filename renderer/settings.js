@@ -45,7 +45,7 @@ $('sideList').replaceChildren(
 const KEYS = {
   hotkey: { btn: $('setHotkey'), msg: $('hotkeyMsg'), tell: (k) => `Nikki hört jetzt auf ${k}.`, tip: 'Esc bricht ab.' },
   closeKey: { btn: $('setCloseKey'), msg: $('closeKeyMsg'), tell: (k) => `${k} schließt Nikki, solange die Insel offen ist.`, tip: 'Esc belegt Esc. Rücktaste löscht.' },
-  voiceKey: { btn: $('setVoiceKey'), msg: $('voiceKeyMsg'), tell: (k) => `Halte ${k} zum Sprechen.`, tip: 'Esc bricht ab.' },
+  voiceKey: { btn: $('setVoiceKey'), msg: $('voiceKeyMsg'), tell: (k) => `Halte ${k} zum Sprechen.`, tip: 'Auch die mittlere oder eine seitliche Maustaste. Esc bricht ab.', mouse: true },
 };
 function renderHooks(names) {
   $('hookList').replaceChildren(...names.map((name) => {
@@ -185,6 +185,7 @@ function stopCapture() {
   const { btn, key } = capturing;
   capturing = null;
   removeEventListener('keydown', onHotkeyKey, true);
+  removeEventListener('mousedown', onHotkeyMouse, true);
   btn.setAttribute('aria-pressed', 'false');
   btn.textContent = hotkeyLabel(settings[key]);
 }
@@ -201,6 +202,18 @@ async function onHotkeyKey(e) {
   const clear = plain && e.key === 'Backspace';
   const acc = clear ? '' : plain && e.key === 'Escape' ? 'Escape' : acceleratorFor(e);
   if (acc === null) return; // modifiers alone so far, or a key that cannot be a hotkey
+  saveKey(entry, acc, clear);
+}
+// the voice key may also be the middle or a side mouse button; a left click elsewhere ends the capture as before
+function onHotkeyMouse(e) {
+  const acc = mouseAcceleratorFor(e);
+  if (acc === null) return;
+  e.preventDefault(); // no autoscroll, no focus change
+  e.stopPropagation();
+  saveKey(capturing, acc, false);
+}
+async function saveKey(entry, acc, clear) {
+  const close = entry.key === 'closeKey';
   stopCapture();
   const s = await api.settingsSet(entry.key, acc);
   applySettings(s);
@@ -218,6 +231,7 @@ for (const [key, entry] of Object.entries(KEYS)) {
     entry.btn.textContent = 'Drück die Tasten…';
     keyMsg(entry, entry.tip);
     addEventListener('keydown', onHotkeyKey, true);
+    if (entry.mouse) addEventListener('mousedown', onHotkeyMouse, true);
   });
   entry.btn.addEventListener('blur', () => {
     if (capturing !== entry) return;

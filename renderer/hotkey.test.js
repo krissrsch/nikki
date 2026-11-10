@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const src = readFileSync(new URL('./hotkey.js', import.meta.url), 'utf8');
-const { acceleratorFor, hotkeyLabel } = vm.runInNewContext(`${src}\n({ acceleratorFor, hotkeyLabel })`);
+const { acceleratorFor, mouseAcceleratorFor, hotkeyLabel } = vm.runInNewContext(`${src}\n({ acceleratorFor, mouseAcceleratorFor, hotkeyLabel })`);
 const press = (keyCode, mods = {}) => acceleratorFor({ keyCode, ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...mods });
 
 test('combos become Electron accelerators', () => {
@@ -21,6 +21,16 @@ test('no accelerator for modifiers alone, plain keys or unknown keys', () => {
   assert.equal(press(75), null);
   assert.equal(press(75, { shiftKey: true }), null, 'Shift+K is just a capital letter');
   assert.equal(press(186, { ctrlKey: true }), null, 'OEM keys differ per layout');
+});
+
+test('mouse buttons: middle and the side buttons, alone or with modifiers; never left or right', () => {
+  const click = (button, mods = {}) => mouseAcceleratorFor({ button, ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...mods });
+  assert.equal(click(3), 'MouseBack');
+  assert.equal(click(4, { ctrlKey: true }), 'Control+MouseForward');
+  assert.equal(click(1, { altKey: true, shiftKey: true }), 'Alt+Shift+MouseMiddle');
+  assert.equal(click(0), null);
+  assert.equal(click(2), null);
+  assert.equal(hotkeyLabel('Control+MouseBack'), 'Strg+Maustaste Zurück');
 });
 
 test('label in German', () => {

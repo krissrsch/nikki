@@ -14,5 +14,13 @@ function acceleratorFor(e) {
   return [...mods, key].join('+');
 }
 
-const HOTKEY_LABELS = { Control: 'Strg', Shift: 'Umschalt', Super: 'Win', Space: 'Leertaste', Escape: 'Esc' };
+// a mouse button for the voice key only (it is polled, not registered): middle, back, forward; left and right would fire on every click
+const HOTKEY_MOUSE = { 1: 'MouseMiddle', 3: 'MouseBack', 4: 'MouseForward' };
+function mouseAcceleratorFor(e) {
+  const button = HOTKEY_MOUSE[e.button];
+  if (!button) return null;
+  return [e.ctrlKey && 'Control', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Super', button].filter(Boolean).join('+');
+}
+
+const HOTKEY_LABELS = { Control: 'Strg', Shift: 'Umschalt', Super: 'Win', Space: 'Leertaste', Escape: 'Esc', MouseMiddle: 'Mittlere Maustaste', MouseBack: 'Maustaste Zurück', MouseForward: 'Maustaste Vor' };
 const hotkeyLabel = (acc) => (acc ? acc.split('+').map((k) => HOTKEY_LABELS[k] ?? k).join('+') : 'keins');
