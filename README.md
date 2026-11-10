@@ -17,11 +17,11 @@ The cat is drawn after my real cat Nikki.
 | | |
 |---|---|
 | **Claude Code** | Start tasks per project, see live status and steps, answer permission requests (Allow / Always / Deny), questions and plans. Works for Claude Code sessions in your terminal too, through hooks. Plan limits shown as two rings. |
-| **Closed notch** | Only Nikki's eyes. A thin light edge says what is going on: yellow needs you, green works or is done, red error, the cover's colour for music, a white sweep for a new notification. A spectrum from the real audio grows under the notch. |
+| **Closed notch** | Only Nikki's eyes and whiskers, inside a thin white edge. The edge takes a colour when something happens: yellow needs you, green works or is done, red error, the cover's colour for music, a white sweep for a new notification. A spectrum from the real audio grows under the notch. |
 | **Music** | Whatever Windows plays (Spotify, browser, …): cover, controls, volume, and the line being sung (synced lyrics from [LRCLIB](https://lrclib.net), off by default). |
 | **Notifications** | Notifications from other apps, collected in the island. Off by default, kept in memory only. |
 | **Modules** | Calendar with reminders, to-do, notes, Pomodoro timer, file shelf, clipboard history, Discord voice channel. Each one can be switched off. |
-| **Voice** | Hold a key and speak, recognised locally with whisper.cpp. "Hey Nikki, …" sends it to Claude (commands are German). |
+| **Voice** | Hold a key or a mouse button (middle or side) and speak, recognised locally with whisper.cpp. "Hey Nikki, …" sends it to Claude (commands are German). |
 | **Language** | English or German, or whatever Windows uses. Switches at once, no restart. |
 
 ## A closer look
@@ -98,7 +98,7 @@ Nikki is going to become an iOS app as well. The iPhone already has its notch, t
 
 Notch-App für Windows mit Claude-Code-Begleiter: die kleine Katze oben am Bildschirmrand. Sie startet und begleitet Claude-Code-Aufgaben in deinem Projektordner über deine lokal eingeloggte **Claude Code**-CLI, **ohne API-Key**, und bringt dazu Notch-Module wie Kalender, To-do, Notizen und Timer mit.
 
-Zugeklappt zeigt die Insel nur Nikkis Augen. Was los ist, zeigt eine schmale Lichtkante um die Notch: gelb braucht dich, grün arbeitet oder ist fertig, rot ist ein Fehler, bei Musik leuchtet sie in der Farbe des Covers, und eine neue Mitteilung streift einmal weiß darüber. Aufgeklappt gibt es Home („Heute“: Claude, Musik, Wetter, Kalender), den Chat und die Module.
+Zugeklappt zeigt die Insel nur Nikkis Augen und Schnurrhaare, rundherum eine schmale weiße Kante. Passiert etwas, färbt sie sich: gelb braucht dich, grün arbeitet oder ist fertig, rot ist ein Fehler, bei Musik leuchtet sie in der Farbe des Covers, und eine neue Mitteilung streift einmal weiß darüber. Aufgeklappt gibt es Home („Heute“: Claude, Musik, Wetter, Kalender), den Chat und die Module.
 
 - Claude Code starten, mit Live-Status, Schritten und Antworten in der Insel
 - Berechtigungen, Fragen und Pläne beantworten (Erlauben / Immer / Ablehnen), auch für Claude-Code-Sessions im Terminal
@@ -106,7 +106,7 @@ Zugeklappt zeigt die Insel nur Nikkis Augen. Was los ist, zeigt eine schmale Lic
 - Musik mit Cover, Steuerung, Lautstärke und der gerade gesungenen Zeile (Songtexte von lrclib.net, standardmäßig aus)
 - Mitteilungen anderer Apps in der Insel (standardmäßig aus, nur im Speicher)
 - Module: Kalender, To-do, Notizen, Timer, Ablage, Zwischenablage, Discord, einzeln schaltbar
-- Spracheingabe, lokal erkannt. Befehle beginnen mit „Hey Nikki“
+- Spracheingabe, lokal erkannt, per Taste oder Maustaste (Mitte oder Seite). Befehle beginnen mit „Hey Nikki“
 - Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
 - Oberfläche auf Deutsch oder Englisch (Einstellungen › Allgemein), ohne Neustart
 
