@@ -352,6 +352,9 @@ function setFullscreen(on) {
 }
 function watchFullscreen() {
   if (quitting) return;
+  // e2e runs (NIKKI_NO_FULLSCREEN): a video the user watches meanwhile would hide the island in the middle of a test.
+  // No watcher means no fullscreen, said once: the island stays hidden while fullscreen is still unknown (null)
+  if (process.env.NIKKI_NO_FULLSCREEN) return setFullscreen(false);
   const ps = (fullscreenWatcher = spawn('powershell.exe', powershellArgs(fullscreenScript(process.pid)), { windowsHide: true }));
   ps.stdout.on('data', (d) => {
     if (quitting || !alive()) return;

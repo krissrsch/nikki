@@ -8,7 +8,7 @@ npm run e2e                     # Standardlauf: ohne Netz, ohne Login, ca. 10 s
 NIKKI_E2E_CLAUDE=1 npm run e2e  # zusätzlich mit echtem Claude (PowerShell: $env:NIKKI_E2E_CLAUDE=1; npm run e2e)
 ```
 
-Während des Laufs erscheint die Insel kurz oben am Bildschirm. Läuft eine Vollbild-App, bleibt Nikki versteckt und der Test bricht mit „Nikki kam nicht hoch“ ab.
+Während des Laufs erscheint die Insel kurz oben am Bildschirm. Was du nebenher machst, stört nicht: Vollbild-Apps erkennt Nikki im Test nicht (`NIKKI_NO_FULLSCREEN`), die echte Maus zählt nicht (`NIKKI_NO_POINTER`), und alles ist stumm (`NIKKI_MUTE`).
 
 ## Was geprüft wird
 

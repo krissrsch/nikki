@@ -30,7 +30,7 @@ export async function launch({ state, settings, realHome = false, files = {}, vi
   const userData = tmpDir('data');
   const home = realHome ? null : tmpDir('home');
   // no start show, no jump between tabs in the tests: the page switches at once, as the assertions expect (cat.e2e.js turns it on)
-  // NIKKI_E2E_DISPLAY: id of the display to run on, e.g. when a game is fullscreen on the main one (the island hides itself there)
+  // NIKKI_E2E_DISPLAY: id of the display to run on
   const display = Number(process.env.NIKKI_E2E_DISPLAY) || null;
   fs.writeFileSync(path.join(userData, 'state.json'), JSON.stringify({ catJump: false, intro: false, ...(display && { display }), ...state }));
   for (const [file, data] of Object.entries(files)) {
@@ -41,6 +41,7 @@ export async function launch({ state, settings, realHome = false, files = {}, vi
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(CLAUDECODE|CLAUDE_CODE_|ANTHROPIC_|ELECTRON_RUN_AS_NODE)/.test(k)));
   env.NIKKI_USER_DATA = userData;
   env.NIKKI_NO_HELPER = '1'; // no NikkiHelper.exe: the user's real media session and volume stay out of every run
+  env.NIKKI_NO_FULLSCREEN = '1'; // a game or video on the user's screen must not hide the island mid-test
   env.NIKKI_MUTE = '1'; // sounds still play (the tests count them), but muted: nobody at the PC hears a test run
   env.NIKKI_NO_POINTER = '1'; // the real mouse stays out too: tests send the pointer positions themselves
   if (home) {
@@ -108,12 +109,12 @@ export async function launch({ state, settings, realHome = false, files = {}, vi
       rm(home);
     },
   };
-  // booted and opened; the island stays hidden (and the boot waits) while a fullscreen app is in front
+  // booted and opened
   await page
     .waitForFunction(() => document.getElementById('island')?.matches('.open:not(.boot)'), null, { timeout: 20000 })
     .catch(async (e) => {
       await nikki.close();
-      throw new Error(`Nikki kam nicht hoch (läuft eine Vollbild-App?): ${e.message}`);
+      throw new Error(`Nikki kam nicht hoch: ${e.message}`);
     });
   return nikki;
 }
