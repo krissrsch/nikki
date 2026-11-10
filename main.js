@@ -17,6 +17,7 @@ import { coversMonitor, fullscreenScript, parseCovered, powershellArgs } from '.
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
 import { mediaCommand } from './lib/media.js';
+import { coverColor } from './lib/cover-color.js';
 import { DEFAULT_MODULES, moduleFile, normalizeModules, withNewModules } from './lib/modules.js';
 import { createRelay } from './lib/relay.js';
 import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
@@ -629,7 +630,7 @@ const helperExe = path.join(dir, 'helper', 'NikkiHelper.exe');
 let helper = null;
 let helperDelay = 1000;
 let helperBuild = null; // dev: build.cmd runs once when the exe is missing
-let mediaNow = null; // { app, title, artist, album, status, position, duration, updatedAt, cover: data URL | '' } | null
+let mediaNow = null; // { app, title, artist, album, status, position, duration, updatedAt, cover: data URL | '', color: '#rrggbb' | '' } | null
 let volumeNow = null; // { level 0-100, muted } | null
 // the spectrum needs the helper too, with or without the music module
 const helperWanted = () => !process.env.NIKKI_NO_HELPER && !quitting && (store.glow !== false || store.voice || store.hooks || store.modules.some((m) => m.id === 'music' && m.on));
@@ -683,16 +684,19 @@ function stopHelper() {
   helper = null;
 }
 // The cover reaches the renderer as a data URL of at most 256 px, never as a path; nativeImage only decodes real images.
-let coverCache = { file: '', url: '' };
-function coverUrl(file) {
-  if (!file || path.basename(path.dirname(file)) !== 'nikki-covers') return '';
+// Its colour (lib/cover-color.js) tints the glow and the music tile; '' keeps the glow's own blue.
+let coverCache = { file: '', url: '', color: '' };
+function cover(file) {
+  if (!file || path.basename(path.dirname(file)) !== 'nikki-covers') return { url: '', color: '' };
   if (coverCache.file !== file) {
     const img = nativeImage.createFromPath(file);
     const { width, height } = img.getSize();
     const small = width > 256 || height > 256 ? img.resize(width >= height ? { width: 256 } : { height: 256 }) : img;
-    coverCache = { file, url: img.isEmpty() ? '' : `data:image/jpeg;base64,${small.toJPEG(85).toString('base64')}` }; // a PNG is ~8x bigger
+    coverCache = img.isEmpty()
+      ? { file, url: '', color: '' }
+      : { file, url: `data:image/jpeg;base64,${small.toJPEG(85).toString('base64')}`, color: coverColor(small.toBitmap()) }; // a PNG is ~8x bigger
   }
-  return coverCache.url;
+  return coverCache;
 }
 function onHelperLine(line) {
   let m;
@@ -703,7 +707,8 @@ function onHelperLine(line) {
   }
   if (m.type === 'media') {
     const { app: player, title, artist, album, status, position, duration, updatedAt } = m;
-    mediaNow = m.active ? { app: player, title, artist, album, status, position, duration, updatedAt, cover: coverUrl(m.cover) } : null;
+    const { url, color } = m.active ? cover(m.cover) : {};
+    mediaNow = m.active ? { app: player, title, artist, album, status, position, duration, updatedAt, cover: url, color } : null;
     send('media', mediaNow);
   } else if (m.type === 'volume') send('volume', (volumeNow = { level: m.level, muted: !!m.muted }));
   else if (m.type === 'spectrum' && Array.isArray(m.bands) && m.bands.length === 12) sendSpectrum(m.bands.map((v) => Math.min(1, Math.max(0, Number(v) || 0))));

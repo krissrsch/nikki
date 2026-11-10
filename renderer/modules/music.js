@@ -1,6 +1,6 @@
 // Musik (plan 3.2): what Windows plays (SMTC through helper/NikkiHelper.exe, which main runs while this module is on).
 // Page: cover, title, artist · app, progress, back/play/next, volume. Home tile: the same without the volume.
-// Closed notch: while something plays, Nikki's eyes dance and the glow shows its music edge.
+// Closed notch: while something plays, Nikki's eyes dance and the glow shows its music edge, in the cover's colour when it has one.
 // No data of its own: main sends media and volume as they change (null: nothing plays, or no helper).
 
 // ---- pure, tested in modules.test.js
@@ -153,6 +153,7 @@ function musicApp(id) {
     // Home (canvas Glas): cover, title, artist · app, progress and back/play/next; quiet, just a line, no empty cover
     tile(el) {
       el.classList.toggle('musicTile', !!media);
+      el.style.setProperty('--cover', media?.color ?? ''); // '' removes it
       if (!media) {
         el.append(h('div', { className: 'tileHead', innerHTML: ICON_NOTE.replace('"ti"', '"hi"') }, 'Musik'), h('div', { className: 'tileStack' }, h('span', { className: 'tileBig' }, 'Gerade still'), h('span', { className: 'tileSub' }, 'Starte Musik, Nikki tanzt mit.')));
         return;
@@ -170,6 +171,6 @@ function musicApp(id) {
       );
       paint();
     },
-    glance: () => ({ music: { playing: playing() } }),
+    glance: () => ({ music: { playing: playing(), color: media?.color ?? '' } }),
   });
 })();

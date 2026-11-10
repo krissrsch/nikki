@@ -66,6 +66,11 @@ describe('Module aus Phase 3', () => {
     await page.waitForFunction(() => document.getElementById('island').dataset.mood === 'music');
     assert.equal(await page.getAttribute('#glow', 'data-glow'), 'music');
     assert.equal(await page.evaluate(() => document.getElementById('notch').textContent.includes('Testlied')), false);
+    const glowColor = () => page.evaluate(() => getComputedStyle(document.getElementById('glow')).getPropertyValue('--glow').trim());
+    assert.equal(await glowColor(), '#c9d9ff');
+    // a cover with a colour of its own tints the edge (main sends it as color)
+    await fromMain('media', { app: 'Spotify.exe', title: 'Testlied', artist: 'Nikki', status: 'playing', position: 15, duration: 200, updatedAt: Date.now(), cover: 'data:image/jpeg;base64,AA==', color: '#f5a3b0' });
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('glow')).getPropertyValue('--glow').trim() === '#f5a3b0', null, { timeout: 4000 });
     await fromMain('media', { app: 'Spotify.exe', title: 'Testlied', artist: 'Nikki', status: 'paused', position: 14, duration: 200, updatedAt: Date.now(), cover: '' });
     await page.waitForFunction(() => document.getElementById('glow').dataset.glow === '', null, { timeout: 4000 });
     assert.deepEqual(nikki.errors, []);

@@ -284,6 +284,7 @@ function renderGlance() {
   const g = glance({ ...fromModules, status, doneAge: status === 'done' ? Date.now() - doneSince : 0, voice: listening, sound: spectrum.sound, lastActivity, hover, sleepMin });
   island.dataset.mood = g.mood;
   glowEl.dataset.glow = settings.glow === false ? '' : (g.glow ?? '');
+  glowEl.style.setProperty('--cover', fromModules.music?.color ?? ''); // the music edge in the cover's colour
   $('notch').setAttribute('aria-label', MOOD_LABEL[g.mood]);
   cat?.setGlow(g.glow, g.mood === 'sleep');
   peek?.update({ glow: g.glow, hover, sleeping: g.mood === 'sleep', open });
