@@ -98,6 +98,7 @@ function applySettings(s) {
   $('aboutDir').textContent = s.dataDir;
   $('setGlowLevel').disabled = !s.glow;
   if (document.activeElement !== $('setCity')) $('setCity').value = s.weatherCity;
+  $('setLyrics').checked = s.lyrics;
   renderModules(s.modules);
 }
 const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
@@ -119,6 +120,7 @@ $('setMic').addEventListener('change', (e) => setSetting('micSpectrum', e.target
 $('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));
 $('setHoverOpen').addEventListener('change', (e) => setSetting('hoverOpen', Number(e.target.value)));
 $('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));
+$('setLyrics').addEventListener('change', (e) => setSetting('lyrics', e.target.checked));
 async function setDiscord(key, value) {
   const s = await api.settingsSet(key, value);
   applySettings(s);

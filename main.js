@@ -18,6 +18,7 @@ import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
 import { mediaCommand } from './lib/media.js';
 import { coverColor } from './lib/cover-color.js';
+import { lyricsUrls, pickLyrics } from './lib/lyrics.js';
 import { DEFAULT_MODULES, moduleFile, normalizeModules, withNewModules } from './lib/modules.js';
 import { createRelay } from './lib/relay.js';
 import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
@@ -103,6 +104,7 @@ let store = {
   voiceKey: VOICE_KEY, // held while speaking
   voiceHooks: [], // [{ name, url }]: url sealed like the Discord secret
   weatherCity: '', // Home weather tile; '' = none yet
+  lyrics: false, // music module: synced lyrics from lrclib.net; off by default, title and artist leave the PC
   weather: null, // last answer for weatherCity, see fetchWeather()
 };
 const GLOW_LEVELS = ['dezent', 'normal', 'kraeftig'];
@@ -435,6 +437,7 @@ const settings = async () => ({
   voiceHooks: voiceHooks().map((h) => h.name),
   glowLevel: GLOW_LEVELS.includes(store.glowLevel) ? store.glowLevel : 'normal',
   weatherCity: typeof store.weatherCity === 'string' ? store.weatherCity : '',
+  lyrics: !!store.lyrics,
 });
 ipcMain.handle('settings-get', settings);
 // the settings live in their own normal window; closing it changes nothing else
@@ -501,6 +504,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   else if (key === 'modules') {
     store.modules = normalizeModules(value, store.modules);
     syncHelper();
+    syncLyrics();
     syncClipboard();
     syncDiscord();
   } else if (key === 'keepAwake') {
@@ -518,6 +522,10 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     store.micSpectrum = !!value;
     syncSpectrum();
   } else if (key === 'glowLevel' && GLOW_LEVELS.includes(value)) store.glowLevel = value;
+  else if (key === 'lyrics') {
+    store.lyrics = !!value;
+    syncLyrics();
+  }
   else if (key === 'weatherCity') {
     const city = String(value ?? '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 80);
     if (city !== store.weatherCity) {
@@ -666,6 +674,7 @@ function startHelper() {
       // switched off and on quickly: the new helper's news stays
       mediaNow = volumeNow = null;
       send('media', null);
+      syncLyrics();
       send('volume', null);
       sendSpectrum(null);
     }
@@ -710,6 +719,7 @@ function onHelperLine(line) {
     const { url, color } = m.active ? cover(m.cover) : {};
     mediaNow = m.active ? { app: player, title, artist, album, status, position, duration, updatedAt, cover: url, color } : null;
     send('media', mediaNow);
+    syncLyrics();
   } else if (m.type === 'volume') send('volume', (volumeNow = { level: m.level, muted: !!m.muted }));
   else if (m.type === 'spectrum' && Array.isArray(m.bands) && m.bands.length === 12) sendSpectrum(m.bands.map((v) => Math.min(1, Math.max(0, Number(v) || 0))));
   else if (m.type === 'ptt') m.down ? voiceDown() : voiceUp();
@@ -744,11 +754,44 @@ function sendSpectrum(bands) {
     send('spectrum', spectrumNext);
   }, Math.max(0, 30 - (Date.now() - spectrumLast)));
 }
-ipcMain.handle('media-get', () => ({ media: mediaNow, volume: volumeNow }));
+ipcMain.handle('media-get', () => ({ media: mediaNow, volume: volumeNow, lyrics: lyricsNow }));
 ipcMain.on('media-cmd', (_e, cmd, value) => {
   const line = mediaCommand(cmd, value);
   if (line && helper) helper.stdin.write(`${line}\n`);
 });
+
+// --- lyrics (lib/lyrics.js): LRCLIB, only with Songtexte and the music module on. One fetch per song, kept in memory.
+const lyricsCache = new Map(); // [artist, title] as JSON -> lines | null (none found)
+let lyricsNow = null; // { title, artist, lines } for the song that plays
+let lyricsFor = ''; // the song asked for last; a position update of the same song asks nothing
+async function syncLyrics() {
+  const m = mediaNow;
+  const on = store.lyrics && store.modules.some((x) => x.id === 'music' && x.on);
+  const key = on && m?.title ? JSON.stringify([m.artist, m.title]) : '';
+  if (key === lyricsFor) return;
+  lyricsFor = key;
+  if (lyricsNow) send('lyrics', (lyricsNow = null));
+  if (!key) return;
+  let lines = lyricsCache.get(key);
+  if (lines === undefined) {
+    try {
+      lines = null;
+      for (const url of lyricsUrls(m)) {
+        const r = await net.fetch(url, { headers: { 'User-Agent': `Nikki/${app.getVersion()} (https://github.com/krissrsch/nikki)` }, signal: AbortSignal.timeout(10000) });
+        if (r.status === 404) continue;
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if ((lines = pickLyrics(await r.json(), m.duration))) break;
+      }
+    } catch (e) {
+      console.error('lyrics:', e.message); // offline: this song stays without, the next one asks again
+      return;
+    }
+    lyricsCache.set(key, lines);
+    if (lyricsCache.size > 200) lyricsCache.delete(lyricsCache.keys().next().value);
+  }
+  if (lyricsFor !== key || !lines) return; // another song meanwhile, or none found
+  send('lyrics', (lyricsNow = { title: m.title, artist: m.artist, lines }));
+}
 
 // --- Discord (lib/discord.js): runs while the module is on and a client id is set; secret and tokens never leave main
 let discord = null;

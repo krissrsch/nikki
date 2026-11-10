@@ -46,10 +46,11 @@ contextBridge.exposeInMainWorld('companion', {
   moduleSet: (id, data) => ipcRenderer.invoke('module-set', id, data),
   toast: (text) => ipcRenderer.send('toast', text), // Windows toast even while the island can be seen
   // music: what Windows plays and the volume, from helper/NikkiHelper.exe while the music module is on
-  mediaGet: () => ipcRenderer.invoke('media-get'), // { media: { title, artist, app, status, position, duration, updatedAt, cover } | null, volume: { level, muted } | null }
+  mediaGet: () => ipcRenderer.invoke('media-get'), // { media: { title, artist, app, status, position, duration, updatedAt, cover, color } | null, volume: { level, muted } | null, lyrics }
   media: (cmd, value) => ipcRenderer.send('media-cmd', cmd, value), // toggle | next | prev | mute | unmute | volume (0-100)
   onMedia: on('media'),
   onVolume: on('volume'),
+  onLyrics: on('lyrics'), // { title, artist, lines: [{ t, text }] } | null, only with Songtexte on (LRCLIB, fetched by main)
   // glow: 12 spectrum bands 0-1 (bass first) of what plays, ~30/s while something sounds; null or zeros = quiet
   onSpectrum: on('spectrum'),
   // Home weather tile (Open-Meteo, fetched by main): null without a city, else { query, place?, temp?, text?, icon?, max?, min?, hours?, at?, error? }

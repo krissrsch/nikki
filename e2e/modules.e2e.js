@@ -76,6 +76,24 @@ describe('Module aus Phase 3', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Songtexte: die Zeile zur Position steht auf Seite und Kachel, ein Text zu einem anderen Lied nicht', async () => {
+    nikki = await launch();
+    const { page } = nikki;
+    const song = { app: 'Spotify.exe', title: 'Testlied', artist: 'Nikki', status: 'playing', position: 10, duration: 200, updatedAt: Date.now(), cover: '' };
+    await fromMain('media', song);
+    await page.click('#tabs .tab[data-view="music"]');
+    await page.waitForSelector('.mod-music .musicTitle:has-text("Testlied")');
+    assert.equal(await page.locator('.musicLyric').count(), 0, 'ohne Songtexte keine Zeile');
+    await fromMain('lyrics', { title: 'Anderes Lied', artist: 'Nikki', lines: [{ t: 0, text: 'falsch' }] });
+    await page.waitForTimeout(400);
+    assert.equal(await page.locator('.musicLyric').count(), 0, 'ein Text zu einem anderen Lied zählt nicht');
+    await fromMain('lyrics', { title: 'Testlied', artist: 'Nikki', lines: [{ t: 0, text: 'erste Zeile' }, { t: 9, text: 'zweite Zeile' }, { t: 500, text: 'viel später' }] });
+    await until(() => page.evaluate(() => document.querySelector('.mod-music .musicLyric')?.textContent === 'zweite Zeile'), 'Zeile auf der Seite');
+    await page.click('#tabs .tab[data-view="home"]');
+    await until(() => page.evaluate(() => document.querySelector('#homeTiles [data-tile="music"] .musicLyric')?.textContent === 'zweite Zeile'), 'Zeile auf der Kachel');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Ablage: Text und Dateien landen in userData/shelf, Auswahl geht als Pfad an den Chat, „Alles leeren“ leert', async () => {
     const src = tmpDir('quelle');
     dirs.push(src);

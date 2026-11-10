@@ -16,6 +16,15 @@ function musicTime(sec) {
   const two = (n) => String(n).padStart(2, '0');
   return s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}` : `${Math.floor(s / 60)}:${two(s % 60)}`;
 }
+// the lyric line sung at pos seconds (lines from main, lib/lyrics.js); '' before the first one and in gaps
+function musicLyric(lines, pos) {
+  let now = '';
+  for (const l of lines) {
+    if (l.t > pos) break;
+    now = l.text;
+  }
+  return now;
+}
 // "Spotify.exe" → Spotify, "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify" → Spotify, "MSEdge" → Edge, else the last part without .exe
 function musicApp(id) {
   const raw = String(id ?? '');
@@ -35,16 +44,20 @@ function musicApp(id) {
   const ICON_MUTED = '<svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="m16 9 5 5M21 9l-5 5" /></svg>';
   let media = null;
   let vol = null;
+  let lyrics = null; // { title, artist, lines } from main, only with "Songtexte" on
   let ownVolAt = 0; // our own slider: incoming levels do not fight the drag
   let ctx;
   let root;
   let tick;
   const playing = () => media?.status === 'playing';
   const send = (cmd, value) => api.media(cmd, value);
+  // synced lines for the song that plays now, else null (a late answer for the last song does not count)
+  const lines = () => (lyrics?.lines.length && media && lyrics.title === media.title && lyrics.artist === media.artist ? lyrics.lines : null);
   const run = () => {
     clearInterval(tick);
-    tick = ctx && playing() ? setInterval(paint, 1000) : null;
+    tick = ctx && playing() ? setInterval(paint, lines() ? 250 : 1000) : null; // a lyric line may not lag a second behind
   };
+  const lyricLine = () => lines() && h('span', { className: 'musicLyric', ariaHidden: 'true' });
 
   const cover = (cls) =>
     media?.cover ? h('img', { className: cls, src: media.cover, alt: '' }) : h('span', { className: `${cls} none`, innerHTML: ICON_NOTE });
@@ -82,6 +95,9 @@ function musicApp(id) {
     const share = media.duration > 0 ? `${(pos / media.duration) * 100}%` : '0%';
     for (const el of document.querySelectorAll('.musicFill')) el.style.width = share;
     for (const el of document.querySelectorAll('.musicNow')) el.textContent = musicTime(pos);
+    const ll = lines();
+    const sung = ll ? musicLyric(ll, pos) : '';
+    for (const el of document.querySelectorAll('.musicLyric')) if (el.textContent !== sung) el.textContent = sung;
   }
 
   function render() {
@@ -96,7 +112,7 @@ function musicApp(id) {
             h(
               'div',
               { className: 'musicMain' },
-              h('div', { className: 'musicHead' }, h('span', { className: 'musicTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'musicSub', title: sub }, sub)),
+              h('div', { className: 'musicHead' }, h('span', { className: 'musicTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'musicSub', title: sub }, sub), lyricLine()),
               media.duration > 0 && h('div', { className: 'musicBar' }, h('span', { className: 'musicNow' }), track(), h('span', {}, musicTime(media.duration))),
               h('div', { className: 'musicCtrl' }, round('Zurück', ICON_PREV, '', () => send('prev')), playBtn(''), round('Weiter', ICON_NEXT, '', () => send('next')), h('span', { className: 'grow' }), volume()),
             ),
@@ -125,6 +141,13 @@ function musicApp(id) {
     render();
     ctx.changed();
   });
+  api?.onLyrics((l) => {
+    lyrics = l;
+    if (!ctx) return;
+    run();
+    render();
+    ctx.changed();
+  });
   api?.onVolume((v) => {
     const before = vol;
     vol = v;
@@ -139,7 +162,7 @@ function musicApp(id) {
     icon: `<svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>`,
     async start(c) {
       ctx = c;
-      ({ media, volume: vol } = (await api?.mediaGet()) ?? { media: null, volume: null });
+      ({ media, volume: vol, lyrics } = (await api?.mediaGet()) ?? { media: null, volume: null, lyrics: null });
       run();
     },
     stop() {
@@ -164,7 +187,7 @@ function musicApp(id) {
         h(
           'div',
           { className: 'musicTileMain' },
-          h('div', { className: 'tileStack' }, h('span', { className: 'musicTileTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'tileSub', title: sub }, sub)),
+          h('div', { className: 'tileStack' }, h('span', { className: 'musicTileTitle', title: media.title }, media.title || 'Ohne Titel'), h('span', { className: 'tileSub', title: sub }, sub), lyricLine()),
           track(),
           h('div', { className: 'musicCtrl' }, round('Zurück', ICON_PREV, '', () => send('prev')), playBtn(''), round('Weiter', ICON_NEXT, '', () => send('next'))),
         ),

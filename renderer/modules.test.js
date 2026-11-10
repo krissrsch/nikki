@@ -8,7 +8,7 @@ const ctx = vm.createContext({});
 for (const f of ['modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js', 'modules/clipboard.js', 'modules/discord.js']) {
   vm.runInContext(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
-const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText, discordCount })', ctx);
+const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, musicLyric, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText, discordCount })', ctx);
 // objects from the sandbox have another Object.prototype: compare plain copies
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const MIN = 60 * 1000;
@@ -117,4 +117,14 @@ test('music: position runs on while playing, stops at the end, holds while pause
   assert.equal(g.musicApp('MSEdge'), 'Edge');
   assert.equal(g.musicApp(String.raw`C:\Tools\foobar2000.exe`), 'foobar2000');
   assert.equal(g.musicApp(''), '');
+});
+
+test('musicLyric: the line at a position, nothing before the first and in a gap', () => {
+  const lines = [{ t: 5, text: 'one' }, { t: 10, text: 'two' }, { t: 15, text: '' }, { t: 20, text: 'three' }];
+  assert.equal(g.musicLyric(lines, 2), '');
+  assert.equal(g.musicLyric(lines, 5), 'one');
+  assert.equal(g.musicLyric(lines, 12.3), 'two');
+  assert.equal(g.musicLyric(lines, 16), '');
+  assert.equal(g.musicLyric(lines, 300), 'three');
+  assert.equal(g.musicLyric([], 10), '');
 });

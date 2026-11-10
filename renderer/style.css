@@ -1101,6 +1101,8 @@ kbd.key {
 .musicHead { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
 .musicTitle { overflow: hidden; font-size: 18px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .musicSub { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+/* the line sung now (Songtexte on); empty between lines, its height stays so nothing jumps */
+.musicLyric { min-height: 1.4em; overflow: hidden; margin-top: 4px; color: var(--text); font-size: 13px; font-style: italic; opacity: 0.85; text-overflow: ellipsis; white-space: nowrap; }
 .musicBar { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .musicTrack { display: block; flex: 1; height: 4px; overflow: hidden; border-radius: 2px; background: var(--raised-hover); }
 .musicFill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--text); }
