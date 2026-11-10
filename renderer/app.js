@@ -1562,7 +1562,8 @@ function pointerAt(x, y) {
   followPointer(x, y);
   const over = document.elementFromPoint(x, y);
   const overNotch = !!over?.closest('#notch');
-  if (!open && !overNotch) hoverArmed = true;
+  // armed only once the pointer left the whole island: while it shrinks after Esc, the point above the notch is still its tab bar
+  if (!open && !over?.closest('#island')) hoverArmed = true;
   const resting = !open && !drag && !introRunning && hoverArmed && settings.hoverOpen > 0 && overNotch;
   if (resting && !hoverTimer)
     hoverTimer = setTimeout(() => {
