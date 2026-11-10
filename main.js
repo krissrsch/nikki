@@ -815,7 +815,7 @@ ipcMain.handle('toasts-get', () => inbox);
 ipcMain.handle('toasts-clear', () => (setToasts({ access: inbox.access, items: [] }), inbox));
 
 // --- lyrics (lib/lyrics.js): LRCLIB, only with Songtexte and the music module on. One fetch per song, kept in memory.
-const lyricsCache = new Map(); // [artist, title] as JSON -> lines | null (none found)
+const lyricsCache = new Map(); // [artist, title, album, length] as JSON -> lines | null (none found)
 let lyricsNow = null; // { title, artist, lines } for the song that plays
 let lyricsFor = ''; // the song asked for last; a position update of the same song asks nothing
 async function syncLyrics() {
@@ -828,16 +828,18 @@ async function syncLyrics() {
   if (!key) return;
   let lines = lyricsCache.get(key);
   if (lines === undefined) {
-    try {
-      lines = null;
-      for (const url of lyricsUrls(m)) {
+    lines = null;
+    let failed = null;
+    for (const url of lyricsUrls(m)) {
+      try {
         const r = await net.fetch(url, { headers: { 'User-Agent': `Nikki/${app.getVersion()} (https://github.com/krissrsch/nikki)` }, signal: AbortSignal.timeout(10000) });
         if (r.status === 404) continue;
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         if ((lines = pickLyrics(await r.json(), m.duration))) break;
       }
-    } catch (e) {
-      console.error('lyrics:', e.message); // offline: this song stays without, the next one asks again
+    }
+    if (!lines && failed) {
+      console.error('lyrics:', failed.message); // offline: this song stays without and is not cached, the next one asks again
       return;
     }
     lyricsCache.set(key, lines);
@@ -845,6 +847,8 @@ async function syncLyrics() {
   }
   if (lyricsFor !== key || !lines) return; // another song meanwhile, or none found
   send('lyrics', (lyricsNow = { title: m.title, artist: m.artist, lines }));
+      } catch (e) {
+        failed = e; // get failed: search may still find it
 }
 
 // --- Discord (lib/discord.js): runs while the module is on and a client id is set; secret and tokens never leave main
