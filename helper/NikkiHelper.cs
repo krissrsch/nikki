@@ -921,12 +921,16 @@ static class Toasts
         UserNotificationListener listener = null;
         var seen = new HashSet<uint>();
         bool first = true;
+        bool asked = false;
+        bool? lastOk = null;
         while (true)
         {
             if (!on)
             {
                 listener = null; // switched on again: ask Windows for access again, the user may have changed it
                 first = true;
+                asked = false;
+                lastOk = null;
                 Thread.Sleep(500);
                 continue;
             }
@@ -936,12 +940,17 @@ static class Toasts
                 {
                     var l = UserNotificationListener.Current;
                     var access = l.GetAccessStatus();
-                    if (access != UserNotificationListenerAccessStatus.Allowed) access = NikkiHelper.Wait(l.RequestAccessAsync());
+                    if (access != UserNotificationListenerAccessStatus.Allowed && !asked)
+                    {
+                        asked = true; // the prompt once per switching on; after that only a look every few seconds
+                        access = NikkiHelper.Wait(l.RequestAccessAsync());
+                    }
                     bool ok = access == UserNotificationListenerAccessStatus.Allowed;
-                    NikkiHelper.Emit("{\"type\":\"toasts\",\"ok\":" + (ok ? "true" : "false") + "}");
+                    if (ok != lastOk) NikkiHelper.Emit("{\"type\":\"toasts\",\"ok\":" + (ok ? "true" : "false") + "}");
+                    lastOk = ok;
                     if (!ok)
                     {
-                        on = false;
+                        Thread.Sleep(5000); // denied: allowed later in the Windows settings, it starts without switching off and on
                         continue;
                     }
                     listener = l;
@@ -950,7 +959,8 @@ static class Toasts
                 foreach (var n in NikkiHelper.Wait(listener.GetNotificationsAsync(NotificationKinds.Toast)))
                 {
                     now.Add(n.Id);
-                    if (!first && !seen.Contains(n.Id)) Send(n);
+                    if (first || seen.Contains(n.Id)) continue;
+                    try { Send(n); } catch (Exception e) { NikkiHelper.Error(e); } // one odd toast: the others still go out
                 }
                 seen = now;
                 first = false;
