@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Nikki closed: the black notch with her white edge, her eyes and whiskers. Rendered to icon.png / tray.png -->
+  <defs>
+    <linearGradient id="wL" gradientUnits="userSpaceOnUse" x1="214" y1="0" x2="30.399999999999977" y2="0"><stop offset="0" stop-color="#f4f4f2" /><stop offset="1" stop-color="#f4f4f2" stop-opacity="0.55" /></linearGradient>
+    <linearGradient id="wR" gradientUnits="userSpaceOnUse" x1="810" y1="0" x2="993.6" y2="0"><stop offset="0" stop-color="#f4f4f2" /><stop offset="1" stop-color="#f4f4f2" stop-opacity="0.55" /></linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="22" /></filter>
+    <filter id="shine" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="21.12" /></filter>
+  </defs>
+  <path d="M 220 262 H 804 A 70 70 0 0 1 874 332 V 552 A 210 210 0 0 1 664 762 H 360 A 210 210 0 0 1 150 552 V 332 A 70 70 0 0 1 220 262 Z" fill="none" stroke="#ffffff" stroke-width="41.6" opacity="0.45" filter="url(#glow)" />
+  <!-- a dark line under the white ones: on a light taskbar the edge and the whiskers would vanish -->
+  <path d="M 220 262 H 804 A 70 70 0 0 1 874 332 V 552 A 210 210 0 0 1 664 762 H 360 A 210 210 0 0 1 150 552 V 332 A 70 70 0 0 1 220 262 Z" fill="none" stroke="#000" stroke-opacity="0.5" stroke-width="44" stroke-linejoin="round" />
+  <g fill="none" stroke-width="36" stroke-linecap="round" stroke-opacity="0.45"><path d="M 214 489.2 Q 133 481.1 35.799999999999976 456.8" stroke="#000" /><path d="M 214 500 Q 133 500 35.799999999999976 500" stroke="#000" /><path d="M 214 510.8 Q 133 518.9 35.799999999999976 543.2" stroke="#000" /><path d="M 810 489.2 Q 891 481.1 988.2 456.8" stroke="#000" /><path d="M 810 500 Q 891 500 988.2 500" stroke="#000" /><path d="M 810 510.8 Q 891 518.9 988.2 543.2" stroke="#000" /></g>
+  <path d="M 220 262 H 804 A 70 70 0 0 1 874 332 V 552 A 210 210 0 0 1 664 762 H 360 A 210 210 0 0 1 150 552 V 332 A 70 70 0 0 1 220 262 Z" fill="#000" stroke="#f4f4f2" stroke-width="26" stroke-linejoin="round" />
+  <g fill="#fff" opacity="0.55" filter="url(#shine)"><rect x="349" y="425" width="96" height="150" rx="48" /><rect x="579" y="425" width="96" height="150" rx="48" /></g>
+  <g fill="#f4f4f2"><rect x="349" y="425" width="96" height="150" rx="48" /><rect x="579" y="425" width="96" height="150" rx="48" /></g>
+  <g fill="none" stroke-width="18" stroke-linecap="round"><path d="M 214 489.2 Q 133 481.1 35.799999999999976 456.8" stroke="url(#wL)" /><path d="M 214 500 Q 133 500 35.799999999999976 500" stroke="url(#wL)" /><path d="M 214 510.8 Q 133 518.9 35.799999999999976 543.2" stroke="url(#wL)" /><path d="M 810 489.2 Q 891 481.1 988.2 456.8" stroke="url(#wR)" /><path d="M 810 500 Q 891 500 988.2 500" stroke="url(#wR)" /><path d="M 810 510.8 Q 891 518.9 988.2 543.2" stroke="url(#wR)" /></g>
+</svg>

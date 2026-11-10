@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Nikki closed: the black notch with her white edge, her eyes and whiskers. Rendered to icon.png / tray.png -->
+  <defs>
+    <linearGradient id="wL" gradientUnits="userSpaceOnUse" x1="142" y1="0" x2="19.599999999999994" y2="0"><stop offset="0" stop-color="#f4f4f2" /><stop offset="1" stop-color="#f4f4f2" stop-opacity="0.55" /></linearGradient>
+    <linearGradient id="wR" gradientUnits="userSpaceOnUse" x1="882" y1="0" x2="1004.4" y2="0"><stop offset="0" stop-color="#f4f4f2" /><stop offset="1" stop-color="#f4f4f2" stop-opacity="0.55" /></linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="0" /></filter>
+    <filter id="shine" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="33" /></filter>
+  </defs>
+  
+  <!-- a dark line under the white ones: on a light taskbar the edge and the whiskers would vanish -->
+  <path d="M 192 180 H 832 A 80 80 0 0 1 912 260 V 560 A 300 300 0 0 1 612 860 H 412 A 300 300 0 0 1 112 560 V 260 A 80 80 0 0 1 192 180 Z" fill="none" stroke="#000" stroke-opacity="0.5" stroke-width="124" stroke-linejoin="round" />
+  <g fill="none" stroke-width="104" stroke-linecap="round" stroke-opacity="0.45"><path d="M 142 492.8 Q 88 487.4 23.199999999999996 471.2" stroke="#000" /><path d="M 142 500 Q 88 500 23.199999999999996 500" stroke="#000" /><path d="M 142 507.2 Q 88 512.6 23.199999999999996 528.8" stroke="#000" /><path d="M 882 492.8 Q 936 487.4 1000.8 471.2" stroke="#000" /><path d="M 882 500 Q 936 500 1000.8 500" stroke="#000" /><path d="M 882 507.2 Q 936 512.6 1000.8 528.8" stroke="#000" /></g>
+  <path d="M 192 180 H 832 A 80 80 0 0 1 912 260 V 560 A 300 300 0 0 1 612 860 H 412 A 300 300 0 0 1 112 560 V 260 A 80 80 0 0 1 192 180 Z" fill="#000" stroke="#f4f4f2" stroke-width="72" stroke-linejoin="round" />
+  <g fill="#fff" opacity="0.55" filter="url(#shine)"><rect x="277" y="375" width="150" height="250" rx="75" /><rect x="597" y="375" width="150" height="250" rx="75" /></g>
+  <g fill="#f4f4f2"><rect x="277" y="375" width="150" height="250" rx="75" /><rect x="597" y="375" width="150" height="250" rx="75" /></g>
+  <g fill="none" stroke-width="52" stroke-linecap="round"><path d="M 142 492.8 Q 88 487.4 23.199999999999996 471.2" stroke="#f4f4f2" /><path d="M 142 500 Q 88 500 23.199999999999996 500" stroke="#f4f4f2" /><path d="M 142 507.2 Q 88 512.6 23.199999999999996 528.8" stroke="#f4f4f2" /><path d="M 882 492.8 Q 936 487.4 1000.8 471.2" stroke="#f4f4f2" /><path d="M 882 500 Q 936 500 1000.8 500" stroke="#f4f4f2" /><path d="M 882 507.2 Q 936 512.6 1000.8 528.8" stroke="#f4f4f2" /></g>
+</svg>
