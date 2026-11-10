@@ -218,7 +218,10 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 #glow[data-glow='music'] { --glow: var(--cover, #c9d9ff); --glow-hot: #fff; }
 #glow[data-glow='voice'] { --glow: #7ff0c8; --glow-hot: #e6fff6; }
 #glow[data-glow='notify'] { --glow: #f2f2f5; --glow-hot: #fff; }
-#glow stop { stop-color: var(--glow); }
+/* nothing going on: a white edge around the notch only, fading out a little past it instead of running to the screen edges */
+#glow[data-glow='idle'] { --glow: #f2f2f5; --glow-hot: #fff; }
+#glow[data-glow='idle'] .rim path { stroke: url(#rimNear); }
+#glow stop { stop-color: var(--glow); transition: stop-color 0.6s ease; }
 #glow stop.hot { stop-color: var(--glow-hot); }
 #glow .sweep { opacity: 0; }
 #glow[data-glow='need'] .rim,

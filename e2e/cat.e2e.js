@@ -156,7 +156,7 @@ describe('Nikki die Katze', () => {
     await page.waitForFunction(() => !document.getElementById('introStage'), null, { timeout: 3000 }); // nothing stays behind
     assert.equal(await page.$eval('.catRest', (e) => getComputedStyle(e).visibility), 'visible');
     assert.equal(await page.$eval('.catRest', (e) => e.dataset.type), 'sit');
-    assert.equal(await page.getAttribute('#glow', 'data-glow'), '');
+    await until(async () => (await page.getAttribute('#glow', 'data-glow')) === 'idle', 'nur noch ihre weiße Kante');
     // noch einmal von vorn, mittendrin geöffnet
     await page.click('#tabs', { position: { x: 500, y: 17 } });
     await page.waitForFunction(() => !document.getElementById('island').classList.contains('open'));

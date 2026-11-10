@@ -72,7 +72,7 @@ describe('Module aus Phase 3', () => {
     await fromMain('media', { app: 'Spotify.exe', title: 'Testlied', artist: 'Nikki', status: 'playing', position: 15, duration: 200, updatedAt: Date.now(), cover: 'data:image/jpeg;base64,AA==', color: '#f5a3b0' });
     await page.waitForFunction(() => getComputedStyle(document.getElementById('glow')).getPropertyValue('--glow').trim() === '#f5a3b0', null, { timeout: 4000 });
     await fromMain('media', { app: 'Spotify.exe', title: 'Testlied', artist: 'Nikki', status: 'paused', position: 14, duration: 200, updatedAt: Date.now(), cover: '' });
-    await page.waitForFunction(() => document.getElementById('glow').dataset.glow === '', null, { timeout: 4000 });
+    await page.waitForFunction(() => document.getElementById('glow').dataset.glow === 'idle', null, { timeout: 4000 });
     assert.deepEqual(nikki.errors, []);
   });
 
@@ -106,7 +106,7 @@ describe('Module aus Phase 3', () => {
     assert.equal(await page.textContent('.mod-notifications .toastBody'), 'Treffen um 15 Uhr?');
     await page.keyboard.press('Escape');
     await until(() => page.evaluate(() => document.getElementById('glow').dataset.glow === 'notify'), 'weiße Kante');
-    await until(() => page.evaluate(() => document.getElementById('glow').dataset.glow === ''), 'Kante wieder aus', 8000);
+    await until(() => page.evaluate(() => document.getElementById('glow').dataset.glow === 'idle'), 'wieder die weiße Kante', 8000);
     await fromMain('toasts', { access: false, items: [] });
     await page.click('#notch');
     await page.click('#tabs .tab[data-view="notifications"]');

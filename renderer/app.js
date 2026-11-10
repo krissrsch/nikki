@@ -290,7 +290,7 @@ function renderGlance() {
     void glowEl.getBoundingClientRect();
   }
   lastNotifyAt = fromModules.notifyAt;
-  glowEl.dataset.glow = settings.glow === false ? '' : (g.glow ?? '');
+  glowEl.dataset.glow = settings.glow === false ? '' : (g.glow ?? 'idle'); // idle: her thin white edge, always there
   glowEl.style.setProperty('--cover', fromModules.music?.color ?? ''); // the music edge in the cover's colour
   $('notch').setAttribute('aria-label', MOOD_LABEL[g.mood]);
   cat?.setGlow(g.glow, g.mood === 'sleep');

@@ -76,7 +76,7 @@ describe('Notch und Glow', () => {
     assert.equal(await glow(), 'music', 'any system sound shows the music edge');
     await fromMain('spectrum', Array(12).fill(0));
     await until(async () => (await bars()).every((x) => x === 0), 'Balken weg');
-    assert.equal(await glow(), '');
+    assert.equal(await glow(), 'idle', 'back to the white edge');
     assert.deepEqual(nikki.errors, []);
   });
 
