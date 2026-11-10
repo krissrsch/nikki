@@ -2,6 +2,7 @@
   "name": "desktopcompanion",
   "version": "1.3.0",
   "private": true,
+  "license": "MIT",
   "description": "Notch companion that runs tasks through the logged-in Claude Code CLI (no API key)",
   "main": "main.js",
   "type": "module",
