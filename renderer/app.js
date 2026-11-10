@@ -269,6 +269,7 @@ const glowEl = $('glow');
 const spectrum = createSpectrum($('specBars'), () => renderGlance());
 const showSpectrum = () => spectrum.show(!open && settings.glow !== false && !reduceMotion);
 let glanceStatus = 'idle';
+let lastNotifyAt = 0;
 let doneSince = 0;
 function renderGlance() {
   if (introRunning) return;
@@ -283,6 +284,12 @@ function renderGlance() {
   glanceStatus = status;
   const g = glance({ ...fromModules, status, doneAge: status === 'done' ? Date.now() - doneSince : 0, voice: listening, sound: spectrum.sound, lastActivity, hover, sleepMin });
   island.dataset.mood = g.mood;
+  // a notification while the white sweep still shows: the same data-glow would not run the sweep again
+  if (g.glow === 'notify' && fromModules.notifyAt !== lastNotifyAt && glowEl.dataset.glow === 'notify') {
+    glowEl.dataset.glow = '';
+    void glowEl.getBoundingClientRect();
+  }
+  lastNotifyAt = fromModules.notifyAt;
   glowEl.dataset.glow = settings.glow === false ? '' : (g.glow ?? '');
   glowEl.style.setProperty('--cover', fromModules.music?.color ?? ''); // the music edge in the cover's colour
   $('notch').setAttribute('aria-label', MOOD_LABEL[g.mood]);

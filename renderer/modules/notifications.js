@@ -11,7 +11,7 @@
   const fresh = () => !!state.items[0] && Date.now() - state.items[0].at < FRESH_MS;
 
   api?.onToasts((s) => {
-    const newOne = s.items[0] && s.items[0].id !== state.items[0]?.id;
+    const newOne = s.items[0] && s.items[0].at !== state.items[0]?.at;
     state = s;
     if (!ctx) return;
     render();
@@ -69,6 +69,6 @@
       root = el;
       render();
     },
-    glance: () => ({ notify: fresh() }),
+    glance: () => ({ notify: fresh(), notifyAt: state.items[0]?.at ?? 0 }),
   });
 })();
