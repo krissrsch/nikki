@@ -39,11 +39,15 @@ Im Standardlauf ersetzt `fakeClaude()` (in `nikki.js`) die IPCs `start` und `sto
 - Im Standardlauf zeigen `HOME` und `USERPROFILE` auf einen Temp-Ordner. Die Hooks sind in einem frischen Stand aus. Nur `relay.e2e.js` schaltet sie ein, und zwar in der `settings.json` dieses Temp-Homes. Die echte `~/.claude/settings.json` wird nie geschrieben.
 - Der Claude-Lauf braucht das echte Home, weil dort der Login liegt. Er arbeitet in einem Temp-Projekt und löscht danach dessen Transkripte unter `~/.claude/projects/`.
 - `NikkiHelper.exe` startet in keinem Lauf (`NIKKI_NO_HELPER`): Die echte Wiedergabe, die Lautstärke und der Audio-Ausgang (Spektrum) bleiben unberührt.
-- Das Wetter geht nie ins Netz: `home.e2e.js` ersetzt `net.fetch` im Hauptprozess, alle anderen Läufe haben keine Stadt.
 - Alle Fenster sind stumm (`NIKKI_MUTE`): Nikkis Töne laufen wie sonst und werden gezählt, aber am PC hört man nichts.
+- Das Wetter geht nie ins Netz: `home.e2e.js` ersetzt `net.fetch` im Hauptprozess, alle anderen Läufe haben keine Stadt.
 - Alle Temp-Ordner (`%TEMP%\nikki-e2e-*`) werden nach jedem Test gelöscht.
 - `clipboard.e2e.js` braucht die echte Zwischenablage. Vorher sichert `win-clipboard.js` jedes Format (Win32 über PowerShell), danach kommt alles byte-gleich zurück, aber nur, solange noch ein Testtext drinsteht: Was du währenddessen kopierst, bleibt. Testtexte und Wiederherstellung tragen die Windows-Marker `CanIncludeInClipboardHistory` und `CanUploadToCloudClipboard` (= 0), landen also weder im Verlauf (Win+V) noch in der Cloud. Nikkis eigenes „Klick kopiert“ wird im Test nur aufgezeichnet. Die OLE-Hilfsformate „DataObject“ und „Ole Private Data“ (ein Fensterhandle der kopierenden App, kein Inhalt) werden nicht gesichert; OLE baut sie aus den übrigen Formaten neu.
 
 ## Gegenprobe
 
 Jeder Bug-Test wurde gegen den Code mit wieder eingebautem Fehler laufen gelassen und ist dort rot geworden: B1 (`console. log(fs. readFileSync("a. txt"))`), B2 (`sessionId: "sess-A"` im Start), B6 (zwei Stops), B4 („Der Start ist fehlgeschlagen…“) und B5 („Nikki stolpert.“ statt „Nikki stoppte.“). Beim Relay werden ohne die „Immer“-Regeln bzw. ohne das Löschen der vorgemerkten Nachricht die passenden Tests rot.
+
+## Screenshots und Demo-GIF
+
+`node e2e/screenshots.js` (Englisch, mit `de` auf Deutsch) und `node e2e/demo.js` (braucht ffmpeg) erzeugen die Bilder in `docs/` mit Demodaten aus `e2e/demo-data.js`, mit derselben Isolierung wie die Tests.

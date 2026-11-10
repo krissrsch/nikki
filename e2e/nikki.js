@@ -24,24 +24,29 @@ export async function until(fn, what, ms = 10000) {
 
 // state: initial state.json (fixture). settings: initial ~/.claude/settings.json in the temp home.
 // realHome: keep the user's home, only for runs that need the Claude login.
+// files: more JSON in userData before the start, e.g. { 'modules/todo.json': { items: [...] } }. video: folder for a recording.
 // Without it HOME/USERPROFILE point to a temp folder, so nothing can reach the real ~/.claude/settings.json.
-export async function launch({ state, settings, realHome = false } = {}) {
+export async function launch({ state, settings, realHome = false, files = {}, video } = {}) {
   const userData = tmpDir('data');
   const home = realHome ? null : tmpDir('home');
   // no start show, no jump between tabs in the tests: the page switches at once, as the assertions expect (cat.e2e.js turns it on)
   // NIKKI_E2E_DISPLAY: id of the display to run on, e.g. when a game is fullscreen on the main one (the island hides itself there)
   const display = Number(process.env.NIKKI_E2E_DISPLAY) || null;
   fs.writeFileSync(path.join(userData, 'state.json'), JSON.stringify({ catJump: false, intro: false, ...(display && { display }), ...state }));
+  for (const [file, data] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(userData, file)), { recursive: true });
+    fs.writeFileSync(path.join(userData, file), JSON.stringify(data));
+  }
   // started like the user would: no nested Claude Code session, no API key, no node mode
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(CLAUDECODE|CLAUDE_CODE_|ANTHROPIC_|ELECTRON_RUN_AS_NODE)/.test(k)));
   env.NIKKI_USER_DATA = userData;
   env.NIKKI_NO_HELPER = '1'; // no NikkiHelper.exe: the user's real media session and volume stay out of every run
+  env.NIKKI_MUTE = '1'; // sounds still play (the tests count them), but muted: nobody at the PC hears a test run
   env.NIKKI_NO_POINTER = '1'; // the real mouse stays out too: tests send the pointer positions themselves
   if (home) {
     env.HOME = env.USERPROFILE = home;
     // Claude counts as installed on every machine; the offline tests replace it before anything would run it
     fs.mkdirSync(path.join(home, '.local', 'bin'), { recursive: true });
-  env.NIKKI_MUTE = '1'; // sounds still play (the tests count them), but muted: nobody at the PC hears a test run
     fs.writeFileSync(path.join(home, '.local', 'bin', 'claude.exe'), '');
     if (settings) {
       fs.mkdirSync(path.join(home, '.claude'));
@@ -50,7 +55,7 @@ export async function launch({ state, settings, realHome = false } = {}) {
   }
   // --user-data-dir too: an app without NIKKI_USER_DATA support still stays off the real data
   // cwd in temp: with a temp USERPROFILE, PowerShell (fullscreen watcher) writes its module cache relative to it
-  const app = await electron.launch({ args: [`--user-data-dir=${userData}`, root], cwd: userData, executablePath: electronPath, env });
+  const app = await electron.launch({ args: [`--user-data-dir=${userData}`, root], cwd: userData, executablePath: electronPath, env, ...(video && { recordVideo: { dir: video } }) });
   const errors = [];
   app.on('console', (m) => m.type() === 'error' && errors.push(`main: ${m.text()}`));
   const page = await app.firstWindow();

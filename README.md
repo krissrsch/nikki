@@ -8,9 +8,9 @@ A notch for Windows 11 that runs Claude Code. Nikki sits at the top center of th
 
 The cat is drawn after my real cat Nikki.
 
-**[Download Nikki-Setup.exe](https://github.com/krissrsch/nikki/releases)** · The UI is in German.
+**[Download Nikki-Setup.exe](https://github.com/krissrsch/nikki/releases)** · English and German (Settings › General)
 
-![Home with Claude, music with the current lyric line, weather and calendar](docs/screenshots/home.png)
+![Nikki in action: music tints the notch, then a Claude Code task with a permission and its answer](docs/demo.gif)
 
 ## What it does
 
@@ -19,16 +19,37 @@ The cat is drawn after my real cat Nikki.
 | **Claude Code** | Start tasks per project, see live status and steps, answer permission requests (Allow / Always / Deny), questions and plans. Works for Claude Code sessions in your terminal too, through hooks. Plan limits shown as two rings. |
 | **Closed notch** | Only Nikki's eyes. A thin light edge says what is going on: yellow needs you, green works or is done, red error, the cover's colour for music, a white sweep for a new notification. A spectrum from the real audio grows under the notch. |
 | **Music** | Whatever Windows plays (Spotify, browser, …): cover, controls, volume, and the line being sung (synced lyrics from [LRCLIB](https://lrclib.net), off by default). |
-| **Mitteilungen** | Notifications from other apps, collected in the island. Off by default, kept in memory only. |
+| **Notifications** | Notifications from other apps, collected in the island. Off by default, kept in memory only. |
 | **Modules** | Calendar with reminders, to-do, notes, Pomodoro timer, file shelf, clipboard history, Discord voice channel. Each one can be switched off. |
-| **Voice** | Hold a key and speak, recognised locally with whisper.cpp. "Hey Nikki, …" sends it to Claude. |
+| **Voice** | Hold a key and speak, recognised locally with whisper.cpp. "Hey Nikki, …" sends it to Claude (commands are German). |
+| **Language** | English or German, or whatever Windows uses. Switches at once, no restart. |
 
-<p>
-  <img src="docs/screenshots/permission.png" alt="Claude asks to run npm test; Allow, Always, Deny" width="49%" />
-  <img src="docs/screenshots/notifications.png" alt="Two notifications from Outlook and Teams in the island" width="49%" />
-</p>
+## A closer look
 
-![Music page with cover, the current lyric line and volume](docs/screenshots/music.png)
+![The closed notch: Nikki's eyes, the edge in the cover's colour and the audio spectrum](docs/screenshots/notch.png)
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/home.png" alt="Home: Claude with plan limits, music with the current lyric line, weather, calendar" /><br /><sub><b>Today.</b> Claude and its plan limits, the song with the line being sung, weather, the next event.</sub></td>
+    <td width="50%"><img src="docs/screenshots/chat.png" alt="Chat: a prompt and Claude's answer in Markdown" /><br /><sub><b>Chat.</b> A task in a project folder, with branch, model and chat history.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/permission.png" alt="Claude asks to run npm test: Allow, Always, Deny" /><br /><sub><b>Permissions.</b> Allow, Always or Deny, by click or with A, I, D.</sub></td>
+    <td><img src="docs/screenshots/music.png" alt="Music with cover, lyric line and volume" /><br /><sub><b>Music.</b> Any player Windows knows, with synced lyrics.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/calendar.png" alt="Calendar month view with today's events" /><br /><sub><b>Calendar.</b> Local, with a reminder 15 minutes before.</sub></td>
+    <td><img src="docs/screenshots/todo.png" alt="To-do list with global and project items" /><br /><sub><b>To-do.</b> Global or per project, and “To chat” hands one to Claude.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/notes.png" alt="Notes as a tear-off pad" /><br /><sub><b>Notes.</b> A tear-off pad, flipped with the mouse wheel.</sub></td>
+    <td><img src="docs/screenshots/timer.png" alt="Pomodoro timer running" /><br /><sub><b>Timer.</b> Pomodoro with 5, 15 and 25 minutes.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/notifications.png" alt="Notifications from Outlook and GitHub in the island" /><br /><sub><b>Notifications.</b> What other apps tell you, in one place.</sub></td>
+    <td><img src="docs/screenshots/settings.png" alt="Settings window, General page with the language choice" /><br /><sub><b>Settings.</b> Its own window: language, sounds, glow, modules, hotkeys.</sub></td>
+  </tr>
+</table>
 
 ## How it works
 
@@ -48,7 +69,8 @@ The cat is drawn after my real cat Nikki.
 - **backends/claude.js** runs one task at a time through `@anthropic-ai/claude-agent-sdk` and turns its stream into a status and a step list (`lib/status.js`).
 - **helper/NikkiHelper.cs** is a small C# program built with the compiler that ships with Windows (`helper/build.cmd`), for the Windows APIs Node cannot reach.
 - **hook.cjs** is what Claude Code calls for terminal sessions. It posts the event to Nikki and, for permissions, waits for the answer from the island.
-- Pure logic lives in `lib/` and the top of each renderer module, with unit tests next to it. `e2e/` drives the real app with Playwright in a temp profile, offline.
+- **renderer/i18n.js** translates the interface. German is the source and `i18n/en.json` maps it to English; a MutationObserver swaps text and tooltips as they appear, so no call site has to know about languages.
+- Pure logic lives in `lib/` and the top of each renderer module, with unit tests next to it. `e2e/` drives the real app with Playwright in a temp profile, offline and muted.
 
 ## Build
 
@@ -59,7 +81,8 @@ npm install
 npm start
 npm test                 # unit tests, also run in CI
 npm run e2e              # Playwright against the real app, isolated (see e2e/README.md)
-node e2e/screenshots.js  # the screenshots above, with demo data
+node e2e/screenshots.js  # the screenshots above, with demo data (add "de" for German)
+node e2e/demo.js         # the demo GIF (needs ffmpeg)
 npm run dist             # builds Nikki-Setup.exe
 ```
 
@@ -81,6 +104,7 @@ Zugeklappt zeigt die Insel nur Nikkis Augen. Was los ist, zeigt eine schmale Lic
 - Module: Kalender, To-do, Notizen, Timer, Ablage, Zwischenablage, Discord, einzeln schaltbar
 - Spracheingabe, lokal erkannt. Befehle beginnen mit „Hey Nikki“
 - Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
+- Oberfläche auf Deutsch oder Englisch (Einstellungen › Allgemein), ohne Neustart
 
 Voraussetzung: Windows 11 und ein installiertes, eingeloggtes Claude Code. Installer: **Nikki-Setup.exe** unter [Releases](https://github.com/krissrsch/nikki/releases).
 
