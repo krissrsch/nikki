@@ -1,7 +1,8 @@
 // Nikki's Windows helper: long-running, talks JSON lines over stdio.
 // stdout: {"type":"ready"} | {"type":"media",...} | {"type":"volume","level":0-100,"muted":bool} | {"type":"error","message":...}
 //         | {"type":"spectrum","bands":[12 numbers 0-1]} (~30/s while something sounds, see Spectrum) | {"type":"focus","ok":bool}
-// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off | mic on | mic off | ptt <virtual keys, comma separated> | ptt off | rec start <wav path> | rec stop | focus <pid> [part of the window title]
+//         | {"type":"toasts","ok":bool} (access to other apps' notifications) | {"type":"toast","id":n,"app":...,"title":...,"body":...}
+// stdin:  toggle | play | pause | next | prev | seek <seconds> | volume <0-100> | mute | unmute | spectrum on | spectrum off | mic on | mic off | ptt <virtual keys, comma separated> | ptt off | toasts on | toasts off | rec start <wav path> | rec stop | focus <pid> [part of the window title]
 // NikkiHelper.exe --spectrum-test: checks the analysis on a test tone and silence, exit code 0 when it is right
 // Built with the C# 5 compiler that ships with Windows (see build.cmd): no C# 6+ syntax, and WinRT
 // async calls are waited on directly because .NET Framework's await bridge does not bind to the system .winmd files.
@@ -17,6 +18,8 @@ using System.Threading;
 using Windows.Foundation;
 using Windows.Media.Control;
 using Windows.Storage.Streams;
+using Windows.UI.Notifications;
+using Windows.UI.Notifications.Management;
 
 class NikkiHelper
 {
@@ -68,7 +71,7 @@ class NikkiHelper
         }
     }
 
-    static T Wait<T>(IAsyncOperation<T> op)
+    internal static T Wait<T>(IAsyncOperation<T> op)
     {
         while (op.Status == AsyncStatus.Started) Thread.Sleep(5);
         if (op.Status == AsyncStatus.Error) throw op.ErrorCode;
@@ -81,6 +84,11 @@ class NikkiHelper
         if (line == "spectrum on" || line == "spectrum off")
         {
             Spectrum.Output.Set(line == "spectrum on");
+            return;
+        }
+        if (line == "toasts on" || line == "toasts off")
+        {
+            Toasts.Set(line == "toasts on");
             return;
         }
         if (line == "mic on" || line == "mic off")
@@ -239,7 +247,7 @@ class NikkiHelper
         return Math.Round(d, 2).ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    static string Q(string s)
+    internal static string Q(string s)
     {
         if (s == null) return "\"\"";
         var sb = new StringBuilder("\"");
@@ -889,5 +897,79 @@ class Spectrum
         bool ok = loud && top == 6 && shown[6] > 0.6 && quiet;
         NikkiHelper.Emit("{\"type\":\"selftest\",\"ok\":" + (ok ? "true" : "false") + ",\"top\":" + top + "}");
         return ok;
+    }
+}
+
+// Notifications of other apps (module "Mitteilungen", opt-in). Polled: the change event needs a packaged app.
+// The first look after switching on only remembers what is there; from then on each new one goes out once.
+static class Toasts
+{
+    static Thread thread;
+    static volatile bool on;
+
+    public static void Set(bool want)
+    {
+        on = want;
+        if (!want || thread != null) return;
+        thread = new Thread(Loop);
+        thread.IsBackground = true;
+        thread.Start();
+    }
+
+    static void Loop()
+    {
+        UserNotificationListener listener = null;
+        var seen = new HashSet<uint>();
+        bool first = true;
+        while (true)
+        {
+            if (!on)
+            {
+                listener = null; // switched on again: ask Windows for access again, the user may have changed it
+                first = true;
+                Thread.Sleep(500);
+                continue;
+            }
+            try
+            {
+                if (listener == null)
+                {
+                    var l = UserNotificationListener.Current;
+                    var access = l.GetAccessStatus();
+                    if (access != UserNotificationListenerAccessStatus.Allowed) access = NikkiHelper.Wait(l.RequestAccessAsync());
+                    bool ok = access == UserNotificationListenerAccessStatus.Allowed;
+                    NikkiHelper.Emit("{\"type\":\"toasts\",\"ok\":" + (ok ? "true" : "false") + "}");
+                    if (!ok)
+                    {
+                        on = false;
+                        continue;
+                    }
+                    listener = l;
+                }
+                var now = new HashSet<uint>();
+                foreach (var n in NikkiHelper.Wait(listener.GetNotificationsAsync(NotificationKinds.Toast)))
+                {
+                    now.Add(n.Id);
+                    if (!first && !seen.Contains(n.Id)) Send(n);
+                }
+                seen = now;
+                first = false;
+            }
+            catch (Exception e) { NikkiHelper.Error(e); }
+            Thread.Sleep(1500);
+        }
+    }
+
+    static void Send(UserNotification n)
+    {
+        string app = "";
+        try { app = n.AppInfo.DisplayInfo.DisplayName; } catch (Exception) { }
+        var binding = n.Notification.Visual.GetBinding(KnownNotificationBindings.ToastGeneric);
+        if (binding == null) return;
+        var texts = binding.GetTextElements();
+        var body = new List<string>();
+        for (int i = 1; i < texts.Count; i++) body.Add(texts[i].Text);
+        NikkiHelper.Emit("{\"type\":\"toast\",\"id\":" + n.Id + ",\"app\":" + NikkiHelper.Q(app) + ",\"title\":" + NikkiHelper.Q(texts.Count > 0 ? texts[0].Text : "")
+            + ",\"body\":" + NikkiHelper.Q(string.Join(" ", body)) + "}");
     }
 }

@@ -7,4 +7,5 @@ set WM=%WINDIR%\System32\WinMetadata
   /r:"%FW%\System.Runtime.dll" /r:"%FW%\System.Threading.Tasks.dll" ^
   /r:"%FW%\System.Runtime.WindowsRuntime.dll" /r:"%FW%\System.Runtime.InteropServices.WindowsRuntime.dll" ^
   /r:"%WM%\Windows.Foundation.winmd" /r:"%WM%\Windows.Media.winmd" /r:"%WM%\Windows.Storage.winmd" ^
+  /r:"%WM%\Windows.UI.winmd" /r:"%WM%\Windows.ApplicationModel.winmd" ^
   "%~dp0NikkiHelper.cs"

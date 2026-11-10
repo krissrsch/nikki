@@ -65,3 +65,10 @@ test('chat dot: needs you > error > done', () => {
   assert.equal(chatDot({ unseen: 'done' }), 'accent');
   assert.equal(chatDot({ terminalDone: true }), 'accent');
 });
+
+test('a new notification: a white sweep over music, below everything an agent does', () => {
+  assert.deepEqual(glance({ notify: true, music, now: NOW }), { mood: 'awake', glow: 'notify' });
+  assert.equal(glance({ notify: true, status: 'working', now: NOW }).glow, 'work');
+  assert.equal(glance({ notify: true, status: 'needsYou', now: NOW }).glow, 'need');
+  assert.equal(glance({ notify: false, music, now: NOW }).glow, 'music');
+});

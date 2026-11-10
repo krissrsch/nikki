@@ -70,6 +70,10 @@ contextBridge.exposeInMainWorld('companion', {
   clipClear: () => ipcRenderer.invoke('clip-clear'),
   clipKeep: (on) => ipcRenderer.invoke('clip-keep', on), // "Verlauf merken": on disk, or memory only
   onClipboard: on('clipboard'),
+  // Mitteilungen: other apps' Windows notifications (helper), { access: true | false | null, items: [{ id, app, title, body, at }] }
+  toastsGet: () => ipcRenderer.invoke('toasts-get'),
+  toastsClear: () => ipcRenderer.invoke('toasts-clear'),
+  onToasts: on('toasts'),
   openExternal: (url) => ipcRenderer.send('open-external', url),
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
   onTerminal: on('terminal'),

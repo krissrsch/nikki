@@ -505,6 +505,7 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     store.modules = normalizeModules(value, store.modules);
     syncHelper();
     syncLyrics();
+    syncToasts();
     syncClipboard();
     syncDiscord();
   } else if (key === 'keepAwake') {
@@ -641,7 +642,7 @@ let helperBuild = null; // dev: build.cmd runs once when the exe is missing
 let mediaNow = null; // { app, title, artist, album, status, position, duration, updatedAt, cover: data URL | '', color: '#rrggbb' | '' } | null
 let volumeNow = null; // { level 0-100, muted } | null
 // the spectrum needs the helper too, with or without the music module
-const helperWanted = () => !process.env.NIKKI_NO_HELPER && !quitting && (store.glow !== false || store.voice || store.hooks || store.modules.some((m) => m.id === 'music' && m.on));
+const helperWanted = () => !process.env.NIKKI_NO_HELPER && !quitting && (store.glow !== false || store.voice || store.hooks || store.modules.some((m) => m.id === 'music' && m.on) || toastsOn());
 function syncHelper() {
   if (helperWanted()) startHelper();
   else stopHelper();
@@ -662,9 +663,10 @@ function startHelper() {
   const p = (helper = spawn(helperExe, [], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }));
   p.stdin.on('error', () => {}); // a command sent while it dies must not take main down (EPIPE)
   readline.createInterface({ input: p.stdout, crlfDelay: Infinity }).on('line', onHelperLine);
-  spectrumSent = micSent = pttSent = null; // a new helper starts with its spectrum off
+  spectrumSent = micSent = pttSent = toastsSent = null; // a new helper starts with its spectrum off
   syncSpectrum();
   syncVoice();
+  syncToasts();
   let gone = false;
   const restart = () => {
     if (gone) return;
@@ -726,6 +728,8 @@ function onHelperLine(line) {
   else if (m.type === 'rec') voiceHeard(m.ms);
   else if (m.type === 'voice' && Array.isArray(m.bands)) pill?.webContents.send('pill-bands', m.bands);
   else if (m.type === 'focus' && !m.ok) notify(NO_TERMINAL, true);
+  else if (m.type === 'toasts') setToasts({ ...inbox, access: !!m.ok });
+  else if (m.type === 'toast') addToast(m);
   else if (m.type === 'error') console.error('helper:', m.message);
 }
 // --- spectrum for the glow: the helper listens to what plays (WASAPI loopback) only while someone can see it:
@@ -759,6 +763,30 @@ ipcMain.on('media-cmd', (_e, cmd, value) => {
   const line = mediaCommand(cmd, value);
   if (line && helper) helper.stdin.write(`${line}\n`);
 });
+
+// --- Mitteilungen (module "notifications", opt-in): the helper reads other apps' Windows notifications while it is on.
+// The last 30, in memory only; switched off they are forgotten.
+let inbox = { access: null, items: [] };
+let toastsSent = null; // 'on' | 'off', last told to this helper
+const toastsOn = () => !quitting && store.modules.some((m) => m.id === 'notifications' && m.on);
+function setToasts(next) {
+  inbox = next;
+  send('toasts', inbox);
+}
+function syncToasts() {
+  const want = toastsOn() ? 'on' : 'off';
+  if (want === 'off' && inbox.items.length) setToasts({ access: inbox.access, items: [] });
+  if (!helper || want === toastsSent) return;
+  helper.stdin.write(`toasts ${(toastsSent = want)}\n`);
+}
+const clip = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b-\u001f]/g, '').trim().slice(0, n);
+function addToast(m) {
+  const t = { id: Number(m.id) || 0, app: clip(m.app, 60), title: clip(m.title, 200), body: clip(m.body, 600), at: Date.now() };
+  if (!toastsOn() || t.app === 'Nikki' || (!t.title && !t.body)) return; // Nikki's own toasts are already in the island
+  setToasts({ access: true, items: [t, ...inbox.items.filter((x) => x.id !== t.id)].slice(0, 30) });
+}
+ipcMain.handle('toasts-get', () => inbox);
+ipcMain.handle('toasts-clear', () => (setToasts({ access: inbox.access, items: [] }), inbox));
 
 // --- lyrics (lib/lyrics.js): LRCLIB, only with Songtexte and the music module on. One fetch per song, kept in memory.
 const lyricsCache = new Map(); // [artist, title] as JSON -> lines | null (none found)

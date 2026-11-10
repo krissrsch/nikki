@@ -94,6 +94,26 @@ describe('Module aus Phase 3', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
+  test('Mitteilungen: eine neue Meldung steht auf der Seite, die Kante leuchtet kurz weiß; ohne Zugriff ein Hinweis', async () => {
+    nikki = await launch({ state: { modules: [{ id: 'music', on: true }, { id: 'notifications', on: true }] } });
+    const { page } = nikki;
+    await page.click('#tabs .tab[data-view="notifications"]');
+    await page.waitForSelector('.mod-notifications .shelfEmpty');
+    // what main sends when the helper saw a new notification (the helper does not run in e2e)
+    await fromMain('toasts', { access: true, items: [{ id: 7, app: 'Outlook', title: 'Neue Mail', body: 'Treffen um 15 Uhr?', at: Date.now() }] });
+    await page.waitForSelector('.mod-notifications .toastTitle:has-text("Neue Mail")');
+    assert.equal(await page.textContent('.mod-notifications .toastApp'), 'Outlook');
+    assert.equal(await page.textContent('.mod-notifications .toastBody'), 'Treffen um 15 Uhr?');
+    await page.keyboard.press('Escape');
+    await until(() => page.evaluate(() => document.getElementById('glow').dataset.glow === 'notify'), 'weiße Kante');
+    await until(() => page.evaluate(() => document.getElementById('glow').dataset.glow === ''), 'Kante wieder aus', 8000);
+    await fromMain('toasts', { access: false, items: [] });
+    await page.click('#notch');
+    await page.click('#tabs .tab[data-view="notifications"]');
+    await page.waitForSelector('.mod-notifications .toastHint');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Ablage: Text und Dateien landen in userData/shelf, Auswahl geht als Pfad an den Chat, „Alles leeren“ leert', async () => {
     const src = tmpDir('quelle');
     dirs.push(src);
