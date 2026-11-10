@@ -6,10 +6,10 @@ function notesWhen(at, now) {
   const a = new Date(at);
   const b = new Date(now);
   const days = Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5);
-  if (days === 0) return `heute, ${a.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+  if (days === 0) return `heute, ${a.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}`;
   if (days === 1) return 'gestern';
-  if (days > 1 && days < 7) return a.toLocaleDateString('de-DE', { weekday: 'long' });
-  return a.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', ...(a.getFullYear() !== b.getFullYear() && { year: 'numeric' }) });
+  if (days > 1 && days < 7) return a.toLocaleDateString(LOCALE, { weekday: 'long' });
+  return a.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', ...(a.getFullYear() !== b.getFullYear() && { year: 'numeric' }) });
 }
 
 (() => {

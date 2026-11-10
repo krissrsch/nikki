@@ -7,6 +7,7 @@ import { connect as pipeConnect } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
+import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createClaudeAgent, readLimits } from './backends/claude.js';
 import { addClip, removeClip, restoreClips } from './lib/clipboard.js';
@@ -34,9 +35,9 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 // Must run before anything asks for userData.
 if (process.env.NIKKI_USER_DATA) app.setPath('userData', path.resolve(process.env.NIKKI_USER_DATA));
 else if (!app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'Nikki-dev'));
-
 // test runs (NIKKI_MUTE): every window plays its sounds as usual, only nobody hears them
 if (process.env.NIKKI_MUTE) app.on('web-contents-created', (_e, wc) => wc.setAudioMuted(true));
+
 // Serve the app from app://bundle/ so fetch() works for the Rive file and wasm (Chromium blocks fetch on file://).
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 function serveApp(req) {
@@ -106,6 +107,7 @@ let store = {
   voiceKey: VOICE_KEY, // held while speaking
   voiceHooks: [], // [{ name, url }]: url sealed like the Discord secret
   weatherCity: '', // Home weather tile; '' = none yet
+  lang: 'auto', // auto (Windows' language) | de | en
   lyrics: false, // music module: synced lyrics from lrclib.net; off by default, title and artist leave the PC
   weather: null, // last answer for weatherCity, see fetchWeather()
 };
@@ -134,7 +136,7 @@ function save() {
     saveFailed = false;
   } catch (e) {
     console.error('state.json:', e);
-    if (!saveFailed && app.isReady()) dialog.showMessageBox({ type: 'warning', title: 'Nikki', message: `Nikki kann nicht speichern: ${e.code ?? e.message}` }).catch(() => {});
+    if (!saveFailed && app.isReady()) dialog.showMessageBox({ type: 'warning', title: 'Nikki', message: tr(`Nikki kann nicht speichern: ${e.code ?? e.message}`) }).catch(() => {});
     saveFailed = true; // one message per run of failures, not one per save
   }
 }
@@ -163,12 +165,24 @@ const send = (channel, data) => {
   }
 };
 
+// --- language (setting "Sprache"): auto follows Windows. The renderer translates its DOM itself (renderer/i18n.js);
+// main only translates what Windows shows for it (toasts, tray). The translator is the renderer's own, run here in a vm.
+const LANGS = ['auto', 'de', 'en'];
+const enDict = JSON.parse(fs.readFileSync(path.join(dir, 'i18n', 'en.json'), 'utf8'));
+const i18nScope = vm.createContext({});
+vm.runInContext(fs.readFileSync(path.join(dir, 'renderer', 'i18n.js'), 'utf8'), i18nScope);
+const toEnglish = i18nScope.i18nTranslator(enDict);
+const lang = () => (store.lang === 'de' || store.lang === 'en' ? store.lang : app.getLocale().toLowerCase().startsWith('de') ? 'de' : 'en');
+const tr = (text) => (lang() === 'en' ? toEnglish(text) : text);
+// asked once by every window's preload, before its first script runs
+ipcMain.on('i18n', (e) => (e.returnValue = lang() === 'en' ? { lang: 'en', dict: enDict } : { lang: 'de', dict: {} }));
+
 // --- toast while the island can't be seen (hidden via tray or behind a fullscreen app); the renderer plays the sound
 // force: also while it can be seen (timer ran out, appointment soon): the closed notch is easy to miss
 const toasts = new Set();
 function notify(body, force = false) {
   if (!alive() || (win.isVisible() && !force) || !Notification.isSupported()) return;
-  const n = new Notification({ title: body, silent: true }); // Windows already shows the app name above it (B16)
+  const n = new Notification({ title: tr(body), silent: true }); // Windows already shows the app name above it (B16)
   // held until it is done: a collected Notification takes its click handler with it (N5)
   toasts.add(n);
   const drop = () => toasts.delete(n);
@@ -440,6 +454,7 @@ const settings = async () => ({
   glowLevel: GLOW_LEVELS.includes(store.glowLevel) ? store.glowLevel : 'normal',
   weatherCity: typeof store.weatherCity === 'string' ? store.weatherCity : '',
   lyrics: !!store.lyrics,
+  lang: LANGS.includes(store.lang) ? store.lang : 'auto',
 });
 ipcMain.handle('settings-get', settings);
 // the settings live in their own normal window; closing it changes nothing else
@@ -455,7 +470,7 @@ function openSettings(page = 'general') {
     height: 600,
     minWidth: 700,
     minHeight: 460,
-    title: 'Nikki Einstellungen',
+    title: tr('Nikki Einstellungen'),
     icon: path.join(dir, 'assets', 'icon.png'),
     backgroundColor: '#0c0d10',
     titleBarStyle: 'hidden',
@@ -525,7 +540,13 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     store.micSpectrum = !!value;
     syncSpectrum();
   } else if (key === 'glowLevel' && GLOW_LEVELS.includes(value)) store.glowLevel = value;
-  else if (key === 'lyrics') {
+  else if (key === 'lang' && LANGS.includes(value) && value !== store.lang) {
+    store.lang = value;
+    save();
+    createTray(); // its menu in the new language
+    for (const w of BrowserWindow.getAllWindows()) w.webContents.reload(); // every window starts over in it
+    return { ...(await settings()), error };
+  } else if (key === 'lyrics') {
     store.lyrics = !!value;
     syncLyrics();
   }
@@ -606,7 +627,7 @@ ipcMain.handle('start', async (_e, { prompt, cwd, newSession, plan, model, sessi
 // --- module data: userData/modules/<id>.json, written atomically; the id is checked in moduleFile (no path from the renderer)
 const modulesDir = path.join(app.getPath('userData'), 'modules');
 const unreadable = new Set(); // never overwrite module data we could not read (H2)
-const warn = (message) => dialog.showMessageBox({ type: 'warning', title: 'Nikki', message }).catch(() => {});
+const warn = (message) => dialog.showMessageBox({ type: 'warning', title: 'Nikki', message: tr(message) }).catch(() => {});
 ipcMain.handle('module-get', (_e, id) => {
   const file = moduleFile(modulesDir, id);
   try {
@@ -1538,7 +1559,7 @@ function writeJsonSettings(file, mutate, opts) {
   } catch (e) {
     dialog.showErrorBox(
       'Nikki',
-      e instanceof SyntaxError ? `${file} ist kein gültiges JSON. Ich ändere daran nichts.` : `Nikki kann ${file} nicht ändern (${e.code ?? e.message}).`,
+      tr(e instanceof SyntaxError ? `${file} ist kein gültiges JSON. Ich ändere daran nichts.` : `Nikki kann ${file} nicht ändern (${e.code ?? e.message}).`),
     );
     return false;
   }
@@ -1566,7 +1587,7 @@ async function refreshHooks() {
 async function setHooks(on) {
   const node = on ? await findNode() : null;
   if (on && !node) {
-    dialog.showErrorBox('Nikki', 'Für Terminal-Sessions braucht es Node.js (der Befehl „node“ wurde nicht gefunden).');
+    dialog.showErrorBox('Nikki', tr('Für Terminal-Sessions braucht es Node.js (der Befehl „node“ wurde nicht gefunden).'));
     on = false;
   } else if (!writeHooks((s) => (on ? withHooks(s, hookCommand(node), { relay: store.relay !== false }) : withoutHooks(s)))) on = store.hooks;
   store.hooks = on;
@@ -1604,7 +1625,7 @@ app.on('second-instance', (_e, argv) => (argv.includes('--quit') ? app.quit() : 
 
 let tray; // module-level so it isn't garbage-collected
 let hotkey = null;
-const hotkeyTip = () => tray?.setToolTip(hotkey ? `Nikki (${hotkey.replace('Control', 'Strg').replace('Space', 'Leertaste')})` : 'Nikki');
+const hotkeyTip = () => tray?.setToolTip(hotkey ? tr(`Nikki (${hotkey.replace('Control', 'Strg').replace('Space', 'Leertaste')})`) : 'Nikki');
 // register() is false when another app holds the combo, and throws for one Electron cannot parse
 function register(acc, fn = () => showNow()) {
   try {
@@ -1660,12 +1681,13 @@ function setCloseKey(acc) {
   return null;
 }
 function createTray() {
+  tray?.destroy();
   tray = new Tray(nativeImage.createFromPath(path.join(dir, 'assets', 'tray.png')).resize({ width: 16, height: 16 }));
   tray.on('click', () => showNow());
   tray.setContextMenu(
     Menu.buildFromTemplate([
       {
-        label: 'Ein-/Ausblenden',
+        label: tr('Ein-/Ausblenden'),
         click: () => {
           if (!alive()) return;
           userHidden = win.isVisible();
@@ -1674,9 +1696,9 @@ function createTray() {
           if (!userHidden && !win.isVisible()) showNow();
         },
       },
-      { label: 'Einstellungen', click: () => openSettings() },
+      { label: tr('Einstellungen'), click: () => openSettings() },
       { type: 'separator' },
-      { label: 'Beenden', click: () => app.quit() },
+      { label: tr('Beenden'), click: () => app.quit() },
     ]),
   );
 }
@@ -1710,7 +1732,7 @@ app.whenReady().then(() => {
   // the user's own combo first; Ctrl+Alt+Space is often taken (Claude Desktop, Developer Island): fall back to Ctrl+Alt+K
   hotkey = [store.hotkey, 'Control+Alt+Space', 'Control+Alt+K'].find((k) => k && register(k)) ?? null;
   hotkeyTip();
-  if (storeNotice) dialog.showMessageBox({ type: 'warning', title: 'Nikki', message: storeNotice }).catch(() => {});
+  if (storeNotice) dialog.showMessageBox({ type: 'warning', title: 'Nikki', message: tr(storeNotice) }).catch(() => {});
   // settings files last: a locked one must not cost the hotkey (M8)
   if (store.hooks) refreshHooks();
   // Cursor support is gone: take our hooks out of ~/.cursor/hooks.json once, then drop the flag

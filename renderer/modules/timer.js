@@ -19,7 +19,7 @@ function timerText(ms) {
   let tick;
   const label = () => ({ 5: 'Kurze Pause', 15: 'Lange Pause' })[t.preset] ?? 'Fokus';
   const save = () => (ctx.save(t), ctx.changed());
-  const goLabel = () => (t.endsAt ? 'Pause' : t.left ? 'Weiter' : 'Start');
+  const goLabel = () => (t.endsAt ? 'Pause' : t.left ? 'Fortsetzen' : 'Start');
   const run = () => {
     clearInterval(tick);
     tick = t.endsAt ? setInterval(step, 1000) : null;

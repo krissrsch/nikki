@@ -6,6 +6,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'"
     />
+    <script src="i18n.js"></script>
     <title>Nikki Einstellungen</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="cat.css" />
@@ -22,6 +23,7 @@
       <section class="sPage" data-page="general" aria-labelledby="pGeneral" hidden>
         <h1 id="pGeneral">Allgemein</h1>
         <div class="setCard">
+          <label class="setRow"><span>Anzeigesprache<small>Deutsch oder Englisch</small></span><select id="setLang" class="num wide"><option value="auto">Automatisch (Windows)</option><option value="de">Deutsch</option><option value="en">English</option></select></label>
           <label class="setRow"><span>Mit Windows starten<small id="autostartHint" hidden>nur in der installierten App</small></span><input id="setAutostart" class="switch" type="checkbox" role="switch" /></label>
           <label class="setRow"><span>Töne<small>Hinweise bei Fertig und Freigaben, Nikkis Laute</small></span><input id="setSound" class="switch" type="checkbox" role="switch" /></label>
           <div class="setRow"><span>Eigene Töne<small>Dateien im Ordner ersetzen Nikkis Klänge, die Namen stehen in LIESMICH.txt</small></span><button id="soundsOpen" type="button" class="btn" aria-label="Ordner mit eigenen Tönen öffnen">Ordner öffnen</button></div>

@@ -8,7 +8,7 @@
   let root;
   const ICON_DEL = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5M5.5 4.5l.5 9h4l.5-9"/></svg>';
   const line = (t) => t.replace(/\s+/g, ' ').trim();
-  const time = (at) => new Date(at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const time = (at) => new Date(at).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
   const count = (n) => `${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`;
   // the page re-renders on every copy: keep the keyboard where it was
   const focused = () => root?.contains(document.activeElement) && document.activeElement.closest('[data-key]')?.dataset.key;

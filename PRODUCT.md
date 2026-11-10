@@ -37,7 +37,7 @@ Unlike Coucou (which monitors many agents as notch pills and often needs an API 
 - Optional (settings: Claude): terminal sessions of Claude Code through hooks in `~/.claude/settings.json`, with permissions answered in the island.
 - The island opens on the display under the cursor.
 - Claude: uses installed `claude.exe`; Agent SDK version must match the CLI.
-- UI language: German.
+- UI language: German or English (setting "Anzeigesprache", auto follows Windows). German is the source text; renderer/i18n.js translates the DOM from i18n/en.json.
 
 ## Brand Commitments
 

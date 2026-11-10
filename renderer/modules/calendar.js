@@ -30,7 +30,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
   const ICON_PREV = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4.5 6 8l3.5 3.5"/></svg>';
   const ICON_NEXT = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4.5 10 8l-3.5 3.5"/></svg>';
   const ICON_DEL = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5M5.5 4.5l.5 9h4l.5-9"/></svg>';
-  const time = (ts) => new Date(ts).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const time = (ts) => new Date(ts).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
   const inMin = (ms) => (ms < 60000 ? 'jetzt' : `in ${Math.ceil(ms / 60000)} min`);
   const dayOf = (key) => new Date(`${key}T00:00`);
   // "heute", "morgen" or "Mo., 2. Nov."
@@ -38,7 +38,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
     const key = calDayKey(ts);
     if (key === calDayKey(now)) return 'heute';
     if (key === calDayKey(new Date(now).setDate(new Date(now).getDate() + 1))) return 'morgen';
-    return new Date(ts).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+    return new Date(ts).toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
   }
   const iconBtn = (label, icon, onclick) => h('button', { type: 'button', className: 'iconBtn', ariaLabel: label, title: label, innerHTML: icon, onclick });
   const save = () => (ctx.save(data), ctx.changed());
@@ -62,7 +62,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
     const head = h(
       'div',
       { className: 'calHead' },
-      h('span', { className: 'calName', ariaLive: 'polite' }, new Date(y, m, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })),
+      h('span', { className: 'calName', ariaLive: 'polite' }, new Date(y, m, 1).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })),
       iconBtn('Voriger Monat', ICON_PREV, () => shift(-1)),
       iconBtn('Nächster Monat', ICON_NEXT, () => shift(1)),
       plus,
@@ -73,7 +73,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
       if (!n) return h('span');
       const key = `${y}-${calPad(m + 1)}-${calPad(n)}`;
       const count = calOnDay(data.events, key).length;
-      const label = dayOf(key).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+      const label = dayOf(key).toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
       const b = h('button', { type: 'button', className: 'calDay', ariaPressed: String(key === picked), ariaLabel: count ? `${label}, ${count} ${count === 1 ? 'Termin' : 'Termine'}` : label }, String(n));
       b.classList.toggle('today', key === today);
       b.classList.toggle('has', count > 0);
@@ -87,7 +87,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
     const card = h('div', { className: 'calCard' }, head, week, h('div', { className: 'calDays' }, ...days));
 
     const word = dayWord(dayOf(picked).getTime(), now);
-    const title = word === 'heute' || word === 'morgen' ? word[0].toUpperCase() + word.slice(1) : dayOf(picked).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+    const title = word === 'heute' || word === 'morgen' ? word[0].toUpperCase() + word.slice(1) : dayOf(picked).toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
     const list = calOnDay(data.events, picked);
     const rows = list.map((e, i) => {
       const soon = e.at >= now && e.at - now < CAL_REMIND_MS;
@@ -192,7 +192,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
     // Home (canvas Glas): today big on the left, the next two appointments of today beside it
     tile(el) {
       const now = Date.now();
-      const date = (o) => new Date(now).toLocaleDateString('de-DE', o);
+      const date = (o) => new Date(now).toLocaleDateString(LOCALE, o);
       const next = calOnDay(data.events, calDayKey(now)).filter((e) => e.at + e.dur * 60000 > now).slice(0, 2);
       el.append(
         h('div', { className: 'calToday' }, h('span', { className: 'calWeekday' }, date({ weekday: 'long' })), h('span', { className: 'calNum' }, date({ day: 'numeric' })), h('span', { className: 'tileSub' }, date({ month: 'long', year: 'numeric' }))),

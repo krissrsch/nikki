@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 // classic renderer scripts share one global scope: run them in one sandbox, in index.html order, and take the pure parts
 const ctx = vm.createContext({});
-for (const f of ['modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js', 'modules/clipboard.js', 'modules/discord.js', 'modules/notifications.js']) {
+for (const f of ['i18n.js', 'modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js', 'modules/clipboard.js', 'modules/discord.js', 'modules/notifications.js']) {
   vm.runInContext(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
 const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, musicLyric, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText, discordCount })', ctx);

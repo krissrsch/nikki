@@ -150,8 +150,8 @@ const RING = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10
 const untilText = (iso, week) => {
   const d = new Date(iso);
   if (Number.isNaN(+d)) return '';
-  const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-  return `, wieder frei ${week ? `${d.toLocaleDateString('de-DE', { weekday: 'long' })}, ` : ''}${time} Uhr`;
+  const time = d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+  return `, wieder frei ${week ? `${d.toLocaleDateString(LOCALE, { weekday: 'long' })}, ` : ''}${time} Uhr`;
 };
 function usageRing(label, short, w, week) {
   const r = document.createElement('span');
@@ -205,7 +205,7 @@ function renderWeather(w) {
     parts = [head(w.query), hint(why)];
   } else {
     // offline: the last answer with its time
-    const stale = w.error && Number.isFinite(w.at) ? ` · Stand ${new Date(w.at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : '';
+    const stale = w.error && Number.isFinite(w.at) ? ` · Stand ${new Date(w.at).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}` : '';
     parts = [
       head(w.place?.name || w.query, Number.isFinite(w.max) && Number.isFinite(w.min) ? `H ${w.max}° · T ${w.min}°` : ''),
       h('div', { className: 'wNow' }, h('span', { className: 'wTemp' }, `${w.temp}°`), h('span', { className: 'wText' }, `${w.text}${stale}`)),
@@ -636,7 +636,7 @@ async function openChatsMenu() {
       b.role = 'menuitem';
       b.className = 'chatOpen';
       b.title = c.cwd || '';
-      const when = c.updatedAt ? new Date(c.updatedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      const when = c.updatedAt ? new Date(c.updatedAt).toLocaleString(LOCALE, { dateStyle: 'short', timeStyle: 'short' }) : '';
       b.innerHTML = '<span class="chatTitle"></span><span class="chatMeta"></span>';
       b.children[0].textContent = c.title || 'Chat';
       b.children[1].textContent = when;
@@ -1626,7 +1626,7 @@ api.onPermissionCancel((id) => {
 
 // fades in from above and opens on Home; with the intro Nikki arrives first (settings: Start-Intro)
 async function startUp() {
-  if (settings.intro === false || reduceMotion) {
+  if (settings.intro === false || reduceMotion || performance.getEntriesByType('navigation')[0]?.type === 'reload') {
     island.classList.remove('boot');
     setOpen(true);
     return play('hello');

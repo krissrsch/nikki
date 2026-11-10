@@ -7,7 +7,7 @@
   let ctx;
   let root;
   let freshTimer;
-  const time = (at) => new Date(at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const time = (at) => new Date(at).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
   const fresh = () => !!state.items[0] && Date.now() - state.items[0].at < FRESH_MS;
 
   api?.onToasts((s) => {

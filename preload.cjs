@@ -2,7 +2,11 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const on = (channel) => (cb) => ipcRenderer.on(channel, (_e, data) => cb(data));
 
+const i18n = ipcRenderer.sendSync('i18n'); // { lang: 'de' | 'en', dict }, see renderer/i18n.js
+
 contextBridge.exposeInMainWorld('companion', {
+  lang: i18n.lang,
+  dict: i18n.dict,
   getState: () => ipcRenderer.invoke('get-state'),
   pickFolder: () => ipcRenderer.invoke('pick-folder'),
   branch: (cwd) => ipcRenderer.invoke('branch', cwd), // `git branch --show-current` or null

@@ -99,6 +99,7 @@ function applySettings(s) {
   $('setGlowLevel').disabled = !s.glow;
   if (document.activeElement !== $('setCity')) $('setCity').value = s.weatherCity;
   $('setLyrics').checked = s.lyrics;
+  $('setLang').value = s.lang;
   renderModules(s.modules);
 }
 const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
@@ -121,6 +122,7 @@ $('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.ta
 $('setHoverOpen').addEventListener('change', (e) => setSetting('hoverOpen', Number(e.target.value)));
 $('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));
 $('setLyrics').addEventListener('change', (e) => setSetting('lyrics', e.target.checked));
+$('setLang').addEventListener('change', (e) => setSetting('lang', e.target.value));
 async function setDiscord(key, value) {
   const s = await api.settingsSet(key, value);
   applySettings(s);
