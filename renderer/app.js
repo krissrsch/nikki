@@ -1634,6 +1634,11 @@ api.onPermissionCancel((id) => {
 
 // fades in from above and opens on Home; with the intro Nikki arrives first (settings: Start-Intro)
 async function startUp() {
+  // main reloads the island with ?quiet for a language switch: back where the user left it, closed and without a hello
+  if (location.search === '?quiet') {
+    history.replaceState(null, '', location.pathname);
+    return island.classList.remove('boot');
+  }
   if (settings.intro === false || reduceMotion || performance.getEntriesByType('navigation')[0]?.type === 'reload') {
     island.classList.remove('boot');
     setOpen(true);

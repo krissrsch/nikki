@@ -50,7 +50,7 @@ describe('Sprache', () => {
     assert.deepEqual(nikki.errors, []);
   });
 
-  test('Umschalten in den Einstellungen: Insel und Einstellungen laden neu in der neuen Sprache, die Wahl bleibt gespeichert', async () => {
+  test('Umschalten in den Einstellungen: Insel und Einstellungen laden neu in der neuen Sprache, die Insel bleibt zu, die Wahl bleibt gespeichert', async () => {
     nikki = await launch();
     const { page } = nikki;
     assert.equal(await page.getAttribute('#tabs .tab[data-view="home"]', 'aria-label'), 'Heute');
@@ -61,6 +61,7 @@ describe('Sprache', () => {
     await until(async () => (await homeTab()) === 'Today', 'Insel auf Englisch');
     await until(() => s.evaluate(() => document.querySelector('.sideBtn[data-page="general"]')?.textContent.trim() === 'General').catch(() => false), 'Einstellungen auf Englisch');
     assert.equal(nikki.state().lang, 'en');
+    assert.equal(await page.getAttribute('#notch', 'aria-expanded'), 'false', 'nach dem Neuladen bleibt die Insel zu, wie sie war');
     await s.selectOption('#setLang', 'de');
     await until(async () => (await homeTab()) === 'Heute', 'wieder Deutsch');
     assert.deepEqual(nikki.errors, []);

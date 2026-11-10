@@ -197,6 +197,13 @@ function notify(body, force = false) {
 
 // --- permission requests (also questions and plans) wait for the renderer's answer: { answer, picks?, message? }
 const pending = new Map();
+// language switched: the island reloads in it only once no task runs and it is closed (its chat is saved by then)
+let islandReload = false;
+function reloadIslandWhenFree() {
+  if (!islandReload || agent.busy() || islandOpen || !alive()) return;
+  islandReload = false;
+  win.loadURL('app://bundle/renderer/index.html?quiet'); // a query, not a #hash: a hash alone would not load the page again. See startUp()
+}
 let nextId = 1;
 function askPermission(req, signal) {
   return new Promise((resolve) => {
@@ -244,6 +251,7 @@ const agent = createClaudeAgent({
     send('status', s);
     agentWorking = !['done', 'error', 'idle'].includes(s.state);
     applyAwake();
+    if (!agentWorking) setTimeout(reloadIslandWhenFree, 2000); // after the renderer saved the answer
     const where = activeCwd ? path.basename(activeCwd) : 'Projekt';
     if (s.state === 'done') notify(`Fertig in ${where}.`);
     if (s.state === 'error') notify(`Fehler in ${where}.`);
@@ -547,7 +555,9 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     store.lang = value;
     save();
     createTray(); // its menu in the new language
-    for (const w of BrowserWindow.getAllWindows()) w.webContents.reload(); // every window starts over in it
+    for (const w of BrowserWindow.getAllWindows()) if (w !== win) w.webContents.reload(); // settings and the voice capsule start over in it
+    islandReload = true;
+    reloadIslandWhenFree();
     return { ...(await settings()), error };
   } else if (key === 'lyrics') {
     store.lyrics = !!value;
@@ -821,7 +831,7 @@ let lyricsFor = ''; // the song asked for last; a position update of the same so
 async function syncLyrics() {
   const m = mediaNow;
   const on = store.lyrics && store.modules.some((x) => x.id === 'music' && x.on);
-  const key = on && m?.title ? JSON.stringify([m.artist, m.title]) : '';
+  const key = on && m?.title ? JSON.stringify([m.artist, m.title, m.album, Math.round(m.duration || 0)]) : '';
   if (key === lyricsFor) return;
   lyricsFor = key;
   if (lyricsNow) send('lyrics', (lyricsNow = null));
@@ -836,6 +846,8 @@ async function syncLyrics() {
         if (r.status === 404) continue;
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         if ((lines = pickLyrics(await r.json(), m.duration))) break;
+      } catch (e) {
+        failed = e; // get failed: search may still find it
       }
     }
     if (!lines && failed) {
@@ -847,8 +859,6 @@ async function syncLyrics() {
   }
   if (lyricsFor !== key || !lines) return; // another song meanwhile, or none found
   send('lyrics', (lyricsNow = { title: m.title, artist: m.artist, lines }));
-      } catch (e) {
-        failed = e; // get failed: search may still find it
 }
 
 // --- Discord (lib/discord.js): runs while the module is on and a client id is set; secret and tokens never leave main
@@ -1666,6 +1676,7 @@ function syncCloseKey() {
 ipcMain.on('island-open', (_e, on) => {
   islandOpen = on;
   syncCloseKey();
+  reloadIslandWhenFree();
 });
 // '' clears it. A trial registration, so a taken combo is said now and not silently the next time the island opens.
 function setCloseKey(acc) {
@@ -1708,6 +1719,7 @@ function createTray() {
       { label: tr('Beenden'), click: () => app.quit() },
     ]),
   );
+  hotkeyTip();
 }
 
 app.whenReady().then(() => {
