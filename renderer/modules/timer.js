@@ -111,6 +111,7 @@ function timerText(ms) {
           // ran out while Nikki was closed: a focus round still counts, on the day it ended
           if (label() === 'Fokus') rounds = { day: timerDay(t.endsAt), n: timerRounds(rounds, t.endsAt) + 1 };
           t = { preset: t.preset, endsAt: null, left: null };
+          c.save({ ...t, rounds }); // at once: else the next load finds the old end and counts that round again
         }
       }
       run();
