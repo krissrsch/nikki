@@ -29,6 +29,7 @@ function showPage(id) {
   for (const b of document.querySelectorAll('.sideBtn')) {
     if (b.dataset.page === page[0]) b.setAttribute('aria-current', 'page');
     else b.removeAttribute('aria-current');
+    b.tabIndex = b.dataset.page === page[0] ? 0 : -1;
   }
   sideCat.dataset.mood = page[3];
   $('content').scrollTop = 0;
@@ -41,6 +42,15 @@ $('sideList').replaceChildren(
     return b;
   }),
 );
+// one Tab stop for the sidebar: up and down walk it, Enter opens the page
+$('sideList').addEventListener('keydown', (e) => {
+  const btns = [...document.querySelectorAll('.sideBtn')];
+  const i = btns.indexOf(document.activeElement);
+  const next = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: btns.length - 1 }[e.key];
+  if (i < 0 || next === undefined) return;
+  e.preventDefault();
+  btns[(next + btns.length) % btns.length].focus();
+});
 
 const KEYS = {
   hotkey: { btn: $('setHotkey'), msg: $('hotkeyMsg'), tell: (k) => `Nikki hört jetzt auf ${k}.`, tip: 'Esc bricht ab.' },

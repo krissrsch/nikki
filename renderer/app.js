@@ -71,6 +71,7 @@ function setView(name) {
   for (const [v, id] of Object.entries(VIEWS)) $(id).hidden = v !== view;
   for (const btn of document.querySelectorAll('#tabs .tab')) {
     btn.setAttribute('aria-pressed', String(btn.dataset.view === view));
+    if (btn.dataset.view) btn.tabIndex = btn.dataset.view === view ? 0 : -1; // one Tab stop for the row, the arrows walk it
   }
   if (view === 'chat' && open && !perms.length) promptEl.focus(); // a waiting card keeps the keyboard (its hotkeys)
   if (view === 'home') for (const id of live.keys()) renderTile(id); // "in 12 min" and co. are as old as the last look
@@ -1314,6 +1315,18 @@ $('tabs').addEventListener('click', (e) => {
   if (btn?.id === 'openSettings') openSettings();
   else if (btn) goView(btn.dataset.view);
   else setOpen(false); // the empty strip closes the island, like the old bar did
+});
+// arrows walk the tabs, Home and End jump to the ends; Enter or Space opens the focused one
+$('tabs').addEventListener('keydown', (e) => {
+  const tabs = [...document.querySelectorAll('#tabs .tab[data-view]')];
+  const i = tabs.indexOf(document.activeElement);
+  if (i < 0) return;
+  const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+  if (next === undefined) return;
+  e.preventDefault();
+  const t = tabs[(next + tabs.length) % tabs.length];
+  for (const b of tabs) b.tabIndex = b === t ? 0 : -1;
+  t.focus();
 });
 $('toChat').addEventListener('click', () => goView('chat'));
 $('newBtn').addEventListener('click', () => setNewSession(!newSession));
