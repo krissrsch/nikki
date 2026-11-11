@@ -902,10 +902,8 @@ function renderSessionPills() {
   $('ownDot').dataset.state = ownState();
   $('projectBtn').setAttribute('aria-pressed', String(!focusSession));
   const box = $('sessionPills');
-  const ranked = [...terminal]
-    .filter((t) => t.state && t.state !== 'idle')
-    .sort((a, b) => (RANK[b.state] || 0) - (RANK[a.state] || 0) || b.at - a.at)
-    .slice(0, MAX_SESSION_PILLS);
+  const active = [...terminal].filter((t) => t.state && t.state !== 'idle').sort((a, b) => (RANK[b.state] || 0) - (RANK[a.state] || 0) || b.at - a.at);
+  const ranked = active.slice(0, MAX_SESSION_PILLS);
   if (focusSession && !ranked.some((t) => t.id === focusSession)) {
     const pinned = terminal.find((t) => t.id === focusSession);
     if (pinned) ranked.unshift(pinned);
@@ -920,7 +918,7 @@ function renderSessionPills() {
       b.setAttribute('aria-pressed', String(t.id === focusSession));
       b.title = `beobachtet: ${t.cwd}\n${t.text}`;
       const label = document.createElement('span');
-      label.textContent = `${folderName(t.cwd)} · Terminal`;
+      label.textContent = folderName(t.cwd); // "beobachtet" in the tooltip; the header has no room for more
       b.append(sessionDot(t.state), label);
       b.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -930,6 +928,9 @@ function renderSessionPills() {
       return b;
     }),
   );
+  // the ones that did not fit: a count instead of vanishing silently
+  const rest = active.filter((t) => !ranked.includes(t));
+  if (rest.length) box.append(Object.assign(document.createElement('span'), { className: 'pillMore', textContent: `+${rest.length}`, title: rest.map((t) => folderName(t.cwd)).join('\n') }));
 }
 function setModel(m) {
   model = m;

@@ -70,7 +70,7 @@ describe('Terminal-Rückkanal', () => {
   test('Angepinnte Terminal-Session zeigt Claudes letzte Antwort statt des eigenen Chats', async () => {
     await hook({ ...stopEvent, last_assistant_message: '**Fertig.** Alle Tests mit `npm test` sind grün.' });
     await nikki.openChat();
-    const chip = page.locator('#sessionPills .chip', { hasText: 'demo · Terminal' });
+    const chip = page.locator('#sessionPills .chip', { hasText: 'demo' });
     await chip.waitFor();
     if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click(); // a card of this session may have pinned it already
     await page.waitForSelector('#termReply:not([hidden]) .msg-assistant strong:text-is("Fertig.")');

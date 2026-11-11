@@ -487,12 +487,14 @@ button.sRow:focus-visible { outline: 2px solid var(--text); outline-offset: 2px;
 @media (hover: hover) and (pointer: fine) {
   .chip:hover:not(:disabled) { color: var(--text); }
 }
-#sessionPills { display: flex; gap: 6px; min-width: 0; }
+#sessionPills { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pillMore { flex: none; color: var(--faint); font-size: 11px; }
+#sessionPills .chip { min-width: 64px; } /* a short folder name stays whole; the long one gives way */
 #sessionPills[hidden] { display: none; }
 .projectWrap,
 .chatsWrap,
 .modelWrap { position: relative; display: flex; min-width: 0; }
-.projectWrap { flex: 0 1 auto; }
+.projectWrap { flex: none; } /* her own project keeps its name; the terminal chips give way first */
 .chatsWrap,
 .modelWrap { flex: none; }
 #chatsBtn { width: 124px; max-width: none; justify-content: space-between; }
