@@ -26,7 +26,7 @@ import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
 import { onHook, sessionPid, sweep } from './lib/terminal.js';
 import { limitWarnings, toUsage } from './lib/usage.js';
 import { soundFiles, soundsReadme } from './lib/sounds.js';
-import { cleanTranscript, OLD_MODEL, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs, whisperThreads } from './lib/voice.js';
+import { cleanTranscript, mouseKey, OLD_MODEL, parseVoice, pttKeys, VOICE_ASSETS, VOICE_KEY, webhookOk, whisperArgs, whisperThreads } from './lib/voice.js';
 import { forecastUrl, geocodeUrl, parseForecast, parsePlace } from './lib/weather.js';
 import { moveDataDir } from './lib/data-dir.js';
 
@@ -1015,27 +1015,37 @@ function setVoice(state) {
   send('voice', state === 'listening');
   syncSpectrum();
 }
+// a mouse button as the voice key is also clicked for its own job (middle click closes a tab): a press shorter than
+// VOICE_MIN_MS stays silent, the pill only shows once it is held, and hints about the setup never pop up for it
+let voiceDownAt = 0;
+let voiceListenTimer;
 function voiceDown() {
   if (voiceState !== 'idle' || !helper || !alive()) return;
-  if (!store.voice) return pillDone('Spracheingabe ist aus. Schalte sie unter Einstellungen, Sprache ein.', 'bad');
-  if (!voiceInstalled()) return pillDone(voiceSetup.state === 'error' ? 'Einrichten hat nicht geklappt. Schalte sie aus und wieder ein.' : `Wird noch eingerichtet, ${voiceSetup.percent} %`, 'bad');
+  const mouse = mouseKey(store.voiceKey);
+  if (!store.voice) return mouse || pillDone('Spracheingabe ist aus. Schalte sie unter Einstellungen, Sprache ein.', 'bad');
+  if (!voiceInstalled()) return mouse || pillDone(voiceSetup.state === 'error' ? 'Einrichten hat nicht geklappt. Schalte sie aus und wieder ein.' : `Wird noch eingerichtet, ${voiceSetup.percent} %`, 'bad');
   fs.rmSync(voiceWav, { force: true });
   setVoice('listening');
+  voiceDownAt = Date.now();
   helper.stdin.write(`rec start ${voiceWav}\n`);
   voiceStop = setTimeout(voiceUp, VOICE_MAX_MS);
-  pillShow({ phase: 'listening' });
+  clearTimeout(voiceListenTimer);
+  if (mouse) voiceListenTimer = setTimeout(() => voiceState === 'listening' && pillShow({ phase: 'listening' }), VOICE_MIN_MS);
+  else pillShow({ phase: 'listening' });
 }
 function voiceUp() {
   if (voiceState !== 'listening') return;
   clearTimeout(voiceStop);
+  clearTimeout(voiceListenTimer);
   setVoice('thinking');
-  pillShow({ phase: 'thinking' });
+  if (!(mouseKey(store.voiceKey) && Date.now() - voiceDownAt < VOICE_MIN_MS)) pillShow({ phase: 'thinking' });
   helper?.stdin.write('rec stop\n');
 }
 function voiceHeard(ms) {
   if (voiceState !== 'thinking') return;
   if (ms < VOICE_MIN_MS) {
     setVoice('idle');
+    if (mouseKey(store.voiceKey)) return; // a plain click of that button, not meant for Nikki
     return pillDone('Nichts gehört. Halt die Taste beim Sprechen.', 'bad');
   }
   const started = Date.now();
