@@ -98,7 +98,7 @@ let store = {
   glow: true, // light edge around the closed notch, spectrum with music
   glowLevel: 'normal', // dezent | normal | kraeftig
   hoverOpen: 600, // ms the pointer rests on the closed notch until it opens; 0: only by click
-  welcomed: false, // the first-run card on Home was closed; a state.json from before it existed counts as welcomed
+  welcomed: false, // the first-run card on Home was closed; a state.json from before it existed counts as welcomed (and keeps hover off)
   catJump: true, // Nikki jumps through the tab icons when the page changes
   intro: true, // she arrives with a small show when Nikki starts
   closeKey: null, // closes the open island without focus; held only while it is open
@@ -119,7 +119,7 @@ let storeNotice = null; // shown once the app is ready
 let storeWritable = true; // never overwrite a state.json we could not read: that is how chats got lost (H2)
 try {
   const saved = readJson(storeFile, (moved) => (storeNotice = `Nikkis Daten waren beschädigt und wurden nach\n${moved}\nverschoben. Nikki startet mit leerem Stand.`));
-  if (saved && typeof saved === 'object') store = { ...store, welcomed: true, ...saved };
+  if (saved && typeof saved === 'object') store = { ...store, welcomed: true, hoverOpen: 0, ...saved }; // an update keeps how it opened, whatever the new defaults
   store.projects = Array.isArray(store.projects) ? store.projects : [];
   // 1.0 chats from Cursor or Gemini carry a session id Claude does not know
   store.chats = (Array.isArray(store.chats) ? store.chats : []).map((c) => (c?.backend && c.backend !== 'claude' ? { ...c, backend: 'claude', sessionId: null } : c));
