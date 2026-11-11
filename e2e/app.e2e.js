@@ -189,6 +189,37 @@ describe('Nikki offline', () => {
     await until(async () => (await nikki.calls()).stops === 1, 'Stop-Knopf stoppt');
   });
 
+  test('Vormerken: Enter mit Text, während Claude arbeitet, schickt es nach „fertig“; nach einem Fehler bleibt es im Feld', async () => {
+    const a = project('projA');
+    nikki = await launch({ state: { projects: [a] } });
+    const { page } = nikki;
+    await nikki.fakeClaude();
+    await nikki.openChat();
+    await nikki.send('Erste Aufgabe');
+    await until(nikki.busy, 'Aufgabe läuft');
+    await page.fill('#prompt', 'Danach das hier');
+    await page.press('#prompt', 'Enter');
+    assert.equal(await page.getAttribute('#composer', 'class'), 'queued');
+    assert.match(await page.textContent('#stepLine'), /Vorgemerkt/);
+    await page.press('#prompt', 'Enter'); // again: not any more
+    assert.equal(await page.getAttribute('#composer', 'class'), '');
+    await page.press('#prompt', 'Enter');
+    assert.equal((await nikki.calls()).stops, 0, 'Enter stoppt nie');
+    await nikki.status({ state: 'done', text: 'fertig', answer: 'Erledigt.' });
+    await until(async () => (await nikki.calls()).starts.length === 2, 'die vorgemerkte Nachricht geht raus');
+    assert.equal((await nikki.calls()).starts[1].prompt, 'Danach das hier');
+    assert.equal(await page.inputValue('#prompt'), '');
+    // a failed turn: the marked text stays to be looked at, nothing starts by itself
+    await page.fill('#prompt', 'Noch was');
+    await page.press('#prompt', 'Enter');
+    await nikki.status({ state: 'error', text: 'Nikki stolpert.', answer: 'kaputt' });
+    await page.waitForTimeout(300);
+    assert.equal((await nikki.calls()).starts.length, 2);
+    assert.equal(await page.inputValue('#prompt'), 'Noch was');
+    assert.equal(await page.getAttribute('#composer', 'class'), '');
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Karten-Hotkeys: A erlaubt, D lehnt ab, Ziffer wählt; der Composer kapert nichts, Esc schließt nicht', async () => {
     const a = project('projA');
     nikki = await launch({ state: { projects: [a] } });

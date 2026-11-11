@@ -584,6 +584,7 @@ button.sRow:focus-visible { outline: 2px solid var(--text); outline-offset: 2px;
 }
 #prompt:focus-visible { border-color: rgb(169 231 189 / 0.5); }
 #prompt::placeholder { color: var(--faint); }
+#composer.queued #prompt { border-style: dashed; border-color: var(--accent); }
 #go {
   display: grid;
   place-items: center;

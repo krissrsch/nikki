@@ -485,5 +485,8 @@
   "Ändern": "Change",
   "Termin ändern": "Change appointment",
   "Speichern": "Save",
-  "Mitteilung löschen": "Delete notification"
+  "Mitteilung löschen": "Delete notification",
+  "Vorgemerkt: geht raus, sobald Claude fertig ist.": "Queued: goes out as soon as Claude is done.",
+  "Vorgemerkt: geht raus, sobald Claude fertig ist": "Queued: goes out as soon as Claude is done",
+  "Nicht mehr vorgemerkt.": "No longer queued."
 }

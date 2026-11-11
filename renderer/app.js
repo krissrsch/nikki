@@ -387,6 +387,11 @@ function show(s) {
     setBusy(false);
     refreshBranch(); // the task may have switched branches
     if (wasBusy) sendPlanFeedback();
+    if (queued) {
+      setQueued(false);
+      // only after a clean end: an error or a stop leaves the text in the field to look at first
+      if (s.state === 'done' && !busy && promptEl.value.trim()) start();
+    }
   }
   renderState();
 }
@@ -1475,12 +1480,23 @@ $('composer').addEventListener('submit', (e) => {
   planFeedback = null; // stopped on purpose: don't send the plan reason afterwards
   api.stop();
 });
+// Enter while Claude works never stops it: it marks the text, which goes out once this turn is done (Enter again unmarks)
+let queued = false;
+function setQueued(v) {
+  queued = v;
+  $('composer').classList.toggle('queued', v);
+  promptEl.title = v ? 'Vorgemerkt: geht raus, sobald Claude fertig ist' : '';
+}
 promptEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    start(); // no-op while busy: Enter never stops a task
+    if (busy && !focusSession && promptEl.value.trim()) {
+      setQueued(!queued);
+      setStepLine(queued ? 'Vorgemerkt: geht raus, sobald Claude fertig ist.' : 'Nicht mehr vorgemerkt.');
+    } else start();
   }
 });
+promptEl.addEventListener('input', () => queued && !promptEl.value.trim() && setQueued(false));
 function escape() {
   if (!menu.hidden) {
     closeMenu();
