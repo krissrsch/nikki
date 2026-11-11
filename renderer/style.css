@@ -559,7 +559,9 @@ button.sRow:focus-visible { outline: 2px solid var(--text); outline-offset: 2px;
 #termReply[hidden] { display: none; }
 .termHint { font-size: 11px; }
 .termEmpty { color: var(--faint); }
-.stepLine { margin: 0; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.stepLine { margin: 0; padding-right: 116px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; } /* her head peeks up at the right (cat.js) */
+/* no step line: the card's last line (or a card's buttons) would end where she peeks */
+#output:has(~ .stepLine[data-empty='true']) { padding-bottom: 28px; }
 .stepLine[data-empty='true'] { display: none; }
 .meta { display: flex; align-items: center; gap: 5px; margin: 0; color: var(--faint); font-size: 12px; }
 .msg { margin: 0; line-height: 1.5; overflow-wrap: anywhere; user-select: text; }

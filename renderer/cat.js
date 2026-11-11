@@ -321,7 +321,7 @@ function catOffset(el, box) {
 // Everything is a pure function of the layout, so the stage can ask again after every resize.
 const CAT_PLACES = {
   music: [{ sel: '.musicPage, .musicEmpty', type: 'sit', at: 'top-right' }],
-  calendar: [{ sel: null, type: 'sit', at: 'bottom-right' }],
+  calendar: [{ sel: '.calSide', type: 'peek', x: 0.6 }], // over the day's list, beside its title: a long list keeps its last row
   shelf: [{ sel: '.shelfGrid, .shelfEmpty', type: 'peek', x: 0.55 }],
   todo: [{ sel: '.todoList', type: 'peek', x: 0.62 }],
   notes: [{ sel: '.padBar', type: 'peek', x: 0.5 }, { sel: '.padEmpty', type: 'sit', at: 'bottom-right' }],
@@ -334,8 +334,8 @@ function catSpot(view, { box, home, composer, pageOf }) {
   }
   if (view === 'chat' && composer) {
     const r = catOffset(composer, box);
-    // left of centre: the permission card's buttons sit at the right edge and must stay clickable
-    return { type: 'peek', left: Math.round(r.x + r.w * 0.42 - CAT_W / 2), edge: r.y };
+    // at the right end, where text lines run out; the step line and the card's buttons keep clear of her (style.css)
+    return { type: 'peek', left: Math.round(r.x + r.w * 0.9 - CAT_W / 2), edge: r.y };
   }
   const page = pageOf?.(view);
   for (const c of CAT_PLACES[view] ?? []) {

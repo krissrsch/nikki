@@ -86,7 +86,7 @@ test('ihr Platz: Home sitzt unten rechts in der Claude-Kachel, Chat lugt über d
   const chat = cat.catSpot('chat', ctx);
   assert.equal(chat.type, 'peek');
   assert.equal(chat.edge, 380);
-  assert.ok(chat.left > 200 && chat.left + 93 < 420, 'over the composer, left of the permission buttons at the right edge');
+  assert.ok(chat.left > 16 + 688 / 2 && chat.left + 93 <= 16 + 688, 'over the right end of the composer, where text lines run out');
   const other = cat.catSpot('todo', ctx);
   assert.equal(other.type, 'peek');
   assert.equal(other.edge, 90);
@@ -102,6 +102,7 @@ test('jeder Reiter hat seinen eigenen Platz, nicht nur oben mittig', () => {
   assert.deepEqual(music, { type: 'sit', left: 16 + 688 - 93 - 10, top: 70 });
   const cal = at('calendar', {});
   assert.equal(cal.type, 'peek', 'without the page element it falls back to the generic edge');
+  assert.equal(at('calendar', { '.calSide': withParent(el(378, 62, 416, 300)) }).edge, 62, 'over the day list, not on its last row');
   assert.equal(at('timer', { '.timerRing': withParent(el(200, 70, 140, 140)) }).left, 200 - 93 - 14);
   assert.equal(at('shelf', { '.shelfGrid, .shelfEmpty': withParent(el(16, 108, 688, 300)) }).edge, 108);
   assert.equal(at('todo', { '.todoList': withParent(el(16, 108, 688, 100)) }).edge, 108);
