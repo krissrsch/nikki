@@ -54,6 +54,7 @@ function timerText(ms) {
 
   function render() {
     if (!root) return;
+    const busy = Boolean(t.endsAt || t.left); // a round is on: a mis-click on a preset must not throw it away
     const ring = h('div', {
       className: 'timerRing',
       innerHTML: `<svg viewBox="0 0 140 140" role="img"><circle class="timerTrack" cx="70" cy="70" r="62"/><circle class="timerArc" cx="70" cy="70" r="62" stroke-dasharray="${RING}" transform="rotate(-90 70 70)"/><text class="timerText" x="70" y="79" text-anchor="middle"></text></svg>`,
@@ -67,7 +68,7 @@ function timerText(ms) {
           'div',
           { className: 'timerSide' },
           h('span', { className: 'timerLabel' }, label()),
-          h('div', { className: 'timerPresets', role: 'group', ariaLabel: 'Dauer' }, ...PRESETS.map((m) => h('button', { type: 'button', className: 'btn', ariaPressed: String(m === t.preset), onclick: () => reset(m) }, `${m} min`))),
+          h('div', { className: 'timerPresets', role: 'group', ariaLabel: 'Dauer' }, ...PRESETS.map((m) => h('button', { type: 'button', className: 'btn', ariaPressed: String(m === t.preset), disabled: busy, title: busy ? 'Erst zurücksetzen' : '', onclick: () => reset(m) }, `${m} min`))),
           h('div', { className: 'timerActions' }, h('button', { type: 'button', className: 'btn primary', onclick: toggle }, goLabel()), h('button', { type: 'button', className: 'btn', onclick: () => reset() }, 'Zurücksetzen')),
         ),
       ),
