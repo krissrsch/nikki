@@ -102,7 +102,12 @@ test('jeder Reiter hat seinen eigenen Platz, nicht nur oben mittig', () => {
   assert.deepEqual(music, { type: 'sit', left: 16 + 688 - 93 - 10, top: 70 });
   const cal = at('calendar', {});
   assert.equal(cal.type, 'peek', 'without the page element it falls back to the generic edge');
-  assert.equal(at('calendar', { '.calSide': withParent(el(378, 62, 416, 300)) }).edge, 62, 'over the day list, not on its last row');
+  // the calendar: she sits under a short day list, and peeks over a long one instead of covering its last row
+  const calPage = (rowsBottom) => ({ ...el(16, 62, 688, 270), firstElementChild: el(16, 62, 688, 270), querySelector: (s) => (s === '.calSide' ? { ...el(378, 62, 416, 270), lastElementChild: el(378, rowsBottom - 38, 416, 38) } : null) });
+  const calAt = (rowsBottom) => JSON.parse(JSON.stringify(cat.catSpot('calendar', { box, pageOf: () => calPage(rowsBottom) })));
+  assert.deepEqual(calAt(62 + 110), { type: 'sit', left: 16 + 688 - 93 - 4, top: 62 + 270 - 82 }, 'two appointments: bottom right');
+  assert.equal(calAt(62 + 250).type, 'peek', 'a long list: over it');
+  assert.equal(calAt(62 + 250).edge, 62);
   assert.equal(at('timer', { '.timerRing': withParent(el(200, 70, 140, 140)) }).left, 200 - 93 - 14);
   assert.equal(at('shelf', { '.shelfGrid, .shelfEmpty': withParent(el(16, 108, 688, 300)) }).edge, 108);
   assert.equal(at('todo', { '.todoList': withParent(el(16, 108, 688, 100)) }).edge, 108);

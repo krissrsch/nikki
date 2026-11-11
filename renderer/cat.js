@@ -318,10 +318,12 @@ function catOffset(el, box) {
 // Her place per view: 'sit' (Home: bottom right in the Claude tile) or 'peek' (over the top edge of something in the page).
 // Every other page has its own spot where there is air (candidates are tried in order, the first anchor that exists wins):
 //   sit  at: top-right | bottom-right | left (beside the anchor, bottom aligned)    peek  x: share of the anchor's width
+//   free: only while the last child of that element ends a cat's height above the anchor's bottom
 // Everything is a pure function of the layout, so the stage can ask again after every resize.
 const CAT_PLACES = {
   music: [{ sel: '.musicPage, .musicEmpty', type: 'sit', at: 'top-right' }],
-  calendar: [{ sel: '.calSide', type: 'peek', x: 0.6 }], // over the day's list, beside its title: a long list keeps its last row
+  // bottom right while the day's list leaves room below it; a long list keeps its last row, she peeks over it then
+  calendar: [{ sel: null, type: 'sit', at: 'bottom-right', free: '.calSide' }, { sel: '.calSide', type: 'peek', x: 0.6 }],
   shelf: [{ sel: '.shelfGrid, .shelfEmpty', type: 'peek', x: 0.55 }],
   todo: [{ sel: '.todoList', type: 'peek', x: 0.62 }],
   notes: [{ sel: '.padBar', type: 'peek', x: 0.5 }, { sel: '.padEmpty', type: 'sit', at: 'bottom-right' }],
@@ -342,6 +344,8 @@ function catSpot(view, { box, home, composer, pageOf }) {
     const el = c.sel ? page?.querySelector?.(c.sel) : page;
     if (!el || !el.offsetParent) continue;
     const r = catOffset(el, box);
+    const last = c.free && page?.querySelector?.(c.free)?.lastElementChild;
+    if (last && catOffset(last, box).y + last.offsetHeight + CAT_H > r.y + r.h) continue; // no room under that list
     if (c.type === 'peek') return { type: 'peek', left: Math.round(r.x + r.w * c.x - CAT_W / 2), edge: r.y };
     if (c.at === 'top-right') return { type: 'sit', left: r.x + r.w - CAT_W - 10, top: r.y + 8 };
     if (c.at === 'left') return { type: 'sit', left: Math.max(16, r.x - CAT_W - 14), top: r.y + r.h - CAT_H };
