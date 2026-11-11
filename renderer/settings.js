@@ -113,26 +113,16 @@ function applySettings(s) {
   renderModules(s.modules);
 }
 const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
-$('setAutostart').addEventListener('change', (e) => setSetting('autostart', e.target.checked));
+// one line per plain control: its element id -> the setting it changes; a switch sends checked, a list its value (numbers as numbers)
+const SWITCHES = { setAutostart: 'autostart', setAwake: 'keepAwake', setHooks: 'hooks', setRelay: 'relay', setBranch: 'showBranch', setCatJump: 'catJump', setIntro: 'intro', setGlow: 'glow', setMic: 'micSpectrum', setLyrics: 'lyrics' };
+const CHOICES = { setSleep: ['sleepMin', Number], setGlowLevel: ['glowLevel', String], setHoverOpen: ['hoverOpen', Number], setCity: ['weatherCity', String], setLang: ['lang', String] };
+for (const [id, key] of Object.entries(SWITCHES)) $(id).addEventListener('change', (e) => setSetting(key, e.target.checked));
+for (const [id, [key, cast]] of Object.entries(CHOICES)) $(id).addEventListener('change', (e) => setSetting(key, cast(e.target.value)));
 $('setSound').addEventListener('change', (e) => setSetting('muted', !e.target.checked));
 $('soundsOpen').addEventListener('click', () => api.soundsOpen());
 $('aboutOpenDir').addEventListener('click', () => api.openDataDir());
 $('aboutReleases').addEventListener('click', () => api.openExternal('https://github.com/krissrsch/nikki/releases'));
-$('setAwake').addEventListener('change', (e) => setSetting('keepAwake', e.target.checked));
-$('setSleep').addEventListener('change', (e) => setSetting('sleepMin', Number(e.target.value)));
-$('setHooks').addEventListener('change', (e) => setSetting('hooks', e.target.checked));
-$('setRelay').addEventListener('change', (e) => setSetting('relay', e.target.checked));
-$('setBranch').addEventListener('change', (e) => setSetting('showBranch', e.target.checked));
-$('setCatJump').addEventListener('change', (e) => setSetting('catJump', e.target.checked));
-$('setIntro').addEventListener('change', (e) => setSetting('intro', e.target.checked));
 $('setCatPlaces').addEventListener('click', () => setSetting('catPlaces', null));
-$('setGlow').addEventListener('change', (e) => setSetting('glow', e.target.checked));
-$('setMic').addEventListener('change', (e) => setSetting('micSpectrum', e.target.checked));
-$('setGlowLevel').addEventListener('change', (e) => setSetting('glowLevel', e.target.value));
-$('setHoverOpen').addEventListener('change', (e) => setSetting('hoverOpen', Number(e.target.value)));
-$('setCity').addEventListener('change', (e) => setSetting('weatherCity', e.target.value));
-$('setLyrics').addEventListener('change', (e) => setSetting('lyrics', e.target.checked));
-$('setLang').addEventListener('change', (e) => setSetting('lang', e.target.value));
 async function setDiscord(key, value) {
   const s = await api.settingsSet(key, value);
   applySettings(s);
