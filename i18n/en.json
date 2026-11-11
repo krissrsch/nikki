@@ -501,5 +501,10 @@
   "Fahr mit der Maus auf die Notch oder drück {0}. Esc klappt mich wieder zu.": "Rest the mouse on the notch or press {0}. Esc folds me up again.",
   "Klick auf die Notch oder drück {0}. Esc klappt mich wieder zu.": "Click the notch or press {0}. Esc folds me up again.",
   "Musik, Kalender, Notizen, Timer und mehr schaltest du in den Einstellungen ein und aus.": "Music, calendar, notes, timer and more are switched on and off in the settings.",
-  "Los geht’s": "Let's go"
+  "Los geht’s": "Let's go",
+  "eigene": "own",
+  "Eigene Dauer in Minuten": "Own length in minutes",
+  "Heute {0} Fokusrunde": "{0} focus round today",
+  "Heute {0} Fokusrunden": "{0} focus rounds today",
+  "Heute noch keine Fokusrunde": "No focus round yet today"
 }

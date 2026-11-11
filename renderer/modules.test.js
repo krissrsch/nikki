@@ -8,7 +8,7 @@ const ctx = vm.createContext({});
 for (const f of ['i18n.js', 'modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js', 'modules/clipboard.js', 'modules/discord.js', 'modules/notifications.js']) {
   vm.runInContext(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
-const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, musicLyric, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText, discordCount })', ctx);
+const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, musicLyric, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText, timerRounds, timerMinutes, discordCount })', ctx);
 // objects from the sandbox have another Object.prototype: compare plain copies
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const MIN = 60 * 1000;
@@ -97,6 +97,15 @@ test('timer: time left running, paused and fresh; mm:ss rounds up', () => {
   assert.equal(g.timerText(18 * MIN + 30_001), '18:31');
   assert.equal(g.timerText(1), '00:01');
   assert.equal(g.timerText(0), '00:00');
+  assert.equal(g.timerText(180 * MIN), '180:00', 'an own length past the hour stays in minutes');
+});
+
+test('timer: own length kept to 1-180 whole minutes; focus rounds count for today only', () => {
+  assert.deepEqual([g.timerMinutes('40'), g.timerMinutes(0), g.timerMinutes(999), g.timerMinutes('7.6'), g.timerMinutes('x')], [40, 1, 180, 8, 25]);
+  const now = new Date(2026, 10, 11, 18).getTime();
+  assert.equal(g.timerRounds({ day: new Date(now).toDateString(), n: 3 }, now), 3);
+  assert.equal(g.timerRounds({ day: new Date(2026, 10, 10).toDateString(), n: 5 }, now), 0, 'yesterday is over');
+  assert.equal(g.timerRounds(null, now), 0);
 });
 
 test('music: position runs on while playing, stops at the end, holds while paused', () => {
