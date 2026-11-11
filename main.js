@@ -319,6 +319,8 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (e) => e.preventDefault());
   win.loadURL('app://bundle/renderer/index.html');
+  // no history to go back in: the side mouse buttons (a voice key now) must never navigate the island to its last load
+  win.webContents.on('did-finish-load', () => win.webContents.navigationHistory?.clear());
 }
 
 // --- visibility: hidden by the user (tray) or while a fullscreen app (game, video) is in front
