@@ -493,6 +493,8 @@ function openSettings(page = 'general') {
   });
   settingsWin.once('ready-to-show', () => settingsWin.show());
   settingsWin.on('closed', () => (settingsWin = null));
+  // Windows also reports the side mouse buttons as app commands: a second way for the voice key capture to hear them
+  settingsWin.on('app-command', (_e, cmd) => ['browser-backward', 'browser-forward'].includes(cmd) && settingsWin.webContents.send('app-command', cmd));
   settingsWin.loadFile(path.join(dir, 'renderer', 'settings.html'), { hash: page });
 }
 ipcMain.on('open-settings', (_e, page) => openSettings(page));

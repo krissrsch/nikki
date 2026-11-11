@@ -212,6 +212,8 @@ function onHotkeyMouse(e) {
   e.stopPropagation();
   saveKey(capturing, acc, false);
 }
+// the same buttons as Windows app commands, in case the page never saw them as mouse buttons; after a mousedown the capture is over already
+api.onAppCommand?.((cmd) => capturing?.mouse && saveKey(capturing, cmd === 'browser-backward' ? 'MouseBack' : 'MouseForward', false));
 async function saveKey(entry, acc, clear) {
   const close = entry.key === 'closeKey';
   stopCapture();

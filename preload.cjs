@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('companion', {
   discordAuthorize: () => ipcRenderer.send('discord-authorize'), // opens the dialog in Discord
   onDiscord: on('discord'),
   onSettingsPage: on('settings-page'),
+  onAppCommand: on('app-command'), // a side mouse button, as Windows names it: browser-backward | browser-forward
   onCatReset: on('cat-reset'),
   focus: () => ipcRenderer.send('focus'),
   notchDrag: (on) => ipcRenderer.send('notch-drag', on), // the closed notch is being dragged: main follows the pointer to another display

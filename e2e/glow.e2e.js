@@ -220,7 +220,7 @@ describe('Notch und Glow', () => {
     await s.click('.sideBtn[data-page="voice"]');
     assert.equal(await s.isChecked('#setVoice'), false, 'ab Werk aus, nichts wird geladen');
     assert.equal(await s.textContent('#setVoiceKey'), 'Strg+Alt+V');
-    // a mouse button works too (the side buttons cannot be pressed from Playwright; the unit tests cover them)
+    // a mouse button works too
     await s.click('#setVoiceKey');
     await s.mouse.move(40, 40);
     await s.mouse.down({ button: 'middle' });
@@ -231,6 +231,19 @@ describe('Notch und Glow', () => {
     await s.click('#setVoiceKey');
     await s.click('#setVoiceKey'); // a left click on the button ends the capture, it is never the key
     assert.equal(nikki.state().voiceKey, 'MouseMiddle');
+    // the side buttons: Playwright's mouse has none, the DevTools protocol does (a real Chromium mouse event, button 3)
+    const cdp = await s.context().newCDPSession(s);
+    await s.click('#setVoiceKey');
+    for (const type of ['mousePressed', 'mouseReleased']) await cdp.send('Input.dispatchMouseEvent', { type, x: 40, y: 40, button: 'back', buttons: type === 'mousePressed' ? 8 : 0, clickCount: 1 });
+    await until(() => nikki.state().voiceKey === 'MouseBack', 'Seitentaste Zurück gespeichert');
+    assert.equal(await s.textContent('#setVoiceKey'), 'Maustaste Zurück');
+    // and the way Windows also reports them: an app command on the settings window
+    await s.click('#setVoiceKey');
+    await nikki.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.getTitle() === 'Nikki Einstellungen').emit('app-command', {}, 'browser-forward'));
+    await until(() => nikki.state().voiceKey === 'MouseForward', 'Seitentaste Vor als App-Befehl gespeichert');
+    await nikki.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.getTitle() === 'Nikki Einstellungen').emit('app-command', {}, 'browser-backward'));
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(nikki.state().voiceKey, 'MouseForward', 'outside a capture a side button changes nothing');
     assert.deepEqual(nikki.errors, []);
   });
 
