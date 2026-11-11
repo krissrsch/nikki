@@ -483,9 +483,13 @@ function openSettings(page = 'general') {
     settingsWin.show();
     return settingsWin.focus();
   }
+  // on the display the notch is on, not always the primary one
+  const { workArea: wa } = screen.getDisplayMatching(win.getBounds());
   settingsWin = new BrowserWindow({
     width: 860,
     height: 600,
+    x: Math.round(wa.x + (wa.width - 860) / 2),
+    y: Math.round(wa.y + (wa.height - 600) / 2),
     minWidth: 700,
     minHeight: 460,
     title: tr('Nikki Einstellungen'),
