@@ -22,3 +22,8 @@ function moduleList(saved, ids) {
   const list = (Array.isArray(saved) ? saved : []).filter((m) => ids.includes(m?.id)).map((m) => ({ id: m.id, on: !!m.on }));
   return [...list, ...ids.filter((id) => !list.some((m) => m.id === id)).map((id) => ({ id, on: false }))];
 }
+
+// shared by several modules: the clock time of a timestamp, and the trash and plus icons
+const clockTime = (ts) => new Date(ts).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+const ICON_TRASH = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5M5.5 4.5l.5 9h4l.5-9"/></svg>';
+const ICON_PLUS = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>';

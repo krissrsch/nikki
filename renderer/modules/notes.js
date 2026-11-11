@@ -22,7 +22,6 @@ function notesWhen(at, now) {
   let tornTimer;
   const ICON_PREV = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4 5.5 8l4 4"/></svg>';
   const ICON_NEXT = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"/></svg>';
-  const ICON_PLUS = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>';
   const ICON_TEAR = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v11l-2.3 2-2.3-2-2.4 2-2.3-2-2.4 2L5 14z"/></svg>';
   const save = () => {
     clearTimeout(saveTimer);

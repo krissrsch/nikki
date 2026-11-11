@@ -50,12 +50,9 @@ const calDue = (events, now) =>
   let month; // { y, m } shown in the card
   let picked = calDayKey(Date.now());
   let form = false; // the form is open: true for a new appointment, or the appointment being changed
-  const ICON_PLUS = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>';
   const ICON_PREV = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4.5 6 8l3.5 3.5"/></svg>';
   const ICON_NEXT = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4.5 10 8l-3.5 3.5"/></svg>';
   const ICON_REPEAT = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 7a5 5 0 0 1 9-2.5M13 9a5 5 0 0 1-9 2.5M12 2v2.5H9.5M4 14v-2.5h2.5"/></svg>';
-  const ICON_DEL = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5M5.5 4.5l.5 9h4l.5-9"/></svg>';
-  const time = (ts) => new Date(ts).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
   const inMin = (ms) => (ms < 60000 ? 'jetzt' : `in ${Math.ceil(ms / 60000)} min`);
   const dayOf = (key) => new Date(`${key}T00:00`);
   // "heute", "morgen" or "Mo., 2. Nov."
@@ -127,13 +124,13 @@ const calDue = (events, now) =>
       const soon = e.at >= now && e.at - now < CAL_REMIND_MS;
       const row = h(
         'div',
-        { className: `calEvent${e.at + e.dur * 60000 < now ? ' past' : ''}`, title: `${time(e.at)} bis ${time(e.at + e.dur * 60000)}` },
+        { className: `calEvent${e.at + e.dur * 60000 < now ? ' past' : ''}`, title: `${clockTime(e.at)} bis ${clockTime(e.at + e.dur * 60000)}` },
         h('span', { className: `calBar c${i % 3}${soon ? ' soon' : ''}` }),
-        h('span', { className: 'calTime' }, time(e.at)),
+        h('span', { className: 'calTime' }, clockTime(e.at)),
         h('button', { type: 'button', className: 'calTitle', title: 'Ändern', onclick: () => ((form = e.src), render(), root.querySelector('.calForm input')?.focus()) }, e.title),
         e.repeat && h('span', { className: 'calRepeat', role: 'img', ariaLabel: `wiederholt sich ${CAL_REPEATS[e.repeat]}`, title: `wiederholt sich ${CAL_REPEATS[e.repeat]}`, innerHTML: ICON_REPEAT }),
         soon && h('span', { className: 'calMeta' }, inMin(e.at - now)),
-        iconBtn(e.repeat ? `${e.title} mit allen Wiederholungen löschen` : `${e.title} löschen`, ICON_DEL, () => {
+        iconBtn(e.repeat ? `${e.title} mit allen Wiederholungen löschen` : `${e.title} löschen`, ICON_TRASH, () => {
           data.events = data.events.filter((x) => x !== e.src);
           save();
           render();
@@ -255,7 +252,7 @@ const calDue = (events, now) =>
           ...(next.length
             ? next.map((e) => {
                 const soon = e.at - now < CAL_REMIND_MS;
-                return h('div', { className: 'calChip' }, h('span', { className: 'calChipTitle', title: e.title }, e.title), h('span', { className: `calChipTime${soon ? ' soon' : ''}` }, soon ? `${time(e.at)} · ${inMin(e.at - now)}` : time(e.at)));
+                return h('div', { className: 'calChip' }, h('span', { className: 'calChipTitle', title: e.title }, e.title), h('span', { className: `calChipTime${soon ? ' soon' : ''}` }, soon ? `${clockTime(e.at)} · ${inMin(e.at - now)}` : clockTime(e.at)));
               })
             : [h('p', { className: 'tileHint' }, 'Heute steht nichts an.')]),
         ),

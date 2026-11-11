@@ -12,7 +12,6 @@ function todoShown(items, filter, project) {
   let filter = 'all'; // 'all' | 'project' (the project chosen in the chat)
   let ctx;
   let root;
-  const ICON_DEL = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5M5.5 4.5l.5 9h4l.5-9"/></svg>';
   const save = () => (ctx.save(data), ctx.changed());
   const scopeName = (t) => (t.scope ? ctx.folderName(t.scope) : 'global');
   const check = (t, onchange) => {
@@ -49,7 +48,7 @@ function todoShown(items, filter, project) {
           className: 'iconBtn',
           ariaLabel: `„${t.text}“ löschen`,
           title: 'Löschen',
-          innerHTML: ICON_DEL,
+          innerHTML: ICON_TRASH,
           onclick: () => {
             data.items = data.items.filter((x) => x !== t);
             save();
