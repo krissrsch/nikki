@@ -25,7 +25,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
   let check;
   let month; // { y, m } shown in the card
   let picked = calDayKey(Date.now());
-  let form = false; // the "+" form is open
+  let form = false; // the form is open: true for a new appointment, or the appointment being changed
   const ICON_PLUS = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>';
   const ICON_PREV = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4.5 6 8l3.5 3.5"/></svg>';
   const ICON_NEXT = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4.5 10 8l-3.5 3.5"/></svg>';
@@ -52,19 +52,29 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
       month = { y: new Date(y, m + d, 1).getFullYear(), m: new Date(y, m + d, 1).getMonth() };
       render();
     };
+    const todayKey = calDayKey(now);
+    const away = picked !== todayKey || y !== new Date(now).getFullYear() || m !== new Date(now).getMonth();
+    const backToToday = () => {
+      picked = todayKey;
+      month = null;
+      render();
+      root.querySelector('.calDay[aria-pressed="true"]')?.focus();
+    };
     const plus = iconBtn('Termin hinzufügen', ICON_PLUS, () => {
-      form = !form;
+      form = form === true ? false : true;
       render();
       root.querySelector(form ? '.calForm input' : '.calPlus')?.focus();
     });
     plus.classList.add('calPlus');
-    plus.ariaExpanded = String(form);
+    plus.ariaExpanded = String(form === true);
     const head = h(
       'div',
       { className: 'calHead' },
-      h('span', { className: 'calName', ariaLive: 'polite' }, new Date(y, m, 1).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })),
+      // with the Heute button beside it the month goes short ("Sept. 2027"), else the year would be cut
+      h('span', { className: 'calName', ariaLive: 'polite', title: new Date(y, m, 1).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' }) }, new Date(y, m, 1).toLocaleDateString(LOCALE, { month: away ? 'short' : 'long', year: 'numeric' })),
       iconBtn('Voriger Monat', ICON_PREV, () => shift(-1)),
       iconBtn('Nächster Monat', ICON_NEXT, () => shift(1)),
+      away && h('button', { type: 'button', className: 'btn calTodayBtn', onclick: backToToday }, 'Heute'),
       plus,
     );
     const week = h('div', { className: 'calWeek', ariaHidden: 'true' }, ...['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d) => h('span', {}, d)));
@@ -96,7 +106,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
         { className: `calEvent${e.at + e.dur * 60000 < now ? ' past' : ''}`, title: `${time(e.at)} bis ${time(e.at + e.dur * 60000)}` },
         h('span', { className: `calBar c${i % 3}${soon ? ' soon' : ''}` }),
         h('span', { className: 'calTime' }, time(e.at)),
-        h('span', { className: 'calTitle' }, e.title),
+        h('button', { type: 'button', className: 'calTitle', title: 'Ändern', onclick: () => ((form = e), render(), root.querySelector('.calForm input')?.focus()) }, e.title),
         soon && h('span', { className: 'calMeta' }, inMin(e.at - now)),
         iconBtn(`${e.title} löschen`, ICON_DEL, () => {
           data.events = data.events.filter((x) => x !== e);
@@ -108,17 +118,21 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
       return row;
     });
     const empty = h('p', { className: 'calEmpty' }, word === 'heute' ? 'Heute ist nichts eingetragen.' : 'Nichts eingetragen.');
-    const side = h('div', { className: 'calSide' }, h('span', { className: 'calDayName' }, title), form && addForm(), ...(rows.length ? rows : [empty]));
+    const side = h('div', { className: 'calSide' }, h('span', { className: 'calDayName' }, title), form && addForm(form === true ? null : form), ...(rows.length ? rows : [empty]));
     root.replaceChildren(h('div', { className: 'calPage' }, card, side));
   }
   const plusFocus = () => root.querySelector('.calPlus')?.focus();
 
-  function addForm() {
-    const next = new Date();
-    next.setHours(next.getHours() + 1, 0, 0, 0);
+  // edit: the appointment to change, else a new one
+  function addForm(edit) {
+    const next = edit ? new Date(edit.at) : new Date();
+    if (!edit) next.setHours(next.getHours() + 1, 0, 0, 0);
     const field = (label, input) => h('label', { className: 'calField' }, h('span', {}, label), input);
-    const title = h('input', { type: 'text', name: 'title', required: true, maxLength: 80, placeholder: 'Was steht an?' });
-    const dur = h('select', { name: 'dur' }, ...[15, 30, 45, 60, 90, 120].map((n) => h('option', { value: String(n), selected: n === 30 }, `${n} min`)));
+    const title = h('input', { type: 'text', name: 'title', required: true, maxLength: 80, placeholder: 'Was steht an?', value: edit?.title ?? '' });
+    title.addEventListener('input', () => title.removeAttribute('aria-invalid'));
+    const durs = [15, 30, 45, 60, 90, 120, 180, 240];
+    const want = edit?.dur ?? 30;
+    const dur = h('select', { name: 'dur' }, ...[...new Set([...durs, want])].sort((a, b) => a - b).map((n) => h('option', { value: String(n), selected: n === want }, n < 120 ? `${n} min` : `${n / 60} h`)));
     const close = () => {
       form = false;
       render();
@@ -126,16 +140,16 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
     };
     const f = h(
       'form',
-      { className: 'calForm', ariaLabel: 'Neuer Termin' },
+      { className: 'calForm', ariaLabel: edit ? 'Termin ändern' : 'Neuer Termin', noValidate: true }, // own hint instead of the browser's white bubble
       field('Titel', title),
       h(
         'div',
         { className: 'calFormRow' },
-        field('Datum', h('input', { type: 'date', name: 'date', required: true, value: picked })),
-        field('Uhrzeit', h('input', { type: 'time', name: 'time', required: true, value: `${calPad(next.getHours())}:00` })),
+        field('Datum', h('input', { type: 'date', name: 'date', required: true, value: edit ? calDayKey(edit.at) : picked })),
+        field('Uhrzeit', h('input', { type: 'time', name: 'time', required: true, value: `${calPad(next.getHours())}:${calPad(next.getMinutes())}` })),
         field('Dauer', dur),
       ),
-      h('div', { className: 'calFormActions' }, h('button', { type: 'button', className: 'btn', onclick: close }, 'Abbrechen'), h('button', { type: 'submit', className: 'btn primary' }, 'Eintragen')),
+      h('div', { className: 'calFormActions' }, h('button', { type: 'button', className: 'btn', onclick: close }, 'Abbrechen'), h('button', { type: 'submit', className: 'btn primary' }, edit ? 'Speichern' : 'Eintragen')),
     );
     // Escape closes the form, not the island
     f.addEventListener('keydown', (e) => e.key === 'Escape' && (e.stopPropagation(), close()));
@@ -144,9 +158,11 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
       const fd = new FormData(f);
       const at = new Date(`${fd.get('date')}T${fd.get('time')}`).getTime();
       const text = String(fd.get('title')).trim().slice(0, 80);
-      if (!text || !Number.isFinite(at)) return title.focus();
-      // created within the last 15 min: the user knows already, no reminder
-      data.events.push({ id: crypto.randomUUID(), title: text, at, dur: Number(fd.get('dur')) || 30, reminded: at - Date.now() <= CAL_REMIND_MS });
+      if (!text) return title.setAttribute('aria-invalid', 'true'), title.focus();
+      if (!Number.isFinite(at)) return f.querySelector(fd.get('date') ? '[name=time]' : '[name=date]').focus();
+      // set within the last 15 min: the user knows already, no reminder
+      const item = { id: edit?.id ?? crypto.randomUUID(), title: text, at, dur: Number(fd.get('dur')) || 30, reminded: at - Date.now() <= CAL_REMIND_MS };
+      data.events = edit ? data.events.map((x) => (x === edit ? item : x)) : [...data.events, item];
       picked = calDayKey(at);
       month = { y: new Date(at).getFullYear(), m: new Date(at).getMonth() };
       save();

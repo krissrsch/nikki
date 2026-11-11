@@ -983,7 +983,7 @@ kbd.key {
 .calPage { display: flex; align-items: flex-start; gap: 12px; }
 .calCard { display: flex; flex: none; flex-direction: column; gap: 8px; width: 260px; box-sizing: border-box; padding: 12px 14px 14px; border-radius: 16px; background: var(--card); }
 .calHead { display: flex; align-items: center; gap: 2px; }
-.calName { flex: 1; font-size: 13px; font-weight: 600; }
+.calName { flex: 1; min-width: 0; overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .calHead .iconBtn { width: 28px; height: 28px; border-radius: 8px; }
 .calHead .calPlus { margin-left: 4px; background: var(--raised); color: var(--text); }
 .calHead .calPlus[aria-expanded='true'] { color: var(--accent); }
@@ -1009,7 +1009,10 @@ kbd.key {
 .calTime { flex: none; width: 40px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .calBar.soon + .calTime,
 .calMeta { color: var(--warn); }
-.calTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calTitle { flex: 1; min-width: 0; overflow: hidden; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.calTitle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.calTodayBtn { flex: none; height: 26px; margin: 0 2px; padding: 0 8px; font-size: 11.5px; }
+.calForm [aria-invalid='true'] { box-shadow: inset 0 0 0 1.5px var(--bad); }
 .calMeta { flex: none; font-size: 12px; }
 .calEvent .iconBtn,
 .todoRow .iconBtn { width: 28px; height: 28px; color: var(--faint); }

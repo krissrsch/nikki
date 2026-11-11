@@ -481,5 +481,8 @@
   "{0}+Maustaste Zurück": "{0}+Mouse Back",
   "{0}+Maustaste Vor": "{0}+Mouse Forward",
   "Erst zurücksetzen": "Reset first",
-  "Zurückholen": "Bring back"
+  "Zurückholen": "Bring back",
+  "Ändern": "Change",
+  "Termin ändern": "Change appointment",
+  "Speichern": "Save"
 }
