@@ -20,7 +20,7 @@ The cat is drawn after my real cat Nikki.
 | **Closed notch** | Only Nikki's eyes and whiskers, inside a thin white edge. The edge takes a colour when something happens: yellow needs you, green works or is done, red error, the cover's colour for music, a white sweep for a new notification. A spectrum from the real audio grows under the notch. |
 | **Music** | Whatever Windows plays (Spotify, browser, …): cover, controls, volume, and the line being sung (synced lyrics from [LRCLIB](https://lrclib.net), off by default). |
 | **Notifications** | Notifications from other apps, collected in the island. Off by default, kept in memory only. |
-| **Modules** | Calendar with reminders, to-do, notes, Pomodoro timer, file shelf, clipboard history, Discord voice channel. Each one can be switched off. |
+| **Modules** | Calendar with reminders and repeats, to-do, notes, Pomodoro timer, file shelf, clipboard history, Discord voice channel. Each one can be switched off. |
 | **Voice** | Hold a key or a mouse button (middle or side) and speak, recognised locally with whisper.cpp. "Hey Nikki, …" sends it to Claude (commands are German). |
 | **Language** | English or German, or whatever Windows uses. Switches at once, no restart. |
 
@@ -38,12 +38,12 @@ The cat is drawn after my real cat Nikki.
     <td><img src="docs/screenshots/music.png" alt="Music with cover, lyric line and volume" /><br /><sub><b>Music.</b> Any player Windows knows, with synced lyrics.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/calendar.png" alt="Calendar month view with today's events" /><br /><sub><b>Calendar.</b> Local, with a reminder 15 minutes before.</sub></td>
+    <td><img src="docs/screenshots/calendar.png" alt="Calendar month view with today's events" /><br /><sub><b>Calendar.</b> Local, with repeats and a reminder 15 minutes before.</sub></td>
     <td><img src="docs/screenshots/todo.png" alt="To-do list with global and project items" /><br /><sub><b>To-do.</b> Global or per project, and “To chat” hands one to Claude.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/notes.png" alt="Notes as a tear-off pad" /><br /><sub><b>Notes.</b> A tear-off pad, flipped with the mouse wheel.</sub></td>
-    <td><img src="docs/screenshots/timer.png" alt="Pomodoro timer running" /><br /><sub><b>Timer.</b> Pomodoro with 5, 15 and 25 minutes.</sub></td>
+    <td><img src="docs/screenshots/notes.png" alt="Notes as a tear-off pad" /><br /><sub><b>Notes.</b> A tear-off pad, flipped with the mouse wheel. A torn sheet can come back for a few seconds.</sub></td>
+    <td><img src="docs/screenshots/timer.png" alt="Pomodoro timer running" /><br /><sub><b>Timer.</b> Pomodoro with 5, 15, 25 minutes or your own length, and today's focus rounds.</sub></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/notifications.png" alt="Notifications from Outlook and GitHub in the island" /><br /><sub><b>Notifications.</b> What other apps tell you, in one place.</sub></td>
@@ -105,7 +105,8 @@ Zugeklappt zeigt die Insel nur Nikkis Augen und Schnurrhaare, rundherum eine sch
 - Claude-Kachel mit 5-Stunden- und Wochenlimit als Ringe
 - Musik mit Cover, Steuerung, Lautstärke und der gerade gesungenen Zeile (Songtexte von lrclib.net, standardmäßig aus)
 - Mitteilungen anderer Apps in der Insel (standardmäßig aus, nur im Speicher)
-- Module: Kalender, To-do, Notizen, Timer, Ablage, Zwischenablage, Discord, einzeln schaltbar
+- Module: Kalender mit Wiederholungen, To-do, Notizen, Timer mit eigener Dauer, Ablage, Zwischenablage, Discord, einzeln schaltbar
+- Beim ersten Start eine kurze Einrichtung: Claude da? Projektordner? Wie öffne ich Nikki?
 - Spracheingabe, lokal erkannt, per Taste oder Maustaste (Mitte oder Seite). Befehle beginnen mit „Hey Nikki“
 - Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
 - Oberfläche auf Deutsch oder Englisch (Einstellungen › Allgemein), ohne Neustart
