@@ -1557,7 +1557,7 @@ function followPointer(x, y) {
     if (d) g.style.transform = `translate(${d.x}px, ${d.y}px)`;
   }
   const d = gazeAt($('notch'), x, y);
-  if (d) $('eyes').style.translate = `${d.x}px ${d.y}px`;
+  if (d) $('eyes').style.translate = `${d.x * 2}px ${d.y * 2}px`; // the closed notch has room around her eyes: a glance you can see
 }
 let hoverTimer = null; // the pointer rests on the closed notch (setting hoverOpen)
 let hoverLeave = null; // opened by hovering, the pointer left: it closes again after a short while

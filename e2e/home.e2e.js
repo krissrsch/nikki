@@ -27,7 +27,7 @@ describe('Home „Heute“', () => {
       return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) };
     });
     await fromMain('pointer', { x: c.x + 400, y: 300 });
-    await until(() => page.evaluate(() => document.getElementById('eyes').style.translate.startsWith('1.')), 'Augen rechts');
+    await until(() => page.evaluate(() => parseFloat(document.getElementById('eyes').style.translate) > 2), 'Augen rechts, ein sichtbarer Blick');
     await fromMain('pointer', c);
     await fromMain('pointer', { x: c.x + 400, y: 300 });
     await new Promise((r) => setTimeout(r, 450));
