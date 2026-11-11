@@ -216,6 +216,27 @@ function renderWeather(w) {
   $('weatherTile').replaceChildren(...parts);
 }
 
+// first start: what Nikki needs and what she can do, in place of the tiles until "Los geht's"
+function renderWelcome() {
+  const box = $('welcome');
+  const show = settings.welcomed === false;
+  box.hidden = !show;
+  $('homeTiles').hidden = show;
+  if (!show) return;
+  const own = projects.filter((p) => p !== generalDir);
+  const btn = (text, onclick) => h('button', { type: 'button', className: 'glassBtn', onclick }, text);
+  const step = (ok, title, text, action) =>
+    h('div', { className: `welcomeStep${ok ? ' ok' : ''}` }, h('span', { className: 'welcomeMark', ariaHidden: 'true' }, ok ? '✓' : ''), h('div', { className: 'tileStack' }, h('strong', {}, title), h('span', { className: 'tileSub' }, text)), !ok && action);
+  box.replaceChildren(
+    h('div', { className: 'welcomeHead' }, h('strong', {}, 'Hallo, ich bin Nikki.'), h('span', { className: 'tileSub' }, 'Ich wohne in der Notch und starte Claude Code für dich. Kurz eingerichtet:')),
+    step(claudeFound, 'Claude Code', claudeFound ? 'ist installiert. Nikki nutzt dein Abo, keinen API-Key.' : 'fehlt noch: installieren und einmal „claude“ im Terminal starten.', btn('Anleitung', () => api.openExternal('https://claude.ai/code'))),
+    step(own.length > 0, 'Projektordner', own.length ? `${folderName(own[0])} ist dabei. Weitere wählst du im Chat oben links.` : 'In diesem Ordner arbeitet Claude. Ohne einen geht es in „Allgemein“.', btn('Ordner wählen', () => pickFolder().then(renderWelcome))),
+    step(true, 'Öffnen', settings.hoverOpen > 0 ? `Fahr mit der Maus auf die Notch oder drück ${hotkeyLabel(settings.hotkey)}. Esc klappt mich wieder zu.` : `Klick auf die Notch oder drück ${hotkeyLabel(settings.hotkey)}. Esc klappt mich wieder zu.`),
+    step(true, 'Module', 'Musik, Kalender, Notizen, Timer und mehr schaltest du in den Einstellungen ein und aus.'),
+    h('div', { className: 'welcomeActions' }, btn('Einstellungen', () => openSettings()), h('button', { type: 'button', className: 'glassBtn primary', onclick: () => api.settingsSet('welcomed', true) }, 'Los geht’s')),
+  );
+}
+
 const folderName = (p) => {
   const s = String(p ?? '').trim();
   if (!s) return 'Projekt';
@@ -1357,6 +1378,7 @@ function applySettings(s) {
   showSpectrum();
   applyModules(s.modules);
   renderGlance();
+  renderWelcome();
 }
 api.onSettingsChanged(applySettings);
 api.onCatReset(() => cat.resetPlaces());
@@ -1692,6 +1714,7 @@ async function startUp() {
   terminal = state.terminal;
   lastChatId = state.lastChatId ?? null;
   claudeFound = state.claudeFound;
+  renderWelcome(); // now that projects and Claude are known
   selectProject(projects[0] ?? generalDir);
   renderTerminal();
   try {

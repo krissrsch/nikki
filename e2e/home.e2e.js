@@ -15,6 +15,26 @@ const fromMain = (channel, data) => nikki.app.evaluate(({ BrowserWindow }, [c, d
 const tiles = () => nikki.page.$$eval('#homeTiles > .tile', (t) => t.sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order).map((x) => x.dataset.tile));
 
 describe('Home „Heute“', () => {
+  test('erster Start: Begrüßung statt Kacheln, Ordner wählen hakt ab, „Los geht’s“ merkt es sich', async () => {
+    nikki = await launch({ state: { welcomed: false } });
+    const { page } = nikki;
+    await page.waitForSelector('#welcome:not([hidden])');
+    assert.equal(await page.isHidden('#homeTiles'), true);
+    assert.match(await page.textContent('#welcome'), /Hallo, ich bin Nikki/);
+    assert.match(await page.textContent('#welcome'), /drück Strg\+Alt\+/);
+    assert.equal(await page.locator('.welcomeStep:not(.ok)').count(), 1, 'nur der Projektordner fehlt noch');
+    const dir = fs.mkdtempSync(path.join(nikki.userData, 'meine-app-'));
+    await nikki.pickFolderReturns(dir);
+    await page.click('#welcome button:has-text("Ordner wählen")');
+    await until(async () => (await page.locator('.welcomeStep:not(.ok)').count()) === 0, 'Ordner abgehakt');
+    assert.match(await page.textContent('#welcome'), new RegExp(`${path.basename(dir)} ist dabei`));
+    await page.click('#welcome button:has-text("Los geht’s")');
+    await until(() => nikki.state().welcomed === true, 'gemerkt');
+    await page.waitForSelector('#welcome', { state: 'hidden' });
+    assert.deepEqual(await tiles(), ['claude', 'music', 'weather', 'calendar']);
+    assert.deepEqual(nikki.errors, []);
+  });
+
   test('Augen folgen der Maus; die ruhende Maus öffnet die Notch nur mit Einstellung, wegziehen bricht ab', async () => {
     nikki = await launch();
     const { page } = nikki;
@@ -140,6 +160,7 @@ describe('Home „Heute“', () => {
     nikki = await launch();
     const { page } = nikki;
     assert.deepEqual(await tiles(), ['claude', 'music', 'weather', 'calendar']);
+    assert.equal(await page.isHidden('#welcome'), true, 'a state.json from before the welcome card counts as welcomed');
     assert.match(await page.textContent('[data-tile="calendar"] .calWeekday'), /^(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)$/);
     assert.equal(await page.textContent('[data-tile="calendar"] .calNum'), String(new Date().getDate()));
     assert.match(await page.textContent('[data-tile="calendar"]'), /Heute steht nichts an/);

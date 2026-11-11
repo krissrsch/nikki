@@ -32,7 +32,7 @@ export async function launch({ state, settings, realHome = false, files = {}, vi
   // no start show, no jump between tabs in the tests: the page switches at once, as the assertions expect (cat.e2e.js turns it on)
   // NIKKI_E2E_DISPLAY: id of the display to run on
   const display = Number(process.env.NIKKI_E2E_DISPLAY) || null;
-  fs.writeFileSync(path.join(userData, 'state.json'), JSON.stringify({ catJump: false, intro: false, ...(display && { display }), ...state }));
+  fs.writeFileSync(path.join(userData, 'state.json'), JSON.stringify({ catJump: false, intro: false, hoverOpen: 0, ...(display && { display }), ...state }));
   for (const [file, data] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(userData, file)), { recursive: true });
     fs.writeFileSync(path.join(userData, file), JSON.stringify(data));

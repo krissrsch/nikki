@@ -488,5 +488,18 @@
   "Mitteilung löschen": "Delete notification",
   "Vorgemerkt: geht raus, sobald Claude fertig ist.": "Queued: goes out as soon as Claude is done.",
   "Vorgemerkt: geht raus, sobald Claude fertig ist": "Queued: goes out as soon as Claude is done",
-  "Nicht mehr vorgemerkt.": "No longer queued."
+  "Nicht mehr vorgemerkt.": "No longer queued.",
+  "Hallo, ich bin Nikki.": "Hi, I'm Nikki.",
+  "Ich wohne in der Notch und starte Claude Code für dich. Kurz eingerichtet:": "I live in the notch and run Claude Code for you. A quick setup:",
+  "ist installiert. Nikki nutzt dein Abo, keinen API-Key.": "is installed. Nikki uses your plan, no API key.",
+  "fehlt noch: installieren und einmal „claude“ im Terminal starten.": "is missing: install it and run “claude” once in a terminal.",
+  "Anleitung": "How to",
+  "Projektordner": "Project folder",
+  "{0} ist dabei. Weitere wählst du im Chat oben links.": "{0} is in. Pick more in the chat, top left.",
+  "In diesem Ordner arbeitet Claude. Ohne einen geht es in „Allgemein“.": "Claude works in this folder. Without one it runs in “General”.",
+  "Ordner wählen": "Choose folder",
+  "Fahr mit der Maus auf die Notch oder drück {0}. Esc klappt mich wieder zu.": "Rest the mouse on the notch or press {0}. Esc folds me up again.",
+  "Klick auf die Notch oder drück {0}. Esc klappt mich wieder zu.": "Click the notch or press {0}. Esc folds me up again.",
+  "Musik, Kalender, Notizen, Timer und mehr schaltest du in den Einstellungen ein und aus.": "Music, calendar, notes, timer and more are switched on and off in the settings.",
+  "Los geht’s": "Let's go"
 }
