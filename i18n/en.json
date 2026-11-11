@@ -506,5 +506,13 @@
   "Eigene Dauer in Minuten": "Own length in minutes",
   "Heute {0} Fokusrunde": "{0} focus round today",
   "Heute {0} Fokusrunden": "{0} focus rounds today",
-  "Heute noch keine Fokusrunde": "No focus round yet today"
+  "Heute noch keine Fokusrunde": "No focus round yet today",
+  "Wiederholen": "Repeat",
+  "nie": "never",
+  "täglich": "daily",
+  "werktags": "weekdays",
+  "wöchentlich": "weekly",
+  "monatlich": "monthly",
+  "wiederholt sich {0}": "repeats {0}",
+  "{0} mit allen Wiederholungen löschen": "Delete {0} with all repeats"
 }

@@ -66,6 +66,29 @@ test('calendar: a day, which reminder is due', () => {
   assert.equal(g.calDue([{ ...daily, at: now - 1 }], now).length, 0, 'already started');
 });
 
+test('calendar: repeats from their first day on, each start reminded once', () => {
+  const start = new Date(2026, 9, 28, 9, 30).getTime(); // Wednesday, 28 Oct 2026
+  const ev = (repeat) => ({ title: repeat, at: start, dur: 15, repeat });
+  const on = (repeat, key) => plain(g.calOnDay([ev(repeat)], key)).map((e) => new Date(e.at).toTimeString().slice(0, 5));
+  assert.deepEqual(on('day', '2026-10-27'), [], 'not before its first day');
+  assert.deepEqual(on('day', '2026-11-02'), ['09:30']);
+  assert.deepEqual([on('workday', '2026-10-31'), on('workday', '2026-11-02')], [[], ['09:30']], 'Saturday off, Monday on');
+  assert.deepEqual([on('week', '2026-11-04'), on('week', '2026-11-05')], [['09:30'], []]);
+  assert.deepEqual([on('month', '2026-11-28'), on('month', '2026-11-27')], [['09:30'], []]);
+  assert.deepEqual(on(undefined, '2026-11-04'), [], 'no repeat: only its own day');
+  assert.deepEqual(on('yearly', '2026-11-04'), [], 'unknown repeat: only its own day');
+  const now = new Date(2026, 10, 4, 9, 20).getTime();
+  const weekly = ev('week');
+  const due = g.calDue([weekly], now);
+  assert.equal(due.length, 1);
+  assert.equal(due[0].at, new Date(2026, 10, 4, 9, 30).getTime(), "this week's start, not the first one");
+  weekly.reminded = due[0].at; // what remind() stores
+  assert.equal(g.calDue([weekly], now).length, 0, 'once per start');
+  assert.equal(g.calDue([weekly], now + 7 * 864e5).length, 1, 'and again next week');
+  const late = { title: 'Mitternacht', at: new Date(2026, 9, 28, 0, 5).getTime(), dur: 15, repeat: 'day' };
+  assert.equal(g.calDue([late], new Date(2026, 10, 4, 23, 55).getTime()).length, 1, "tomorrow's start right after midnight");
+});
+
 test('to-do: open first, project filter', () => {
   const items = [
     { id: 1, text: 'a', done: true, scope: null },

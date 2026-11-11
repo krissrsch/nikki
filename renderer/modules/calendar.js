@@ -1,5 +1,6 @@
 // Kalender (plan 3.3), local only: month with "+" next to its name, the chosen day's appointments below each other,
-// one toast + chime 15 min before. Data: { events: [{ id, title, at, dur (min), reminded? }] }
+// one toast + chime 15 min before. Data: { events: [{ id, title, at, dur (min), repeat?, reminded? }] }
+// repeat: day | workday | week | month, from the event's own day on; reminded: the start (ts) last announced, true in old data
 const CAL_REMIND_MS = 15 * 60 * 1000;
 
 // ---- pure, tested in modules.test.js
@@ -14,9 +15,31 @@ function calMonth(year, month) {
   const days = new Date(year, month + 1, 0).getDate();
   return [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
 }
-const calOnDay = (events, key) => events.filter((e) => calDayKey(e.at) === key).sort((a, b) => a.at - b.at);
-// due for the one reminder: starts within 15 min and was not announced yet
-const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now && e.at - now <= CAL_REMIND_MS);
+const CAL_REPEATS = { day: 'täglich', workday: 'werktags', week: 'wöchentlich', month: 'monatlich' };
+// when e starts on the day `key`: its own day, or a repeat from that day on; null if not that day
+function calAt(e, key) {
+  if (calDayKey(e.at) === key) return e.at;
+  if (!CAL_REPEATS[e.repeat]) return null;
+  const s = new Date(e.at);
+  const d = new Date(`${key}T00:00`);
+  if (d < new Date(s.getFullYear(), s.getMonth(), s.getDate())) return null;
+  const on = { day: true, workday: d.getDay() % 6 !== 0, week: d.getDay() === s.getDay(), month: d.getDate() === s.getDate() }[e.repeat];
+  return on ? new Date(d.getFullYear(), d.getMonth(), d.getDate(), s.getHours(), s.getMinutes()).getTime() : null;
+}
+// the appointments of a day, a repeat as a copy with that day's start; src is the stored one (edit, delete, reminded)
+const calOnDay = (events, key) =>
+  events
+    .flatMap((e) => {
+      const at = calAt(e, key);
+      return at === null ? [] : [{ ...e, at, src: e }];
+    })
+    .sort((a, b) => a.at - b.at);
+// due for the one reminder: starts within 15 min and this start was not announced yet (today's and, near midnight, tomorrow's)
+const calDue = (events, now) =>
+  [calDayKey(now), calDayKey(now + CAL_REMIND_MS)]
+    .filter((k, i, all) => all.indexOf(k) === i)
+    .flatMap((k) => calOnDay(events, k))
+    .filter((o) => o.src.reminded !== true && o.src.reminded !== o.at && o.at >= now && o.at - now <= CAL_REMIND_MS);
 
 (() => {
   let data = { events: [] };
@@ -29,6 +52,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
   const ICON_PLUS = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>';
   const ICON_PREV = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4.5 6 8l3.5 3.5"/></svg>';
   const ICON_NEXT = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4.5 10 8l-3.5 3.5"/></svg>';
+  const ICON_REPEAT = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 7a5 5 0 0 1 9-2.5M13 9a5 5 0 0 1-9 2.5M12 2v2.5H9.5M4 14v-2.5h2.5"/></svg>';
   const ICON_DEL = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5M5.5 4.5l.5 9h4l.5-9"/></svg>';
   const time = (ts) => new Date(ts).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
   const inMin = (ms) => (ms < 60000 ? 'jetzt' : `in ${Math.ceil(ms / 60000)} min`);
@@ -106,10 +130,11 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
         { className: `calEvent${e.at + e.dur * 60000 < now ? ' past' : ''}`, title: `${time(e.at)} bis ${time(e.at + e.dur * 60000)}` },
         h('span', { className: `calBar c${i % 3}${soon ? ' soon' : ''}` }),
         h('span', { className: 'calTime' }, time(e.at)),
-        h('button', { type: 'button', className: 'calTitle', title: 'Ändern', onclick: () => ((form = e), render(), root.querySelector('.calForm input')?.focus()) }, e.title),
+        h('button', { type: 'button', className: 'calTitle', title: 'Ändern', onclick: () => ((form = e.src), render(), root.querySelector('.calForm input')?.focus()) }, e.title),
+        e.repeat && h('span', { className: 'calRepeat', title: `wiederholt sich ${CAL_REPEATS[e.repeat]}`, innerHTML: ICON_REPEAT }),
         soon && h('span', { className: 'calMeta' }, inMin(e.at - now)),
-        iconBtn(`${e.title} löschen`, ICON_DEL, () => {
-          data.events = data.events.filter((x) => x !== e);
+        iconBtn(e.repeat ? `${e.title} mit allen Wiederholungen löschen` : `${e.title} löschen`, ICON_DEL, () => {
+          data.events = data.events.filter((x) => x !== e.src);
           save();
           render();
           plusFocus();
@@ -128,6 +153,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
     const next = edit ? new Date(edit.at) : new Date();
     if (!edit) next.setHours(next.getHours() + 1, 0, 0, 0);
     const field = (label, input) => h('label', { className: 'calField' }, h('span', {}, label), input);
+    const repeat = h('select', { name: 'repeat' }, h('option', { value: '', selected: !edit?.repeat }, 'nie'), ...Object.entries(CAL_REPEATS).map(([v, label]) => h('option', { value: v, selected: edit?.repeat === v }, label)));
     const title = h('input', { type: 'text', name: 'title', required: true, maxLength: 80, placeholder: 'Was steht an?', value: edit?.title ?? '' });
     title.addEventListener('input', () => title.removeAttribute('aria-invalid'));
     const durs = [15, 30, 45, 60, 90, 120, 180, 240];
@@ -149,6 +175,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
         field('Uhrzeit', h('input', { type: 'time', name: 'time', required: true, value: `${calPad(next.getHours())}:${calPad(next.getMinutes())}` })),
         field('Dauer', dur),
       ),
+      h('div', { className: 'calFormRow' }, field('Wiederholen', repeat)),
       h('div', { className: 'calFormActions' }, h('button', { type: 'button', className: 'btn', onclick: close }, 'Abbrechen'), h('button', { type: 'submit', className: 'btn primary' }, edit ? 'Speichern' : 'Eintragen')),
     );
     // Escape closes the form, not the island
@@ -161,7 +188,8 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
       if (!text) return title.setAttribute('aria-invalid', 'true'), title.focus();
       if (!Number.isFinite(at)) return f.querySelector(fd.get('date') ? '[name=time]' : '[name=date]').focus();
       // set within the last 15 min: the user knows already, no reminder
-      const item = { id: edit?.id ?? crypto.randomUUID(), title: text, at, dur: Number(fd.get('dur')) || 30, reminded: at - Date.now() <= CAL_REMIND_MS };
+      const rep = CAL_REPEATS[fd.get('repeat')] ? fd.get('repeat') : undefined;
+      const item = { id: edit?.id ?? crypto.randomUUID(), title: text, at, dur: Number(fd.get('dur')) || 30, ...(rep && { repeat: rep }), reminded: at - Date.now() <= CAL_REMIND_MS ? at : false };
       data.events = edit ? data.events.map((x) => (x === edit ? item : x)) : [...data.events, item];
       picked = calDayKey(at);
       month = { y: new Date(at).getFullYear(), m: new Date(at).getMonth() };
@@ -175,7 +203,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
     const now = Date.now();
     const due = calDue(data.events, now);
     for (const e of due) {
-      e.reminded = true;
+      e.src.reminded = e.at;
       ctx.toast(`${e.title} ${inMin(e.at - now)}`);
     }
     if (due.length) {
@@ -193,7 +221,7 @@ const calDue = (events, now) => events.filter((e) => !e.reminded && e.at >= now 
       ctx = c;
       const saved = await c.load();
       const ok = (e) => e && typeof e.title === 'string' && Number.isFinite(e.at) && Number.isFinite(e.dur);
-      if (Array.isArray(saved?.events)) data = { events: saved.events.filter(ok) };
+      if (Array.isArray(saved?.events)) data = { events: saved.events.filter(ok).map((e) => (e.repeat && !CAL_REPEATS[e.repeat] ? { ...e, repeat: undefined } : e)) };
       remind();
       check = setInterval(remind, 20 * 1000);
     },

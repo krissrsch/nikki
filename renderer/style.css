@@ -1028,6 +1028,8 @@ kbd.key {
 .calTodayBtn { flex: none; height: 26px; margin: 0 2px; padding: 0 8px; font-size: 11.5px; }
 .calForm [aria-invalid='true'] { box-shadow: inset 0 0 0 1.5px var(--bad); }
 .calMeta { flex: none; font-size: 12px; }
+.calRepeat { display: inline-flex; flex: none; color: var(--faint); }
+.calRepeat .icon { width: 13px; height: 13px; }
 .calEvent .iconBtn,
 .todoRow .iconBtn { width: 28px; height: 28px; color: var(--faint); }
 .calEmpty,
