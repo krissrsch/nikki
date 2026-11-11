@@ -110,10 +110,12 @@ function notesWhen(at, now) {
     sheetEl().classList.add('tear');
     later(() => {
       const [sheet] = data.sheets.splice(data.idx, 1);
-      // one click must not lose a written sheet: it can come back for a few seconds
-      torn = sheet.text.trim() ? { sheet, idx: data.idx } : null;
-      clearTimeout(tornTimer);
-      if (torn) tornTimer = setTimeout(() => ((torn = null), root?.querySelector('.undoTear')?.replaceWith(n() ? hint() : '')), 6000);
+      // one click must not lose a written sheet: it can come back for a few seconds; an empty one torn after it keeps that chance
+      if (sheet.text.trim()) {
+        torn = { sheet, idx: data.idx };
+        clearTimeout(tornTimer);
+        tornTimer = setTimeout(() => ((torn = null), root?.querySelector('.undoTear')?.replaceWith(n() ? hint() : '')), 6000);
+      }
       save();
       render('settle');
     }, 520);
