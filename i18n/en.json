@@ -484,7 +484,7 @@
   "Ändern": "Change",
   "Termin ändern": "Change appointment",
   "Speichern": "Save",
-  "Mitteilung löschen": "Delete notification",
+  "Mitteilung von {0} löschen": "Delete the notification from {0}",
   "Vorgemerkt: geht raus, sobald Claude fertig ist.": "Queued: goes out as soon as Claude is done.",
   "Vorgemerkt: geht raus, sobald Claude fertig ist": "Queued: goes out as soon as Claude is done",
   "Nicht mehr vorgemerkt.": "No longer queued.",
@@ -520,5 +520,8 @@
   "Ohne „Hey Nikki“ landet der Text nur im Chat-Feld.": "Without “Hey Nikki” the text only lands in the chat box.",
   "Taste halten, sprechen, loslassen. Die Erkennung läuft nur auf diesem PC.": "Hold the key, speak, let go. Recognition runs only on this PC, in German, so the commands are German too.",
   "Browser-Zurück": "Browser Back",
-  "Browser-Vor": "Browser Forward"
+  "Browser-Vor": "Browser Forward",
+  "erledigt": "done",
+  "offen": "to do",
+  "Ohne Titel geht es nicht.": "A title is needed."
 }

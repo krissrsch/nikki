@@ -131,7 +131,7 @@ const calDue = (events, now) =>
         h('span', { className: `calBar c${i % 3}${soon ? ' soon' : ''}` }),
         h('span', { className: 'calTime' }, time(e.at)),
         h('button', { type: 'button', className: 'calTitle', title: 'Ändern', onclick: () => ((form = e.src), render(), root.querySelector('.calForm input')?.focus()) }, e.title),
-        e.repeat && h('span', { className: 'calRepeat', title: `wiederholt sich ${CAL_REPEATS[e.repeat]}`, innerHTML: ICON_REPEAT }),
+        e.repeat && h('span', { className: 'calRepeat', role: 'img', ariaLabel: `wiederholt sich ${CAL_REPEATS[e.repeat]}`, title: `wiederholt sich ${CAL_REPEATS[e.repeat]}`, innerHTML: ICON_REPEAT }),
         soon && h('span', { className: 'calMeta' }, inMin(e.at - now)),
         iconBtn(e.repeat ? `${e.title} mit allen Wiederholungen löschen` : `${e.title} löschen`, ICON_DEL, () => {
           data.events = data.events.filter((x) => x !== e.src);
@@ -185,7 +185,11 @@ const calDue = (events, now) =>
       const fd = new FormData(f);
       const at = new Date(`${fd.get('date')}T${fd.get('time')}`).getTime();
       const text = String(fd.get('title')).trim().slice(0, 80);
-      if (!text) return title.setAttribute('aria-invalid', 'true'), title.focus();
+      if (!text) {
+        title.setAttribute('aria-invalid', 'true');
+        title.placeholder = 'Ohne Titel geht es nicht.'; // the red rim alone would say it only in colour
+        return title.focus();
+      }
       if (!Number.isFinite(at)) return f.querySelector(fd.get('date') ? '[name=time]' : '[name=date]').focus();
       // set within the last 15 min: the user knows already, no reminder
       const rep = CAL_REPEATS[fd.get('repeat')] ? fd.get('repeat') : undefined;

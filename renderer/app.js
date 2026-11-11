@@ -226,9 +226,9 @@ function renderWelcome() {
   const own = projects.filter((p) => p !== generalDir);
   const btn = (text, onclick) => h('button', { type: 'button', className: 'glassBtn', onclick }, text);
   const step = (ok, title, text, action) =>
-    h('div', { className: `welcomeStep${ok ? ' ok' : ''}` }, h('span', { className: 'welcomeMark', ariaHidden: 'true' }, ok ? '✓' : ''), h('div', { className: 'tileStack' }, h('strong', {}, title), h('span', { className: 'tileSub' }, text)), !ok && action);
+    h('div', { className: `welcomeStep${ok ? ' ok' : ''}` }, h('span', { className: 'welcomeMark', role: 'img', ariaLabel: ok ? 'erledigt' : 'offen' }, ok ? '✓' : ''), h('div', { className: 'tileStack' }, h('strong', {}, title), h('span', { className: 'tileSub' }, text)), !ok && action);
   box.replaceChildren(
-    h('div', { className: 'welcomeHead' }, h('strong', {}, 'Hallo, ich bin Nikki.'), h('span', { className: 'tileSub' }, 'Ich wohne in der Notch und starte Claude Code für dich. Kurz eingerichtet:')),
+    h('div', { className: 'welcomeHead' }, h('h2', { className: 'welcomeTitle' }, 'Hallo, ich bin Nikki.'), h('span', { className: 'tileSub' }, 'Ich wohne in der Notch und starte Claude Code für dich. Kurz eingerichtet:')),
     step(claudeFound, 'Claude Code', claudeFound ? 'ist installiert. Nikki nutzt dein Abo, keinen API-Key.' : 'fehlt noch: installieren und einmal „claude“ im Terminal starten.', btn('Anleitung', () => api.openExternal('https://claude.ai/code'))),
     step(own.length > 0, 'Projektordner', own.length ? `${folderName(own[0])} ist dabei. Weitere wählst du im Chat oben links.` : 'In diesem Ordner arbeitet Claude. Ohne einen geht es in „Allgemein“.', btn('Ordner wählen', () => pickFolder().then(renderWelcome))),
     step(true, 'Öffnen', settings.hoverOpen > 0 ? `Fahr mit der Maus auf die Notch oder drück ${hotkeyLabel(settings.hotkey)}. Esc klappt mich wieder zu.` : `Klick auf die Notch oder drück ${hotkeyLabel(settings.hotkey)}. Esc klappt mich wieder zu.`),

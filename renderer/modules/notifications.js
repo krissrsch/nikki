@@ -51,7 +51,7 @@
                     { className: 'toastHead' },
                     h('span', { className: 'toastApp' }, t.app || 'App'),
                     h('span', { className: 'clipWhen' }, when(t.at)),
-                    h('button', { type: 'button', className: 'iconBtn', ariaLabel: 'Mitteilung löschen', title: 'Löschen', innerHTML: ICON_DEL, onclick: () => api.toastsRemove(t.id, t.at).then(show) }),
+                    h('button', { type: 'button', className: 'iconBtn', ariaLabel: `Mitteilung von ${t.app || 'App'} löschen`, title: 'Löschen', innerHTML: ICON_DEL, onclick: () => api.toastsRemove(t.id, t.at).then(show) }),
                   ),
                   // a click shows all of it: titles and bodies are cut to fit otherwise
                   h(

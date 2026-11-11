@@ -345,7 +345,8 @@ body:not([data-view='home']) .shimmer { display: none; }
 .welcome { display: flex; flex-direction: column; gap: 10px; padding: 18px; border: 1px solid rgb(255 255 255 / 0.1); border-radius: 20px; background: linear-gradient(155deg, rgb(255 255 255 / 0.11), rgb(255 255 255 / 0.035) 45%, rgb(255 255 255 / 0.06)); }
 .welcome[hidden],
 #homeTiles[hidden] { display: none; }
-.welcomeHead { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; font-size: 15px; }
+.welcomeHead { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.welcomeTitle { margin: 0; font-size: 15px; font-weight: 600; }
 .welcomeHead .tileSub { white-space: normal; }
 .welcomeStep { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 13px; }
 .welcomeStep .tileStack { flex: 1; }
@@ -1025,7 +1026,7 @@ kbd.key {
 .calTime { flex: none; width: 40px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .calBar.soon + .calTime,
 .calMeta { color: var(--warn); }
-.calTitle { flex: 1; min-width: 0; overflow: hidden; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.calTitle { flex: 1; align-self: stretch; min-width: 0; overflow: hidden; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .calTitle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .calTodayBtn { flex: none; height: 26px; margin: 0 2px; padding: 0 8px; font-size: 11.5px; }
 .calForm [aria-invalid='true'] { box-shadow: inset 0 0 0 1.5px var(--bad); }
@@ -1123,7 +1124,7 @@ kbd.key {
 .timerOwnBox { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 8px; border-radius: 10px; background: var(--raised); color: var(--muted); font-size: 12px; }
 .timerOwnBox.on { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent); }
 .timerOwn { width: 46px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-variant-numeric: tabular-nums; text-align: center; }
-.timerOwn::placeholder { color: var(--faint); }
+.timerOwn::placeholder { color: var(--muted); }
 .timerOwn:disabled { opacity: 0.45; }
 .timerOwnBox:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .timerPresets,
