@@ -392,6 +392,7 @@ function watchFullscreen() {
 // --- the closed notch is dragged by the renderer inside the window; the window follows the pointer to the next display
 let notchDragging = false;
 function moveToPointerDisplay() {
+  if (process.env.NIKKI_NO_POINTER) return screen.getDisplayMatching(win.getBounds()); // e2e: the real mouse is the user's, it must not pull the island to another screen
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   if (display.id !== screen.getDisplayMatching(win.getBounds()).id) place(display);
   return display;
