@@ -1122,7 +1122,7 @@ kbd.key {
 .timerRounds { color: var(--muted); font-size: 12px; }
 .timerOwnBox { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 8px; border-radius: 10px; background: var(--raised); color: var(--muted); font-size: 12px; }
 .timerOwnBox.on { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent); }
-.timerOwn { width: 30px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
+.timerOwn { width: 46px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-variant-numeric: tabular-nums; text-align: center; }
 .timerOwn::placeholder { color: var(--faint); }
 .timerOwn:disabled { opacity: 0.45; }
 .timerOwnBox:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
