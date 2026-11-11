@@ -76,6 +76,9 @@ test('calendar: repeats from their first day on, each start reminded once', () =
   assert.deepEqual([on('week', '2026-11-04'), on('week', '2026-11-05')], [['09:30'], []]);
   assert.deepEqual([on('month', '2026-11-28'), on('month', '2026-11-27')], [['09:30'], []]);
   assert.deepEqual(on(undefined, '2026-11-04'), [], 'no repeat: only its own day');
+  const rent = { title: 'Miete', at: new Date(2027, 0, 31, 8, 0).getTime(), dur: 15, repeat: 'month' };
+  const days = (key) => g.calOnDay([rent], key).length;
+  assert.deepEqual([days('2027-02-27'), days('2027-02-28'), days('2027-04-30'), days('2027-05-31'), days('2027-05-30')], [0, 1, 1, 1, 0], 'the 31st falls on the last day of a shorter month');
   assert.deepEqual(on('yearly', '2026-11-04'), [], 'unknown repeat: only its own day');
   const now = new Date(2026, 10, 4, 9, 20).getTime();
   const weekly = ev('week');

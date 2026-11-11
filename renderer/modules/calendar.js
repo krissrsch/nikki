@@ -23,7 +23,8 @@ function calAt(e, key) {
   const s = new Date(e.at);
   const d = new Date(`${key}T00:00`);
   if (d < new Date(s.getFullYear(), s.getMonth(), s.getDate())) return null;
-  const on = { day: true, workday: d.getDay() % 6 !== 0, week: d.getDay() === s.getDay(), month: d.getDate() === s.getDate() }[e.repeat];
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); // a series on the 31st falls on the 30th or the 28th in shorter months
+  const on = { day: true, workday: d.getDay() % 6 !== 0, week: d.getDay() === s.getDay(), month: d.getDate() === Math.min(s.getDate(), last) }[e.repeat];
   return on ? new Date(d.getFullYear(), d.getMonth(), d.getDate(), s.getHours(), s.getMinutes()).getTime() : null;
 }
 // the appointments of a day, a repeat as a copy with that day's start; src is the stored one (edit, delete, reminded)
