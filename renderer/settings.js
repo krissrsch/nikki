@@ -45,7 +45,7 @@ $('sideList').replaceChildren(
 const KEYS = {
   hotkey: { btn: $('setHotkey'), msg: $('hotkeyMsg'), tell: (k) => `Nikki hört jetzt auf ${k}.`, tip: 'Esc bricht ab.' },
   closeKey: { btn: $('setCloseKey'), msg: $('closeKeyMsg'), tell: (k) => `${k} schließt Nikki, solange die Insel offen ist.`, tip: 'Esc belegt Esc. Rücktaste löscht.' },
-  voiceKey: { btn: $('setVoiceKey'), msg: $('voiceKeyMsg'), tell: (k) => `Halte ${k} zum Sprechen.`, tip: 'Auch die mittlere oder eine seitliche Maustaste. Esc bricht ab.', mouse: true },
+  voiceKey: { btn: $('setVoiceKey'), msg: $('voiceKeyMsg'), tell: (k) => `Zum Sprechen halten: ${k}.`, tip: 'Auch die mittlere oder eine seitliche Maustaste. Esc bricht ab.', mouse: true },
 };
 function renderHooks(names) {
   $('hookList').replaceChildren(...names.map((name) => {
@@ -217,7 +217,7 @@ async function saveKey(entry, acc, clear) {
   stopCapture();
   const s = await api.settingsSet(entry.key, acc);
   applySettings(s);
-  if (s.error === 'taken') keyMsg(entry, `${hotkeyLabel(acc)} ist schon belegt.${close ? '' : ` Nikki bleibt bei ${hotkeyLabel(s.hotkey)}.`}`, true);
+  if (s.error === 'taken') keyMsg(entry, `${hotkeyLabel(acc)} ist schon belegt.${!close && s[entry.key] ? ` Es bleibt bei ${hotkeyLabel(s[entry.key])}.` : ''}`, true);
   else if (s.error) keyMsg(entry, `${hotkeyLabel(acc)} kann Windows nicht belegen.`, true);
   else keyMsg(entry, clear ? '' : entry.tell(hotkeyLabel(s[entry.key])));
 }

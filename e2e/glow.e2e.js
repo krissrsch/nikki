@@ -227,7 +227,7 @@ describe('Notch und Glow', () => {
     await s.mouse.up({ button: 'middle' });
     await until(() => nikki.state().voiceKey === 'MouseMiddle', 'mittlere Maustaste gespeichert');
     assert.equal(await s.textContent('#setVoiceKey'), 'Mittlere Maustaste');
-    assert.match(await s.textContent('#voiceKeyMsg'), /Halte Mittlere Maustaste zum Sprechen/);
+    assert.match(await s.textContent('#voiceKeyMsg'), /Zum Sprechen halten: Mittlere Maustaste/);
     await s.click('#setVoiceKey');
     await s.click('#setVoiceKey'); // a left click on the button ends the capture, it is never the key
     assert.equal(nikki.state().voiceKey, 'MouseMiddle');
