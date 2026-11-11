@@ -330,7 +330,7 @@ const CAT_PLACES = {
   timer: [{ sel: '.timerRing', type: 'sit', at: 'left' }],
 };
 function catSpot(view, { box, home, composer, pageOf }) {
-  if (view === 'home' && home) {
+  if (view === 'home' && home?.offsetParent) { // the first-start card hides the tiles: then she peeks over it instead
     const r = catOffset(home, box);
     return { type: 'sit', left: r.x + r.w - CAT_W - 4, top: r.y + r.h - CAT_H };
   }

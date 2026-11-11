@@ -83,6 +83,11 @@ test('ihr Platz: Home sitzt unten rechts in der Claude-Kachel, Chat lugt über d
   const page = { firstElementChild: el(16, 90, 688, 200) };
   const ctx = { box, home, composer, pageOf: () => page };
   assert.deepEqual(JSON.parse(JSON.stringify(cat.catSpot('home', ctx))), { type: 'sit', left: 16 + 344 - 93 - 4, top: 62 + 164 - 82 });
+  // first start: the tiles are hidden (0x0, no offsetParent) under the welcome card; she must not land at -97, -82
+  const hiddenTile = { ...el(0, 0, 0, 0), offsetParent: null };
+  const welcome = cat.catSpot('home', { ...ctx, home: hiddenTile });
+  assert.equal(welcome.type, 'peek');
+  assert.ok(welcome.left >= 0 && welcome.edge === 90, 'over the card instead');
   const chat = cat.catSpot('chat', ctx);
   assert.equal(chat.type, 'peek');
   assert.equal(chat.edge, 380);
