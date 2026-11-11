@@ -856,21 +856,23 @@ input.num.wide { padding: 0 10px; text-align: left; user-select: text; }
 .md pre { overflow-x: auto; padding: 8px 10px; border-radius: 10px; background: var(--raised); }
 .md pre code { padding: 0; background: none; }
 .md a { color: var(--accent); }
-.md table { border-collapse: collapse; font-size: 12px; }
+/* whole words are the narrowest a column gets (the answer's overflow-wrap: anywhere split "Name" into "Nam/e"); a table wider than the card scrolls by itself */
+.md table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 12px; overflow-wrap: break-word; }
 .md th,
 .md td { padding: 2px 6px; border: 1px solid var(--raised-hover); }
 .md blockquote { margin: 0 0 6px; padding-left: 8px; border-left: 2px solid var(--raised-hover); color: var(--muted); }
 
 /* approvals, questions and plans: an inline card after the conversation */
-#permission { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--black); }
-#permBody { display: grid; gap: 6px; }
+#permission { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--black); }
+#permBody { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 #permBody.choiceRow {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 #permBody.choiceRow .other { grid-column: 1 / -1; }
 #permission .opt {
   display: grid;
+  min-width: 0;
   gap: 2px;
   min-height: 44px;
   padding: 10px 12px;
@@ -882,7 +884,7 @@ input.num.wide { padding: 0 10px; text-align: left; user-select: text; }
   transition: background-color 0.15s ease, scale 0.12s var(--ease-out), box-shadow 0.15s ease;
 }
 #permission .opt strong { font: 650 13px/1.25 system-ui, sans-serif; }
-#permission .opt span { color: var(--muted); font-size: 11.5px; }
+#permission .opt span { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
 #permission .opt span:empty { display: none; }
 #permission .opt[aria-pressed='true'] { box-shadow: inset 0 0 0 1.5px var(--accent); }
 #permission .opt:active { scale: 0.98; }
@@ -904,7 +906,9 @@ input.num.wide { padding: 0 10px; text-align: left; user-select: text; }
 #permission .other::placeholder { color: var(--faint); }
 #permission .other:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 /* only the plan scrolls: its title and buttons stay in view */
-#permission .plan { max-height: 120px; overflow-y: auto; line-height: 1.5; user-select: text; }
+#permission .plan { max-height: 220px; overflow-y: auto; line-height: 1.5; user-select: text; }
+/* a plan to review gets more room: the island grows a little instead of a 120 px peephole */
+#output:has(#permission:not([hidden]) .plan) { max-height: 340px; } /* the island stays under ~580 with it */
 
 #permission[hidden] { display: none; }
 #permTitle { margin: 0; color: var(--muted); font-size: 12px; font-weight: 600; }
