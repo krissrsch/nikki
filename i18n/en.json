@@ -514,5 +514,9 @@
   "wöchentlich": "weekly",
   "monatlich": "monthly",
   "wiederholt sich {0}": "repeats {0}",
-  "{0} mit allen Wiederholungen löschen": "Delete {0} with all repeats"
+  "{0} mit allen Wiederholungen löschen": "Delete {0} with all repeats",
+  "„Hey Nikki, sag Claude, …“ geht direkt an Claude.": "“Hey Nikki, sag Claude, …” (tell Claude) goes straight to Claude.",
+  "„Hey Nikki, führe den Webhook Team aus mit …“ geht an diesen Webhook.": "“Hey Nikki, führe den Webhook Team aus mit …” (run the webhook Team with) goes to that webhook.",
+  "Alles andere nach „Hey Nikki“ geht in den allgemeinen Chat, ohne Projekt.": "Anything else after “Hey Nikki” goes to the general chat, without a project.",
+  "Ohne „Hey Nikki“ landet der Text nur im Chat-Feld.": "Without “Hey Nikki” the text only lands in the chat box."
 }
