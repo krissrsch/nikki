@@ -825,6 +825,7 @@ function addToast(m) {
 }
 ipcMain.handle('toasts-get', () => inbox);
 ipcMain.handle('toasts-clear', () => (setToasts({ access: inbox.access, items: [] }), inbox));
+ipcMain.handle('toasts-remove', (_e, id, at) => (setToasts({ ...inbox, items: inbox.items.filter((t) => t.id !== id || t.at !== at) }), inbox));
 
 // --- lyrics (lib/lyrics.js): LRCLIB, only with Songtexte and the music module on. One fetch per song, kept in memory.
 const lyricsCache = new Map(); // [artist, title, album, length] as JSON -> lines | null (none found)

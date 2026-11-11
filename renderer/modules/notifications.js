@@ -7,7 +7,11 @@
   let ctx;
   let root;
   let freshTimer;
+  const ICON_DEL = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
   const time = (at) => new Date(at).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+  // the time, with the day in front once it is not today
+  const when = (at) => (new Date(at).toDateString() === new Date().toDateString() ? time(at) : `${new Date(at).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' })}, ${time(at)}`);
+  const show = (s) => ((state = s), render(), ctx?.changed());
   const fresh = () => !!state.items[0] && Date.now() - state.items[0].at < FRESH_MS;
 
   api?.onToasts((s) => {
@@ -30,7 +34,7 @@
         'div',
         { className: 'shelfBar' },
         h('span', { className: 'shelfInfo', role: 'status' }, n ? `${n} ${n === 1 ? 'Mitteilung' : 'Mitteilungen'}` : 'Keine neuen Mitteilungen'),
-        h('button', { type: 'button', className: 'btn bad', disabled: !n, onclick: () => api.toastsClear().then((s) => ((state = s), render(), ctx?.changed())) }, 'Alles löschen'),
+        h('button', { type: 'button', className: 'btn bad', disabled: !n, onclick: () => api.toastsClear().then(show) }, 'Alles löschen'),
       ),
       state.access === false
         ? h('div', { className: 'shelfEmpty toastHint' }, 'Windows lässt Nikki keine Mitteilungen lesen. Erlaube es unter Einstellungen › Datenschutz › Benachrichtigungen.')
@@ -42,9 +46,20 @@
                 h(
                   'div',
                   { className: 'toastRow' },
-                  h('div', { className: 'toastHead' }, h('span', { className: 'toastApp' }, t.app || 'App'), h('span', { className: 'clipWhen' }, time(t.at))),
-                  t.title && h('span', { className: 'toastTitle' }, t.title),
-                  t.body && h('span', { className: 'toastBody' }, t.body),
+                  h(
+                    'div',
+                    { className: 'toastHead' },
+                    h('span', { className: 'toastApp' }, t.app || 'App'),
+                    h('span', { className: 'clipWhen' }, when(t.at)),
+                    h('button', { type: 'button', className: 'iconBtn', ariaLabel: 'Mitteilung löschen', title: 'Löschen', innerHTML: ICON_DEL, onclick: () => api.toastsRemove(t.id, t.at).then(show) }),
+                  ),
+                  // a click shows all of it: titles and bodies are cut to fit otherwise
+                  h(
+                    'button',
+                    { type: 'button', className: 'toastText', ariaExpanded: 'false', onclick: (e) => e.currentTarget.setAttribute('aria-expanded', String(e.currentTarget.ariaExpanded !== 'true')) },
+                    t.title && h('span', { className: 'toastTitle' }, t.title),
+                    t.body && h('span', { className: 'toastBody' }, t.body),
+                  ),
                 ),
               ),
             )

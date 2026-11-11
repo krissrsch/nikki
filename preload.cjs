@@ -77,6 +77,7 @@ contextBridge.exposeInMainWorld('companion', {
   // Mitteilungen: other apps' Windows notifications (helper), { access: true | false | null, items: [{ id, app, title, body, at }] }
   toastsGet: () => ipcRenderer.invoke('toasts-get'),
   toastsClear: () => ipcRenderer.invoke('toasts-clear'),
+  toastsRemove: (id, at) => ipcRenderer.invoke('toasts-remove', id, at),
   onToasts: on('toasts'),
   openExternal: (url) => ipcRenderer.send('open-external', url),
   pathForFile: (file) => webUtils.getPathForFile(file), // Electron 32+ has no File.path
