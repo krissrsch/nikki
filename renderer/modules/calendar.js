@@ -86,7 +86,7 @@ const calDue = (events, now) =>
       root.querySelector('.calDay[aria-pressed="true"]')?.focus();
     };
     const plus = iconBtn('Termin hinzufügen', ICON_PLUS, () => {
-      form = form === true ? false : true;
+      form = form !== true;
       render();
       root.querySelector(form ? '.calForm input' : '.calPlus')?.focus();
     });
@@ -103,14 +103,13 @@ const calDue = (events, now) =>
       plus,
     );
     const week = h('div', { className: 'calWeek', ariaHidden: 'true' }, ...['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d) => h('span', {}, d)));
-    const today = calDayKey(now);
     const days = calMonth(y, m).map((n) => {
       if (!n) return h('span');
       const key = `${y}-${calPad(m + 1)}-${calPad(n)}`;
-      const count = calOnDay(data.events, key).length;
+      const count = data.events.filter((e) => calAt(e, key) !== null).length;
       const label = dayOf(key).toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
       const b = h('button', { type: 'button', className: 'calDay', ariaPressed: String(key === picked), ariaLabel: count ? `${label}, ${count} ${count === 1 ? 'Termin' : 'Termine'}` : label }, String(n));
-      b.classList.toggle('today', key === today);
+      b.classList.toggle('today', key === todayKey);
       b.classList.toggle('has', count > 0);
       b.addEventListener('click', () => {
         picked = key;
