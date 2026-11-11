@@ -222,8 +222,9 @@ function onHotkeyMouse(e) {
   e.stopPropagation();
   saveKey(capturing, acc, false);
 }
-// the same buttons as Windows app commands, in case the page never saw them as mouse buttons; after a mousedown the capture is over already
-api.onAppCommand?.((cmd) => capturing?.mouse && saveKey(capturing, cmd === 'browser-backward' ? 'MouseBack' : 'MouseForward', false));
+// Windows also reports back/forward as app commands. A real side button has ended the capture with its mousedown by then;
+// one that comes alone is a back KEY (keyboard, or a side button the mouse software remapped), which the helper watches as such
+api.onAppCommand?.((cmd) => capturing?.mouse && saveKey(capturing, cmd === 'browser-backward' ? 'BrowserBack' : 'BrowserForward', false));
 async function saveKey(entry, acc, clear) {
   const close = entry.key === 'closeKey';
   stopCapture();

@@ -518,5 +518,7 @@
   "„Hey Nikki, führe den Webhook Team aus mit …“ geht an diesen Webhook.": "“Hey Nikki, führe den Webhook Team aus mit …” (run the webhook Team with) goes to that webhook.",
   "Alles andere nach „Hey Nikki“ geht in den allgemeinen Chat, ohne Projekt.": "Anything else after “Hey Nikki” goes to the general chat, without a project.",
   "Ohne „Hey Nikki“ landet der Text nur im Chat-Feld.": "Without “Hey Nikki” the text only lands in the chat box.",
-  "Taste halten, sprechen, loslassen. Die Erkennung läuft nur auf diesem PC.": "Hold the key, speak, let go. Recognition runs only on this PC, in German, so the commands are German too."
+  "Taste halten, sprechen, loslassen. Die Erkennung läuft nur auf diesem PC.": "Hold the key, speak, let go. Recognition runs only on this PC, in German, so the commands are German too.",
+  "Browser-Zurück": "Browser Back",
+  "Browser-Vor": "Browser Forward"
 }

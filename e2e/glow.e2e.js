@@ -237,13 +237,14 @@ describe('Notch und Glow', () => {
     for (const type of ['mousePressed', 'mouseReleased']) await cdp.send('Input.dispatchMouseEvent', { type, x: 40, y: 40, button: 'back', buttons: type === 'mousePressed' ? 8 : 0, clickCount: 1 });
     await until(() => nikki.state().voiceKey === 'MouseBack', 'Seitentaste Zurück gespeichert');
     assert.equal(await s.textContent('#setVoiceKey'), 'Maustaste Zurück');
-    // and the way Windows also reports them: an app command on the settings window
+    // a back/forward that only comes as a Windows app command is a back KEY (keyboard, remapped mouse button): saved as one
     await s.click('#setVoiceKey');
     await nikki.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.getTitle() === 'Nikki Einstellungen').emit('app-command', {}, 'browser-forward'));
-    await until(() => nikki.state().voiceKey === 'MouseForward', 'Seitentaste Vor als App-Befehl gespeichert');
+    await until(() => nikki.state().voiceKey === 'BrowserForward', 'Vor-Taste als App-Befehl gespeichert');
+    assert.equal(await s.textContent('#setVoiceKey'), 'Browser-Vor');
     await nikki.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.getTitle() === 'Nikki Einstellungen').emit('app-command', {}, 'browser-backward'));
     await new Promise((r) => setTimeout(r, 300));
-    assert.equal(nikki.state().voiceKey, 'MouseForward', 'outside a capture a side button changes nothing');
+    assert.equal(nikki.state().voiceKey, 'BrowserForward', 'outside a capture it changes nothing');
     assert.deepEqual(nikki.errors, []);
   });
 
