@@ -189,10 +189,15 @@ const calDue = (events, now) =>
       if (!Number.isFinite(at)) return f.querySelector(fd.get('date') ? '[name=time]' : '[name=date]').focus();
       // set within the last 15 min: the user knows already, no reminder
       const rep = CAL_REPEATS[fd.get('repeat')] ? fd.get('repeat') : undefined;
-      const item = { id: edit?.id ?? crypto.randomUUID(), title: text, at, dur: Number(fd.get('dur')) || 30, ...(rep && { repeat: rep }), reminded: at - Date.now() <= CAL_REMIND_MS ? at : false };
+      // an edit at the same time keeps what was announced already (a repeat's start of today); a new time can be reminded again
+      const reminded = edit && edit.at === at ? edit.reminded : at - Date.now() <= CAL_REMIND_MS ? at : false;
+      const item = { id: edit?.id ?? crypto.randomUUID(), title: text, at, dur: Number(fd.get('dur')) || 30, ...(rep && { repeat: rep }), reminded };
       data.events = edit ? data.events.map((x) => (x === edit ? item : x)) : [...data.events, item];
-      picked = calDayKey(at);
-      month = { y: new Date(at).getFullYear(), m: new Date(at).getMonth() };
+      // the day shown stays when the appointment still falls on it (an edited repeat), else it goes to the new one
+      if (calAt(item, picked) === null) {
+        picked = calDayKey(at);
+        month = { y: new Date(at).getFullYear(), m: new Date(at).getMonth() };
+      }
       save();
       close();
     });
