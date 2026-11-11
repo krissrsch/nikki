@@ -508,14 +508,16 @@ function openSettings(page = 'general') {
 }
 ipcMain.on('open-settings', (_e, page) => openSettings(page));
 ipcMain.on('open-data-dir', () => shell.openPath(app.getPath('userData')));
+// settings that are a plain on/off kept in the store as they are; the rest of the keys below do more than store them
+const PLAIN_SWITCHES = ['discordJoin', 'muted', 'showBranch', 'catJump', 'intro'];
 ipcMain.handle('settings-set', async (_e, key, value) => {
   let error = null;
-  if (key === 'autostart' && app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!value });
+  if (PLAIN_SWITCHES.includes(key)) store[key] = !!value;
+  else if (key === 'autostart' && app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!value });
   else if (key === 'hotkey') error = setHotkey(String(value));
   else if (key === 'closeKey') error = setCloseKey(String(value ?? ''));
   else if (key === 'discordId') error = setDiscord({ clientId: String(value ?? '').trim() });
   else if (key === 'discordSecret') error = setDiscord({ secret: String(value ?? '').trim() });
-  else if (key === 'discordJoin') store.discordJoin = !!value;
   else if (key === 'voice') {
     store.voice = !!value;
     syncHelper();
@@ -530,7 +532,6 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     }
   } else if (key === 'hookAdd') error = addVoiceHook(value);
   else if (key === 'hookRemove') store.voiceHooks = voiceHooks().filter((h) => h.name !== value);
-  else if (key === 'muted') store.muted = !!value;
   else if (key === 'sleepMin') store.sleepMin = Math.min(120, Math.max(1, Math.round(Number(value)) || 5));
   else if (key === 'hooks') {
     await setHooks(!!value);
@@ -541,7 +542,6 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
     if (store.hooks) await setHooks(true); // rewrite our hooks with or without the waiting ones
     if (!store.relay) relay.cancelAll();
   }
-  else if (key === 'showBranch') store.showBranch = !!value;
   else if (key === 'modules') {
     store.modules = normalizeModules(value, store.modules);
     syncHelper();
@@ -552,10 +552,8 @@ ipcMain.handle('settings-set', async (_e, key, value) => {
   } else if (key === 'keepAwake') {
     store.keepAwake = !!value;
     applyAwake();
-  } else if (key === 'catJump') store.catJump = !!value;
-  else if (key === 'hoverOpen' && [0, 300, 600, 1000].includes(value)) store.hoverOpen = value;
+  } else if (key === 'hoverOpen' && [0, 300, 600, 1000].includes(value)) store.hoverOpen = value;
   else if (key === 'welcomed') store.welcomed = true;
-  else if (key === 'intro') store.intro = !!value;
   else if (key === 'catPlaces') win?.webContents.send('cat-reset'); // her places live in the island's renderer
   else if (key === 'glow') {
     store.glow = !!value;
