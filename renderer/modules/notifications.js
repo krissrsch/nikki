@@ -15,7 +15,7 @@
   const fresh = () => !!state.items[0] && Date.now() - state.items[0].at < FRESH_MS;
 
   api?.onToasts((s) => {
-    const newOne = s.items[0] && s.items[0].at !== state.items[0]?.at;
+    const newOne = s.items[0] && s.items[0].at > (state.items[0]?.at ?? 0); // newer than the top one: deleting the newest is no arrival
     state = s;
     if (!ctx) return;
     render();
