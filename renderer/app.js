@@ -410,8 +410,9 @@ function show(s) {
     if (wasBusy) sendPlanFeedback();
     if (queued) {
       setQueued(false);
-      // only after a clean end: an error or a stop leaves the text in the field to look at first
-      if (s.state === 'done' && !busy && promptEl.value.trim()) start();
+      // only after a clean end, and only into our own chat: an error or a stop, or a terminal session pinned meanwhile
+      // (a permission pins it by itself), leaves the text in the field; start() would hand it to that session
+      if (s.state === 'done' && !busy && !focusSession && promptEl.value.trim()) start();
     }
   }
   renderState();

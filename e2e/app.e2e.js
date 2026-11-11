@@ -217,6 +217,24 @@ describe('Nikki offline', () => {
     assert.equal((await nikki.calls()).starts.length, 2);
     assert.equal(await page.inputValue('#prompt'), 'Noch was');
     assert.equal(await page.getAttribute('#composer', 'class'), '');
+    // a terminal session pinned while the text waits: it is meant for our chat, so it never goes to that session
+    await page.fill('#prompt', '');
+    await nikki.send('Dritte Aufgabe');
+    await until(nikki.busy, 'läuft wieder');
+    await page.fill('#prompt', 'Nur für unseren Chat');
+    await page.press('#prompt', 'Enter');
+    await nikki.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.isAlwaysOnTop()).webContents.send('terminal', { sessions: [{ id: 't1', cwd: 'C:\anderes', state: 'working', text: 'arbeitet', at: Date.now() }] }));
+    await nikki.app.evaluate(({ ipcMain }) => {
+      globalThis.queued = [];
+      ipcMain.removeHandler('queue-message');
+      ipcMain.handle('queue-message', (_e, m) => (globalThis.queued.push(m), true));
+    });
+    await page.click('#sessionPills .chip');
+    await nikki.status({ state: 'done', text: 'fertig', answer: 'Erledigt.' });
+    await page.waitForTimeout(300);
+    assert.deepEqual(await nikki.app.evaluate(() => globalThis.queued), [], 'nichts ging an die angepinnte Session');
+    assert.equal((await nikki.calls()).starts.length, 3);
+    assert.equal(await page.inputValue('#prompt'), 'Nur für unseren Chat');
     assert.deepEqual(nikki.errors, []);
   });
 
