@@ -18,6 +18,8 @@ function notesWhen(at, now) {
   let root;
   let busy = false; // an animation runs: no second flip on top of it
   let saveTimer;
+  let torn = null; // { sheet, idx }: the last torn-off sheet, a few seconds long to get back
+  let tornTimer;
   const ICON_PREV = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4 5.5 8l4 4"/></svg>';
   const ICON_NEXT = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"/></svg>';
   const ICON_PLUS = '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>';
@@ -34,7 +36,7 @@ function notesWhen(at, now) {
   function render(anim = '') {
     if (!root) return;
     if (!n()) {
-      root.replaceChildren(h('div', { className: 'padEmpty' }, 'Der Block ist leer', h('button', { type: 'button', className: 'btn', onclick: newSheet }, 'Neues Blatt')));
+      root.replaceChildren(h('div', { className: 'padEmpty' }, 'Der Block ist leer', h('button', { type: 'button', className: 'btn', onclick: newSheet }, 'Neues Blatt'), undoBtn()));
       return;
     }
     data.idx = Math.max(0, Math.min(data.idx, n() - 1));
@@ -71,13 +73,15 @@ function notesWhen(at, now) {
         { className: 'padBar' },
         nav('Vorheriges Blatt', ICON_PREV, prev, data.idx <= 0),
         nav('Nächstes Blatt', ICON_NEXT, next, data.idx >= n() - 1),
-        h('span', { className: 'padHint' }, 'Blättern auch mit dem Mausrad'),
+        undoBtn() || hint(),
         h('span', { className: 'grow' }),
         h('button', { type: 'button', className: 'btn padBtn', innerHTML: ICON_PLUS, onclick: newSheet }, 'Neues Blatt'),
         h('button', { type: 'button', className: 'btn padBtn tearBtn', innerHTML: ICON_TEAR, onclick: tear }, 'Rausreißen'),
       ),
     );
   }
+  const hint = () => h('span', { className: 'padHint' }, 'Blättern auch mit dem Mausrad');
+  const undoBtn = () => torn && h('button', { type: 'button', className: 'btn padBtn undoTear', onclick: unTear }, 'Zurückholen');
   // the sheet on top flips up and away, the next one settles in
   function next() {
     if (busy || data.idx >= n() - 1) return;
@@ -105,11 +109,26 @@ function notesWhen(at, now) {
     busy = true;
     sheetEl().classList.add('tear');
     later(() => {
-      data.sheets.splice(data.idx, 1);
+      const [sheet] = data.sheets.splice(data.idx, 1);
+      // one click must not lose a written sheet: it can come back for a few seconds
+      torn = sheet.text.trim() ? { sheet, idx: data.idx } : null;
+      clearTimeout(tornTimer);
+      if (torn) tornTimer = setTimeout(() => ((torn = null), root?.querySelector('.undoTear')?.replaceWith(n() ? hint() : '')), 6000);
       save();
       render('settle');
     }, 520);
     later(() => ((busy = false), sheetEl()?.classList.remove('settle')), 770);
+  }
+  function unTear() {
+    if (busy || !torn) return;
+    clearTimeout(tornTimer);
+    data.sheets.splice(Math.min(torn.idx, n()), 0, torn.sheet);
+    data.idx = Math.min(torn.idx, n() - 1);
+    torn = null;
+    busy = true;
+    save();
+    render('flipDown');
+    later(() => ((busy = false), sheetEl()?.classList.remove('flipDown')), 310);
   }
   // a fresh sheet on top of the pad, coming down from above
   function newSheet() {
@@ -118,11 +137,8 @@ function notesWhen(at, now) {
     data.sheets.splice(data.idx, 0, { id: crypto.randomUUID(), at: Date.now(), text: '' });
     save();
     render('flipDown');
-    later(() => {
-      busy = false;
-      sheetEl()?.classList.remove('flipDown');
-      root?.querySelector('.sheetText')?.focus();
-    }, 310);
+    root?.querySelector('.sheetText')?.focus(); // at once: what is typed while it comes down lands on it
+    later(() => ((busy = false), sheetEl()?.classList.remove('flipDown')), 310);
   }
 
   registerModule({
@@ -135,6 +151,8 @@ function notesWhen(at, now) {
       if (Array.isArray(saved?.sheets)) data = { sheets: saved.sheets.filter((s) => s && typeof s.text === 'string'), idx: Number(saved.idx) || 0 };
     },
     stop() {
+      clearTimeout(tornTimer);
+      torn = null;
       if (saveTimer) save(); // typed just before switching it off
       root = null;
     },
