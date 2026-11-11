@@ -57,6 +57,9 @@ describe('Zwischenablage', () => {
     assert.deepEqual(await app.evaluate(() => globalThis.copied), [FIRST]);
     assert.equal(await page.textContent('.shelfInfo'), 'Kopiert.');
     setClipboardText(FIRST); // what the recorded write would have done, so Nikki's next look agrees
+    // a look between the click and this line saw SECOND still on the clipboard and put it back on top; one more look sorts it
+    await page.waitForTimeout(1300);
+    await page.waitForSelector(`.clipRow:first-child .clipText:text-is("${FIRST}")`);
 
     // "Verlauf merken" writes the file, off deletes it
     await page.click('#clipKeep');
