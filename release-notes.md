@@ -1,31 +1,53 @@
-# Nikki 1.4
+# Nikki 1.5
 
-Nikki speaks English now, shows the line being sung, colours the notch like the album cover and collects your Windows notifications.
+Nikki has a new icon and a white edge around the closed notch, takes a mouse button as the voice key, and its calendar, timer and chat got the things people missed in a user test.
 
 ## New
 
-- **English.** Settings › General › Display language: German, English, or whatever Windows uses. Switches at once, no restart. Voice commands stay German.
-- **Lyrics.** The line being sung shows under the song title, in sync. Synced lyrics come from lrclib.net, so this is off until you switch on Lyrics under Today; only title, artist, album and length are sent.
-- **Cover colours.** While music plays, the light edge and the spectrum take the colour of the album cover, and the music tile gets a soft wash of it. Grey, black or white covers keep the blue.
-- **Notifications.** A new module collects what other apps tell you in Windows. A new one sweeps the closed notch white once. Off by default, kept in memory only.
+- **Mouse button as voice key.** Settings › Voice › Key to hold: the middle or a side mouse button works now, alone or with Ctrl, Alt or Shift. A plain click of that button stays a click and does not start a recording.
+- **New icon and a white edge.** The icon is Nikki's closed notch: the black notch, her eyes and whiskers. The closed notch always keeps a thin white edge, which turns yellow, green, red or the cover's colour when something happens.
+- **First start.** A short setup card in place of the tiles: is Claude Code there, which project folder, how to open Nikki. Opening on hover is on for new installs.
+- **Queue a message.** Press Enter while Claude works and the text goes out once the turn is done. After an error or a stop it stays in the field.
+- **Calendar.** Click an appointment to change it. Appointments repeat daily, on weekdays, weekly or monthly. A Today button when you leave the current month.
+- **Timer.** Your own length from 1 to 180 minutes, and today's focus rounds.
+- **Notes and notifications.** A torn-off sheet can come back for a few seconds. Notifications can be deleted one by one and opened in full.
+- **Keyboard.** The tab row and the settings sidebar are one Tab stop each; the arrow keys move inside them.
+
+## Changed
+
+- Nikki's data now lives in `AppData\Roaming\notch-nikki`. The old `desktopcompanion` folder moves there on the first start, with chats, settings and the voice model.
+- The settings window opens on the screen the notch is on.
 
 ## Fixed
 
-- After Esc, the island no longer opens again by itself when the pointer rests on the notch.
+- A running timer is no longer lost by clicking a preset.
+- Tables, long question options and plans stay readable in the chat; the cat no longer covers the calendar's last row or the chat's text.
+- When a key is taken, the voice key's message names the voice key, not the open key.
 
 ---
 
 ## Deutsch
 
-Nikki spricht jetzt Englisch, zeigt die gesungene Zeile, färbt die Notch wie das Albumcover und sammelt deine Windows-Mitteilungen.
+Nikki hat ein neues Icon und eine weiße Kante um die zugeklappte Notch, nimmt eine Maustaste als Sprachtaste, und Kalender, Timer und Chat haben bekommen, was in einem Nutzertest gefehlt hat.
 
 ### Neu
 
-- **Englisch.** Einstellungen › Allgemein › Anzeigesprache: Deutsch, Englisch oder wie Windows. Wirkt sofort, ohne Neustart. Sprachbefehle bleiben deutsch.
-- **Songtexte.** Unter dem Titel steht die gerade gesungene Zeile, synchron zum Lied. Die Texte kommen von lrclib.net, deshalb ist das aus, bis du „Songtexte“ unter Heute einschaltest. Es gehen nur Titel, Interpret, Album und Länge raus.
-- **Cover-Farben.** Bei Musik nehmen Lichtkante und Spektrum die Farbe des Covers an, die Musik-Kachel bekommt einen leichten Schimmer davon. Graue, schwarze oder weiße Cover behalten das Blau.
-- **Mitteilungen.** Ein neues Modul sammelt, was andere Apps dir in Windows melden. Eine neue Mitteilung streift einmal weiß über die zugeklappte Notch. Ab Werk aus, nur im Speicher.
+- **Maustaste als Sprachtaste.** Einstellungen › Sprache › Taste zum Halten: Jetzt geht auch die mittlere oder eine seitliche Maustaste, allein oder mit Strg, Alt oder Umschalt. Ein normaler Klick mit dieser Taste bleibt ein Klick und startet keine Aufnahme.
+- **Neues Icon und eine weiße Kante.** Das Icon ist Nikkis zugeklappte Notch: schwarz, mit ihren Augen und Schnurrhaaren. Zugeklappt hat die Notch immer eine schmale weiße Kante, die gelb, grün, rot oder in der Cover-Farbe leuchtet, wenn etwas passiert.
+- **Erster Start.** Eine kurze Einrichtung statt der Kacheln: Ist Claude Code da, welcher Projektordner, wie öffne ich Nikki. Öffnen beim Drüberfahren ist bei neuen Installationen an.
+- **Nachricht vormerken.** Enter, während Claude arbeitet, schickt den Text, sobald Claude fertig ist. Nach einem Fehler oder Stopp bleibt er im Feld.
+- **Kalender.** Ein Klick auf einen Termin ändert ihn. Termine wiederholen sich täglich, werktags, wöchentlich oder monatlich. Ein „Heute“-Knopf, sobald du wegblätterst.
+- **Timer.** Eigene Dauer von 1 bis 180 Minuten und die Fokusrunden von heute.
+- **Notizen und Mitteilungen.** Ein abgerissenes Blatt kommt ein paar Sekunden lang zurück. Mitteilungen lassen sich einzeln löschen und ganz aufklappen.
+- **Tastatur.** Reiterleiste und Seitenleiste der Einstellungen sind je ein Tab-Stopp, die Pfeiltasten wandern darin.
+
+### Geändert
+
+- Nikkis Daten liegen jetzt in `AppData\Roaming\notch-nikki`. Der alte Ordner `desktopcompanion` zieht beim ersten Start dorthin um, mit Chats, Einstellungen und Sprachmodell.
+- Die Einstellungen öffnen sich auf dem Bildschirm, auf dem die Notch sitzt.
 
 ### Behoben
 
-- Nach Esc geht die Insel nicht mehr von selbst wieder auf, wenn die Maus auf der Notch ruht.
+- Ein Klick auf eine Vorwahl verwirft keinen laufenden Timer mehr.
+- Tabellen, lange Antwortoptionen und Pläne bleiben im Chat lesbar; die Katze verdeckt nicht mehr die letzte Kalenderzeile oder Text im Chat.
+- Ist eine Taste belegt, nennt die Meldung der Sprachtaste die Sprachtaste und nicht die Öffnen-Taste.
