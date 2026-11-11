@@ -1428,6 +1428,7 @@ function moduleTab(mod) {
   b.className = 'tab';
   b.dataset.view = mod.id;
   b.setAttribute('aria-pressed', String(view === mod.id));
+  b.tabIndex = view === mod.id ? 0 : -1; // the row is one Tab stop (setView)
   b.setAttribute('aria-label', mod.title);
   b.title = mod.title;
   b.innerHTML = mod.icon; // fixed markup from the module's own code
