@@ -83,7 +83,7 @@ const pawSourceLine = (s) => [s.date, s.project, s.title].filter(Boolean).join('
         kids.push(h('button', { type: 'button', className: 'btn', onclick: chooseExe }, 'pawprint.exe wählen …'));
       }
     } else {
-      kids.push(h('p', { className: 'pawAnswer', translate: 'no' }, ...pawParts(result.answer).map(part)));
+      const answer = h('p', { className: 'pawAnswer', translate: 'no' }, ...pawParts(result.answer).map(part));
       sourceBox = h(
         'div',
         { className: 'pawSources', translate: 'no' },
@@ -92,7 +92,8 @@ const pawSourceLine = (s) => [s.date, s.project, s.title].filter(Boolean).join('
         ),
       );
       sourceBox.querySelectorAll('details').forEach((d, i) => (d.dataset.n = i + 1));
-      kids.push(sourceBox);
+      // the island clips what is taller than it: answer and sources scroll in their own box, the question stays on top
+      kids.push(h('div', { className: 'pawResult' }, answer, sourceBox));
     }
     root.replaceChildren(h('div', { className: 'pawBox' }, ...kids));
     if (!busy) input.focus();

@@ -14,6 +14,10 @@ http
     if (req.headers['x-pawprint-token'] !== token) return json(res, 401, {}, 0);
     const q = url.searchParams.get('q');
     if (q === 'kaputt') return json(res, 502, { detail: 'Bist du eingeloggt?' });
+    if (q === 'lang') {
+      const long = (n) => `Fundstelle ${n}: ` + 'viel Text aus einem langen Chat. '.repeat(40);
+      return json(res, 200, { answer: `${'Eine lange Antwort. '.repeat(40)}Siehe [Quelle 6].`, sources: [1, 2, 3, 4, 5, 6].map((n) => ({ project: 'demo', date: '2026-10-01', title: `Teil ${n}`, text: long(n) })) });
+    }
     json(res, 200, {
       answer: `Es sind **34** Eingänge [Quelle 1] in \`campaign.json\` [Quelle 2]. <b>kein Markup</b>`,
       sources: [

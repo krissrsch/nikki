@@ -198,6 +198,19 @@ describe('Module aus Phase 3', () => {
     assert.match(shown, /serve --port \d+ --parent-pid \d+/);
     assert.doesNotMatch(shown, /token/i);
     assert.equal(await page.isDisabled('.mod-paw .pawInput'), false);
+    // a long answer with many sources scrolls inside the page; the last source can be reached and opened
+    await page.fill('.mod-paw .pawInput', 'lang');
+    await page.press('.mod-paw .pawInput', 'Enter');
+    await page.waitForSelector('.mod-paw .pawSrc[data-n="6"]', { timeout: 30000 });
+    const box = await page.$eval('.mod-paw .pawResult', (el) => ({ scroll: el.scrollHeight, client: el.clientHeight, overflow: getComputedStyle(el).overflowY }));
+    assert.ok(box.scroll > box.client && box.overflow === 'auto', JSON.stringify(box));
+    await page.click('.mod-paw .pawRef:has-text("[Quelle 6]")');
+    await until(() => page.evaluate(() => {
+      const r = document.querySelector('.mod-paw .pawResult').getBoundingClientRect();
+      const s = document.querySelector('.mod-paw .pawSrc[data-n="6"] summary').getBoundingClientRect();
+      return document.querySelector('.mod-paw .pawSrc[data-n="6"]').open && s.top >= r.top && s.bottom <= r.bottom;
+    }), 'Quelle 6 sichtbar in der Liste');
+    assert.ok((await page.locator('.mod-paw .pawInput').boundingBox()).y >= 0, 'the question box stays in view');
     await page.fill('.mod-paw .pawInput', 'kaputt');
     await page.press('.mod-paw .pawInput', 'Enter');
     await page.waitForSelector('.mod-paw .pawStatus.bad:has-text("Claude hat nicht geantwortet. Bist du eingeloggt?")', { timeout: 30000 });

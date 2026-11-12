@@ -196,6 +196,7 @@ textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 .pawAnswer { margin: 0; padding: 10px 12px; border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; background: rgb(255 255 255 / 0.04); font-size: 13px; line-height: 1.5; white-space: pre-wrap; user-select: text; }
 .pawAnswer code { padding: 1px 5px; border-radius: 5px; background: rgb(255 255 255 / 0.08); font-size: 12px; }
 .pawRef { padding: 0 2px; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
+.pawResult { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; } /* the island ends at ~550 */
 .pawSources { display: flex; flex-direction: column; gap: 6px; }
 .pawSrc { border-radius: 10px; background: rgb(255 255 255 / 0.04); }
 .pawSrc summary { padding: 8px 10px; cursor: pointer; color: var(--muted); font-size: 12px; }
