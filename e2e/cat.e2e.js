@@ -136,7 +136,7 @@ describe('Nikki die Katze', () => {
       assert.deepEqual(await s.$$eval('.sPage:not([hidden])', (p) => p.map((x) => x.dataset.page)), [id]);
       assert.equal(await s.getAttribute(`.sideBtn[data-page="${id}"]`, 'aria-current'), 'page');
     }
-    assert.equal(await s.locator('#setModuleList .modRow').count(), 8, 'alle Module mit Icon und Schalter');
+    assert.equal(await s.locator('#setModuleList .modRow').count(), 10, 'alle Module mit Icon und Schalter, auch Paw und die Mitteilungen');
     // Plätze zurücksetzen wirkt in der Insel
     await page.evaluate(() => localStorage.setItem('nikki.catPlaces', '{"home":{"left":20,"top":100}}'));
     await page.reload();

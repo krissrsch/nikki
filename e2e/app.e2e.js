@@ -144,10 +144,21 @@ describe('Nikki offline', () => {
     assert.deepEqual(await tabs(), ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'paw']);
     assert.equal(await page.locator('#homeTiles .tile').count(), 4, 'Claude, Musik, Wetter, Kalender');
     const s = await nikki.settings('modules');
+    // every module is listed, also the ones that start switched off (they were missing once and fell out of the saved list)
+    const all = ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'paw', 'clipboard', 'discord', 'notifications'];
+    assert.deepEqual(await s.$$eval('#setModuleList .switch', (b) => b.map((x) => x.id.slice(4))), all);
     await s.click('#mod-calendar');
     await page.waitForFunction(() => !document.querySelector('#moduleTabs .tab[data-view="calendar"]'));
     assert.equal(await page.locator('#homeTiles .tile').count(), 3, 'its tile goes with it');
     assert.deepEqual(nikki.state().modules.find((m) => m.id === 'calendar'), { id: 'calendar', on: false });
+    assert.deepEqual(nikki.state().modules.map((m) => m.id), all, 'switching one keeps every other module in the saved list');
+    // Paw can be switched off and moved like the others
+    await s.click('#mod-paw');
+    await page.waitForFunction(() => !document.querySelector('#moduleTabs .tab[data-view="paw"]'));
+    await s.click('#setModuleList [data-key="paw:-1"]');
+    await until(() => nikki.state().modules.findIndex((m) => m.id === 'paw') === 5, 'Paw eins nach oben');
+    await s.click('#mod-paw');
+    await until(async () => (await tabs()).join() === 'music,shelf,todo,notes,paw,timer', 'Paw wieder da, vor dem Timer');
     await s.click('#mod-calendar');
     await page.waitForSelector('#moduleTabs .tab[data-view="calendar"]', { state: 'attached' });
     assert.equal(await page.locator('#homeTiles .tile').count(), 4);

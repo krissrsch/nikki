@@ -188,3 +188,9 @@ test('Paw: Überschrift einer Fundstelle und Wartetexte', () => {
   assert.match(g.PAW_PHASE.starting, /startet/);
   assert.match(g.PAW_PHASE.asking, /10 bis 20 Sekunden/);
 });
+
+test('die Einstellungen laden dieselben Module wie die Insel, sonst fehlt eins in der Modulliste', () => {
+  const scripts = (file) => [...readFileSync(new URL(`./${file}`, import.meta.url), 'utf8').matchAll(/src="(modules\/[\w-]+\.js)"/g)].map((m) => m[1]);
+  assert.ok(scripts('index.html').includes('modules/paw.js'));
+  assert.deepEqual(scripts('settings.html'), scripts('index.html'));
+});

@@ -156,23 +156,26 @@ function renderModules(list) {
       const mod = NikkiModules.get(m.id);
       const name = h('label', { className: 'modName', htmlFor: `mod-${m.id}`, innerHTML: mod.icon }, mod.title);
       const move = (d, label, path) => {
-        const b = control(h('button', { type: 'button', className: 'iconBtn', innerHTML: svg(path), title: label, ariaLabel: `${mod.title} ${label}`, disabled: !known[i + d], onclick: () => moveModule(known, i, d) }), `${m.id}:${d}`);
+        const b = control(h('button', { type: 'button', className: 'iconBtn', innerHTML: svg(path), title: label, ariaLabel: `${mod.title} ${label}`, disabled: !known[i + d], onclick: () => moveModule(list, known, i, d) }), `${m.id}:${d}`);
         return b;
       };
       const sw = control(h('input', { type: 'checkbox', className: 'switch', id: `mod-${m.id}`, checked: m.on }), `${m.id}:on`);
       sw.setAttribute('role', 'switch');
-      sw.addEventListener('change', () => setSetting('modules', known.map((x) => (x.id === m.id ? { ...x, on: sw.checked } : x))));
+      sw.addEventListener('change', () => setModules(list, known.map((x) => (x.id === m.id ? { ...x, on: sw.checked } : x))));
       return h('div', { className: 'setRow modRow' }, name, move(-1, 'nach oben', 'M4.5 9.5 8 6l3.5 3.5'), move(1, 'nach unten', 'M4.5 6.5 8 10l3.5-3.5'), sw);
     }),
   );
   const again = had && box.querySelector(`[data-key="${had}"]`);
   (again && !again.disabled ? again : again?.parentElement.querySelector('.switch'))?.focus();
 }
-function moveModule(list, i, d) {
-  const next = [...list];
+function moveModule(list, known, i, d) {
+  const next = [...known];
   [next[i], next[i + d]] = [next[i + d], next[i]];
-  setSetting('modules', next);
+  setModules(list, next);
 }
+// the shown modules in their new order and state, then every module this window has no script for, unchanged:
+// main takes the list as it comes, so a module missing here must not fall out of the user's list
+const setModules = (list, shown) => setSetting('modules', [...shown, ...list.filter((m) => !NikkiModules.has(m.id))]);
 
 // ---- keys: click, then press the new combo; main keeps the old one when the new one is taken
 let capturing = null; // the entry of KEYS being set
