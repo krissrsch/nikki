@@ -979,7 +979,7 @@ const pawRecorded = () => {
     return '';
   }
 };
-const pawFake = process.env.NIKKI_E2E_PAW; // e2e: a script that plays Pawprint, run with Electron's own Node
+const pawFake = !app.isPackaged && process.env.NIKKI_E2E_PAW; // e2e only: a script that plays Pawprint, run with Electron's own Node; ignored in the installed app
 const paw = createPaw({
   exe: () => (pawFake ? process.execPath : findPawprint({ stored: store.pawPath, recorded: pawRecorded(), env: process.env.PATH, dir, exists: fs.existsSync })),
   freePort,
