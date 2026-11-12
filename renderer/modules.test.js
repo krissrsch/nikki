@@ -5,10 +5,10 @@ import vm from 'node:vm';
 
 // classic renderer scripts share one global scope: run them in one sandbox, in index.html order, and take the pure parts
 const ctx = vm.createContext({});
-for (const f of ['i18n.js', 'modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js', 'modules/clipboard.js', 'modules/discord.js', 'modules/notifications.js']) {
+for (const f of ['i18n.js', 'modules.js', 'modules/music.js', 'modules/calendar.js', 'modules/shelf.js', 'modules/todo.js', 'modules/notes.js', 'modules/timer.js', 'modules/paw.js', 'modules/clipboard.js', 'modules/discord.js', 'modules/notifications.js']) {
   vm.runInContext(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
-const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, musicLyric, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText, timerRounds, timerMinutes, discordCount })', ctx);
+const g = vm.runInContext('({ NikkiModules, moduleList, musicPos, musicTime, musicApp, musicLyric, calDayKey, calMonth, calOnDay, calDue, todoShown, notesWhen, timerLeft, timerText, timerRounds, timerMinutes, discordCount, pawParts, pawSourceLine, PAW_PHASE })', ctx);
 // objects from the sandbox have another Object.prototype: compare plain copies
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const MIN = 60 * 1000;
@@ -19,7 +19,7 @@ test('Discord zählt Personen', () => {
 });
 
 test('registry: the modules register with a page, in tab order, and no globals collide; only music, calendar and Discord have a Home tile', () => {
-  assert.deepEqual([...g.NikkiModules.keys()], ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'clipboard', 'discord', 'notifications']);
+  assert.deepEqual([...g.NikkiModules.keys()], ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'paw', 'clipboard', 'discord', 'notifications']);
   for (const m of g.NikkiModules.values()) {
     assert.equal(typeof m.page, 'function', m.id);
     assert.match(m.icon, /^<svg class="ti"/, m.id);
@@ -162,4 +162,29 @@ test('musicLyric: the line at a position, nothing before the first and in a gap'
   assert.equal(g.musicLyric(lines, 16), '');
   assert.equal(g.musicLyric(lines, 300), 'three');
   assert.equal(g.musicLyric([], 10), '');
+});
+
+test('Paw: die Antwort wird in Text, fett, Code und Quellen zerlegt, sonst nichts wird zu Markup', () => {
+  assert.deepEqual(plain(g.pawParts('Es sind **34** Eingänge [Quelle 1], siehe `campaign.json` [Quelle 12].')), [
+    { kind: 'text', text: 'Es sind ' },
+    { kind: 'bold', text: '34' },
+    { kind: 'text', text: ' Eingänge ' },
+    { kind: 'source', n: 1, text: '[Quelle 1]' },
+    { kind: 'text', text: ', siehe ' },
+    { kind: 'code', text: 'campaign.json' },
+    { kind: 'text', text: ' ' },
+    { kind: 'source', n: 12, text: '[Quelle 12]' },
+    { kind: 'text', text: '.' },
+  ]);
+  // markup in the answer stays plain text, an unclosed marker stays as written
+  assert.deepEqual(plain(g.pawParts('<img src=x onerror=alert(1)> **offen')), [{ kind: 'text', text: '<img src=x onerror=alert(1)> **offen' }]);
+  assert.deepEqual(plain(g.pawParts('')), []);
+  assert.deepEqual(plain(g.pawParts(undefined)), []);
+});
+
+test('Paw: Überschrift einer Fundstelle und Wartetexte', () => {
+  assert.equal(g.pawSourceLine({ date: '2026-10-25', project: 'Pokevivors', title: 'Skills und Repos' }), '2026-10-25 · Pokevivors · Skills und Repos');
+  assert.equal(g.pawSourceLine({ date: '2026-10-25', project: '', title: '' }), '2026-10-25');
+  assert.match(g.PAW_PHASE.starting, /startet/);
+  assert.match(g.PAW_PHASE.asking, /10 bis 20 Sekunden/);
 });
