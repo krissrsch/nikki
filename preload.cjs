@@ -39,6 +39,10 @@ contextBridge.exposeInMainWorld('companion', {
   discordGet: () => ipcRenderer.invoke('discord-get'),
   discordAuthorize: () => ipcRenderer.send('discord-authorize'), // opens the dialog in Discord
   onDiscord: on('discord'),
+  // Paw (lib/paw.js): a question for Pawprint -> { ok, answer, sources } or { ok: false, error, message? }; choose = pick pawprint.exe by hand
+  pawAsk: (question) => ipcRenderer.invoke('paw-ask', question),
+  pawChoose: () => ipcRenderer.invoke('paw-choose'),
+  onPaw: on('paw'), // 'starting' | 'asking' | 'idle'
   onSettingsPage: on('settings-page'),
   onAppCommand: on('app-command'), // a side mouse button, as Windows names it: browser-backward | browser-forward
   onCatReset: on('cat-reset'),

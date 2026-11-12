@@ -21,6 +21,7 @@ import { mediaCommand } from './lib/media.js';
 import { coverColor } from './lib/cover-color.js';
 import { lyricsUrls, pickLyrics } from './lib/lyrics.js';
 import { DEFAULT_MODULES, moduleFile, normalizeModules, withNewModules } from './lib/modules.js';
+import { createPaw, findPawprint, isPawprintFile } from './lib/paw.js';
 import { createRelay } from './lib/relay.js';
 import { formatSize, planAdd, shelfFile } from './lib/shelf.js';
 import { onHook, sessionPid, sweep } from './lib/terminal.js';
@@ -110,6 +111,7 @@ let store = {
   voiceKey: VOICE_KEY, // held while speaking
   voiceHooks: [], // [{ name, url }]: url sealed like the Discord secret
   weatherCity: '', // Home weather tile; '' = none yet
+  pawPath: '', // Paw module: the pawprint.exe the user picked when Nikki could not find it by itself
   lang: 'auto', // auto (Windows' language) | de | en
   lyrics: false, // music module: synced lyrics from lrclib.net; off by default, title and artist leave the PC
   weather: null, // last answer for weatherCity, see fetchWeather()
@@ -959,6 +961,39 @@ function setDiscord(change) {
 ipcMain.handle('discord-get', () => ({ ...discordNow, people: discordNow.people.map((p) => ({ ...p, avatar: avatarOf(p) })) }));
 ipcMain.on('discord-authorize', () => discord?.authorize());
 
+// --- Paw (lib/paw.js): asks Pawprint, the local search over past Claude Code chats. The server starts with the first question and stops after a pause.
+const pawToken = crypto.randomBytes(24).toString('base64url');
+const freePort = () =>
+  new Promise((resolve, reject) => {
+    const probe = http.createServer().listen(0, '127.0.0.1', () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+    probe.on('error', reject);
+  });
+const pawFake = process.env.NIKKI_E2E_PAW; // e2e: a script that plays Pawprint, run with Electron's own Node
+const paw = createPaw({
+  exe: () => (pawFake ? process.execPath : findPawprint({ stored: store.pawPath, env: process.env.PATH, dir, exists: fs.existsSync })),
+  freePort,
+  spawn: (file, args, o) =>
+    pawFake
+      ? spawn(file, [pawFake, ...args], { env: { ...o.env, ELECTRON_RUN_AS_NODE: '1' }, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
+      : spawn(file, args, { ...o, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }),
+  kill: (c) => execFile('taskkill', ['/pid', String(c.pid), '/t', '/f'], { windowsHide: true }, () => {}), // the launcher has a child: take the tree
+  token: pawToken,
+  onPhase: (phase) => send('paw', phase),
+});
+ipcMain.handle('paw-ask', (_e, question) => paw.ask(question));
+ipcMain.handle('paw-choose', async () => {
+  const r = await dialog.showOpenDialog(win, { title: 'pawprint.exe', properties: ['openFile'], filters: [{ name: 'Pawprint', extensions: ['exe'] }] });
+  const file = r.canceled ? null : r.filePaths[0];
+  if (!isPawprintFile(file) || !fs.existsSync(file)) return { ok: false };
+  store.pawPath = file;
+  save();
+  paw.stop();
+  return { ok: true };
+});
+
 // --- Spracheingabe: hold the key, speak, let go. The helper records, whisper.cpp writes it down, lib/voice.js says what it means.
 const voiceDir = path.join(app.getPath('userData'), 'voice');
 const whisperExe = path.join(voiceDir, 'Release', 'whisper-cli.exe');
@@ -1795,6 +1830,7 @@ app.on('will-quit', () => {
   agent.abort(); // no claude.exe left running on its own (M5)
   stopHelper();
   discord?.stop();
+  paw.stop();
   clearInterval(clipTimer);
   relay.cancelAll(); // waiting terminal hooks fall back to their own dialog
   try {
