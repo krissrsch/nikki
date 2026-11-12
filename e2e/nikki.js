@@ -24,9 +24,10 @@ export async function until(fn, what, ms = 10000) {
 
 // state: initial state.json (fixture). settings: initial ~/.claude/settings.json in the temp home.
 // realHome: keep the user's home, only for runs that need the Claude login.
+// extraEnv: more environment variables for Nikki.
 // files: more JSON in userData before the start, e.g. { 'modules/todo.json': { items: [...] } }. video: folder for a recording.
 // Without it HOME/USERPROFILE point to a temp folder, so nothing can reach the real ~/.claude/settings.json.
-export async function launch({ state, settings, realHome = false, files = {}, video } = {}) {
+export async function launch({ state, settings, realHome = false, files = {}, video, extraEnv = {} } = {}) {
   const userData = tmpDir('data');
   const home = realHome ? null : tmpDir('home');
   // no start show, no jump between tabs in the tests: the page switches at once, as the assertions expect (cat.e2e.js turns it on)
@@ -44,6 +45,7 @@ export async function launch({ state, settings, realHome = false, files = {}, vi
   env.NIKKI_NO_FULLSCREEN = '1'; // a game or video on the user's screen must not hide the island mid-test
   env.NIKKI_MUTE = '1'; // sounds still play (the tests count them), but muted: nobody at the PC hears a test run
   env.NIKKI_NO_POINTER = '1'; // the real mouse stays out too: tests send the pointer positions themselves
+  Object.assign(env, extraEnv); // e.g. NIKKI_E2E_PAW: a script that plays pawprint.exe
   if (home) {
     env.HOME = env.USERPROFILE = home;
     // Claude counts as installed on every machine; the offline tests replace it before anything would run it

@@ -29,8 +29,8 @@ describe('Nikki offline', () => {
     await until(async () => (await view()) === 'chat', 'Chat');
     await page.keyboard.press('Control+1');
     await until(async () => (await view()) === 'home', 'Heute');
-    await page.keyboard.press('Control+9');
-    assert.equal(await view(), 'home');
+    await page.keyboard.press('Control+9'); // the ninth tab: Paw, the last of the default modules
+    await until(async () => (await view()) === 'paw', 'Paw');
     const s = await nikki.settings('about');
     assert.match(await s.textContent('#aboutVersion'), /^Version \d+\.\d+\.\d+$/);
     assert.ok((await s.textContent('#aboutDir')).length > 3);
@@ -141,7 +141,7 @@ describe('Nikki offline', () => {
     nikki = await launch();
     const { page } = nikki;
     const tabs = () => page.$$eval('#moduleTabs .tab', (b) => b.map((x) => x.dataset.view));
-    assert.deepEqual(await tabs(), ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer']);
+    assert.deepEqual(await tabs(), ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'paw']);
     assert.equal(await page.locator('#homeTiles .tile').count(), 4, 'Claude, Musik, Wetter, Kalender');
     const s = await nikki.settings('modules');
     await s.click('#mod-calendar');

@@ -27,7 +27,7 @@ const leftovers = (page) =>
 
 describe('Sprache', () => {
   test('English: no German left on any tab or settings page', async () => {
-    const ids = ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'clipboard', 'discord', 'notifications'];
+    const ids = ['music', 'calendar', 'shelf', 'todo', 'notes', 'timer', 'paw', 'clipboard', 'discord', 'notifications'];
     nikki = await launch({ state: { lang: 'en', modules: ids.map((id) => ({ id, on: true })) } });
     const { page } = nikki;
     assert.equal(await page.evaluate(() => document.documentElement.lang), 'en');

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, test } from 'node:test';
-import { launch, rm, tmpDir, until } from './nikki.js';
+import { launch, rm, root, tmpDir, until } from './nikki.js';
 
 let nikki;
 const dirs = [];
@@ -175,5 +175,32 @@ describe('Module aus Phase 3', () => {
     await s.click('#setAwake');
     await until(async () => (await app.evaluate(() => globalThis.awake)).length === 2, 'Wachhalten aus');
     assert.deepEqual(await app.evaluate(() => globalThis.awake), ['prevent-display-sleep', 'stop 7']);
+  });
+
+  test('Paw: die Frage geht an Pawprint, die Antwort steht mit klickbaren Quellen auf der Seite, ein Fehler kommt als Text', async () => {
+    // a script plays pawprint.exe (e2e/fake-pawprint.mjs): the real way through main, the IPC and the page, only the program is fake
+    nikki = await launch({ state: { modules: [{ id: 'paw', on: true }] }, extraEnv: { NIKKI_E2E_PAW: path.join(root, 'e2e', 'fake-pawprint.mjs') } });
+    const { page } = nikki;
+    await page.click('#tabs .tab[data-view="paw"]');
+    await page.waitForSelector('.mod-paw .pawInput');
+    await page.fill('.mod-paw .pawInput', 'Wie viele Stage-Eingänge gibt es für Kanto?');
+    await page.press('.mod-paw .pawInput', 'Enter');
+    await page.waitForSelector('.mod-paw .pawStatus[role="status"]'); // "Pawprint startet …" while the server comes up
+    assert.equal(await page.isDisabled('.mod-paw .pawInput'), true);
+    await page.waitForSelector('.mod-paw .pawAnswer strong:has-text("34")', { timeout: 30000 });
+    assert.equal(await page.textContent('.mod-paw .pawAnswer code'), 'campaign.json');
+    assert.equal(await page.locator('.mod-paw .pawAnswer b').count(), 0, 'markup in an answer stays text');
+    assert.match(await page.textContent('.mod-paw .pawAnswer'), /<b>kein Markup<\/b>/);
+    // Nikki started it with a free port, its own pid as parent, and no secret on the command line
+    await page.click('.mod-paw .pawRef:has-text("[Quelle 1]")');
+    assert.equal(await page.getAttribute('.mod-paw .pawSrc[data-n="1"]', 'open'), '');
+    const shown = await page.textContent('.mod-paw .pawSrc[data-n="1"] pre');
+    assert.match(shown, /serve --port \d+ --parent-pid \d+/);
+    assert.doesNotMatch(shown, /token/i);
+    assert.equal(await page.isDisabled('.mod-paw .pawInput'), false);
+    await page.fill('.mod-paw .pawInput', 'kaputt');
+    await page.press('.mod-paw .pawInput', 'Enter');
+    await page.waitForSelector('.mod-paw .pawStatus.bad:has-text("Claude hat nicht geantwortet. Bist du eingeloggt?")', { timeout: 30000 });
+    assert.deepEqual(nikki.errors, []);
   });
 });
