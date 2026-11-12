@@ -43,6 +43,7 @@ Unlike Coucou (which monitors many agents as notch pills and often needs an API 
 
 - **Spracheingabe** (optional): hold a key and speak, recognised locally; commands start with "Hey Nikki": tell Claude something directly or run a Discord webhook.
 - **Discord** (optional, needs the user's own Discord app): who is in the voice channel with you, over the local client, no bot.
+- **Paw**: ask about your earlier Claude Code chats. Nikki runs Pawprint (a separate program) as a local helper on 127.0.0.1 with a token, starts it with the first question and stops it after ten idle minutes; the answer cites the passages it came from.
 - Own mascot **Nikki**: a white cat with a grey-brown tabby cap and saddle, drawn after the real Nikki, 19 expressions; her head peeks out from behind the closed notch. She lives in the open island, reacts to Claude and music, jumps along with the tabs and can be dragged to any place.
 - The user likes Coucou's look and motion (soft, minimal mascot; clean black notch UI) as a style reference, not a template.
 

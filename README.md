@@ -21,6 +21,7 @@ The cat is drawn after my real cat Nikki.
 | **Music** | Whatever Windows plays (Spotify, browser, …): cover, controls, volume, and the line being sung (synced lyrics from [LRCLIB](https://lrclib.net), off by default). |
 | **Notifications** | Notifications from other apps, collected in the island. Off by default, kept in memory only. |
 | **Modules** | Calendar with reminders and repeats, to-do, notes, Pomodoro timer, file shelf, clipboard history, Discord voice channel. Each one can be switched off. |
+| **Paw** | Ask a question about your earlier Claude Code chats. Nikki starts [Pawprint](https://github.com/krissrsch/pawprint) in the background, which searches all your sessions and answers with the passages it used. Needs Pawprint installed. |
 | **Voice** | Hold a key or a mouse button (middle or side) and speak, recognised locally with whisper.cpp. "Hey Nikki, …" sends it to Claude (commands are German). |
 | **Language** | English or German, or whatever Windows uses. Switches at once, no restart. |
 
@@ -106,6 +107,7 @@ Zugeklappt zeigt die Insel nur Nikkis Augen und Schnurrhaare, rundherum eine sch
 - Musik mit Cover, Steuerung, Lautstärke und der gerade gesungenen Zeile (Songtexte von lrclib.net, standardmäßig aus)
 - Mitteilungen anderer Apps in der Insel (standardmäßig aus, nur im Speicher)
 - Module: Kalender mit Wiederholungen, To-do, Notizen, Timer mit eigener Dauer, Ablage, Zwischenablage, Discord, einzeln schaltbar
+- Paw: eine Frage zu früheren Claude-Code-Chats; Nikki startet dafür [Pawprint](https://github.com/krissrsch/pawprint) im Hintergrund (muss installiert sein)
 - Beim ersten Start eine kurze Einrichtung: Claude da? Projektordner? Wie öffne ich Nikki?
 - Spracheingabe, lokal erkannt, per Taste oder Maustaste (Mitte oder Seite). Befehle beginnen mit „Hey Nikki“
 - Bei Spiel oder Video im Vollbild geht Nikki aus dem Weg
