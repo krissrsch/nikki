@@ -971,9 +971,17 @@ const freePort = () =>
     });
     probe.on('error', reject);
   });
+// Pawprint writes where it is installed into ~/.pawprint/pawprint-path.txt each time it indexes or serves
+const pawRecorded = () => {
+  try {
+    return fs.readFileSync(path.join(os.homedir(), '.pawprint', 'pawprint-path.txt'), 'utf8').trim();
+  } catch {
+    return '';
+  }
+};
 const pawFake = process.env.NIKKI_E2E_PAW; // e2e: a script that plays Pawprint, run with Electron's own Node
 const paw = createPaw({
-  exe: () => (pawFake ? process.execPath : findPawprint({ stored: store.pawPath, env: process.env.PATH, dir, exists: fs.existsSync })),
+  exe: () => (pawFake ? process.execPath : findPawprint({ stored: store.pawPath, recorded: pawRecorded(), env: process.env.PATH, dir, exists: fs.existsSync })),
   freePort,
   spawn: (file, args, o) =>
     pawFake
