@@ -55,7 +55,7 @@ $('sideList').addEventListener('keydown', (e) => {
 const KEYS = {
   hotkey: { btn: $('setHotkey'), msg: $('hotkeyMsg'), tell: (k) => `Nikki hört jetzt auf ${k}.`, tip: 'Esc bricht ab.' },
   closeKey: { btn: $('setCloseKey'), msg: $('closeKeyMsg'), tell: (k) => `${k} schließt Nikki, solange die Insel offen ist.`, tip: 'Esc belegt Esc. Rücktaste löscht.' },
-  voiceKey: { btn: $('setVoiceKey'), msg: $('voiceKeyMsg'), tell: (k) => `Zum Sprechen halten: ${k}.`, tip: 'Auch die mittlere oder eine seitliche Maustaste. Esc bricht ab.', mouse: true },
+  voiceKey: { btn: $('setVoiceKey'), msg: $('voiceKeyMsg'), tell: (k) => `Zum Sprechen halten: ${k}.`, tip: 'Auch M3 (Mausrad), M4 oder M5 (Seitentasten). Esc bricht ab.', mouse: true },
 };
 function renderHooks(names) {
   $('hookList').replaceChildren(...names.map((name) => {

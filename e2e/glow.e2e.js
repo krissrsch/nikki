@@ -226,8 +226,8 @@ describe('Notch und Glow', () => {
     await s.mouse.down({ button: 'middle' });
     await s.mouse.up({ button: 'middle' });
     await until(() => nikki.state().voiceKey === 'MouseMiddle', 'mittlere Maustaste gespeichert');
-    assert.equal(await s.textContent('#setVoiceKey'), 'Mittlere Maustaste');
-    assert.match(await s.textContent('#voiceKeyMsg'), /Zum Sprechen halten: Mittlere Maustaste/);
+    assert.equal(await s.textContent('#setVoiceKey'), 'M3');
+    assert.match(await s.textContent('#voiceKeyMsg'), /Zum Sprechen halten: M3/);
     await s.click('#setVoiceKey');
     await s.click('#setVoiceKey'); // a left click on the button ends the capture, it is never the key
     assert.equal(nikki.state().voiceKey, 'MouseMiddle');
@@ -236,7 +236,7 @@ describe('Notch und Glow', () => {
     await s.click('#setVoiceKey');
     for (const type of ['mousePressed', 'mouseReleased']) await cdp.send('Input.dispatchMouseEvent', { type, x: 40, y: 40, button: 'back', buttons: type === 'mousePressed' ? 8 : 0, clickCount: 1 });
     await until(() => nikki.state().voiceKey === 'MouseBack', 'Seitentaste Zurück gespeichert');
-    assert.equal(await s.textContent('#setVoiceKey'), 'Maustaste Zurück');
+    assert.equal(await s.textContent('#setVoiceKey'), 'M4');
     // a back/forward that only comes as a Windows app command is a back KEY (keyboard, remapped mouse button): saved as one
     await s.click('#setVoiceKey');
     await nikki.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.getTitle() === 'Nikki Einstellungen').emit('app-command', {}, 'browser-forward'));

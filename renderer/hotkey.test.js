@@ -30,7 +30,8 @@ test('mouse buttons: middle and the side buttons, alone or with modifiers; never
   assert.equal(click(1, { altKey: true, shiftKey: true }), 'Alt+Shift+MouseMiddle');
   assert.equal(click(0), null);
   assert.equal(click(2), null);
-  assert.equal(hotkeyLabel('Control+MouseBack'), 'Strg+Maustaste Zurück');
+  assert.equal(hotkeyLabel('Control+MouseBack'), 'Strg+M4');
+  assert.deepEqual(['MouseMiddle', 'MouseBack', 'MouseForward'].map(hotkeyLabel), ['M3', 'M4', 'M5']);
 });
 
 test('label in German', () => {

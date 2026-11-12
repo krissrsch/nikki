@@ -472,13 +472,6 @@
   "Zurück": "Back",
   "Zurücksetzen": "Reset",
   "Zwischenablage": "Clipboard",
-  "Auch die mittlere oder eine seitliche Maustaste. Esc bricht ab.": "The middle or a side mouse button works too. Esc cancels.",
-  "Mittlere Maustaste": "Middle mouse button",
-  "Maustaste Zurück": "Mouse Back",
-  "Maustaste Vor": "Mouse Forward",
-  "{0}+Mittlere Maustaste": "{0}+Middle mouse button",
-  "{0}+Maustaste Zurück": "{0}+Mouse Back",
-  "{0}+Maustaste Vor": "{0}+Mouse Forward",
   "Erst zurücksetzen": "Reset first",
   "Zurückholen": "Bring back",
   "Ändern": "Change",
@@ -543,5 +536,6 @@
   "Es läuft schon eine Frage.": "A question is already running.",
   "Die Frage ist leer oder zu lang (höchstens 500 Zeichen).": "The question is empty or too long (500 characters at most).",
   "Pawprint hat nicht geantwortet.": "Pawprint did not answer.",
-  "Pawprint hat nicht geantwortet. {0}": "Pawprint did not answer. {0}"
+  "Pawprint hat nicht geantwortet. {0}": "Pawprint did not answer. {0}",
+  "Auch M3 (Mausrad), M4 oder M5 (Seitentasten). Esc bricht ab.": "M3 (wheel), M4 or M5 (side buttons) work too. Esc cancels."
 }
