@@ -437,7 +437,7 @@ cat = createCatStage({
   reduceMotion,
   canJump: () => settings.catJump !== false,
   voice: play,
-  ctx: () => ({ box: $('panelBox'), home: document.querySelector('[data-tile="claude"]'), composer: $('composer'), pageOf: (v) => $(VIEWS[v]) }),
+  ctx: () => ({ box: $('panelBox'), home: document.querySelector('[data-tile="claude"]'), composer: $('composer'), pageOf: (v) => $(VIEWS[v]), tabs: $('tabs') }),
 });
 new ResizeObserver(() => cat.sync()).observe($('panelBox'));
 $('homeTiles').addEventListener('mouseover', (e) => {

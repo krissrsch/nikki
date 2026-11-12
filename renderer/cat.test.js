@@ -99,6 +99,17 @@ test('ihr Platz: Home sitzt unten rechts in der Claude-Kachel, Chat lugt über d
   assert.equal(cat.catSpot('timer', { ...ctx, pageOf: () => null }).edge, 62);
 });
 
+test('auf Seiten ohne eigenen Platz deckt ihr Kopf keinen Reiter zu, auch wenn viele Reiter an sind', () => {
+  const page = { firstElementChild: el(16, 62, 688, 200) };
+  // only .tab[data-view] counts: the settings gear is a .tab too and sits at the far right
+  const tabsWith = (lastRight) => ({ querySelectorAll: (sel) => (sel === '.tab[data-view]' ? [el(16, 14, 36, 36), el(lastRight - 36, 14, 36, 36)] : [el(670, 14, 36, 36)]) });
+  const at = (tabs) => cat.catSpot('discord', { box, pageOf: () => page, tabs }).left;
+  assert.equal(at(tabsWith(300)), Math.round(720 * 0.62), 'few tabs: her usual place');
+  assert.equal(at(tabsWith(520)), 528, 'many tabs: right of the last one');
+  assert.equal(at(tabsWith(700)), 720 - 93 - 8, 'never out of the island');
+  assert.equal(at(undefined), Math.round(720 * 0.62));
+});
+
 test('jeder Reiter hat seinen eigenen Platz, nicht nur oben mittig', () => {
   const page = (map) => ({ firstElementChild: el(16, 62, 688, 200), querySelector: (s) => map[s] ?? null });
   const withParent = (e) => Object.assign(e, { offsetParent: box });

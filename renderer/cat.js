@@ -329,7 +329,7 @@ const CAT_PLACES = {
   notes: [{ sel: '.padBar', type: 'peek', x: 0.5 }, { sel: '.padEmpty', type: 'sit', at: 'bottom-right' }],
   timer: [{ sel: '.timerRing', type: 'sit', at: 'left' }],
 };
-function catSpot(view, { box, home, composer, pageOf }) {
+function catSpot(view, { box, home, composer, pageOf, tabs }) {
   if (view === 'home' && home?.offsetParent) { // the first-start card hides the tiles: then she peeks over it instead
     const r = catOffset(home, box);
     return { type: 'sit', left: r.x + r.w - CAT_W - 4, top: r.y + r.h - CAT_H };
@@ -353,7 +353,10 @@ function catSpot(view, { box, home, composer, pageOf }) {
   }
   const first = page?.firstElementChild;
   const r = first ? catOffset(first, box) : { y: 62 };
-  return { type: 'peek', left: Math.round(box.offsetWidth * 0.62), edge: Math.max(r.y, 62) };
+  // her head rises into the tab row: with many tabs she moves right of the last one, so she never covers a tab
+  const last = tabs ? [...tabs.querySelectorAll('.tab[data-view]')].at(-1) : null; // the views, not the gear at the far right
+  const clear = last ? catOffset(last, box).x + last.offsetWidth + 8 : 0;
+  return { type: 'peek', left: Math.round(Math.min(Math.max(box.offsetWidth * 0.62, clear), box.offsetWidth - CAT_W - 8)), edge: Math.max(r.y, 62) };
 }
 
 // a place she was dragged to stays inside the island and below the tabs, whatever size the page has
