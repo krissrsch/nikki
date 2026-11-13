@@ -11,7 +11,7 @@
     "test": "node --test",
     "dist": "helper\\build.cmd && electron-builder --win",
     "pack": "helper\\build.cmd && electron-builder --win --dir",
-    "release": "npm run dist && gh release create \"v%npm_package_version%\" Nikki-Setup.exe --title \"Nikki %npm_package_version%\" --generate-notes",
+    "release": "npm run dist && node scripts/sha256.mjs Nikki-Setup.exe && gh release create \"v%npm_package_version%\" Nikki-Setup.exe Nikki-Setup.exe.sha256 --title \"Nikki %npm_package_version%\" --generate-notes",
     "e2e": "node --test --test-concurrency=1 e2e/*.e2e.js"
   },
   "build": {
@@ -34,6 +34,7 @@
       "!updater/**",
       "!*.exe",
       "!*.blockmap",
+      "!*.sha256",
       "!builder-*.yml",
       "!latest.yml",
       "!node_modules/@anthropic-ai/claude-agent-sdk-win32-x64/**",
