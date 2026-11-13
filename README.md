@@ -71,6 +71,7 @@ The cat is drawn after my real cat Nikki.
 - **helper/NikkiHelper.cs** is a small C# program built with the compiler that ships with Windows (`helper/build.cmd`), for the Windows APIs Node cannot reach.
 - **hook.cjs** is what Claude Code calls for terminal sessions. It posts the event to Nikki and, for permissions, waits for the answer from the island.
 - **renderer/i18n.js** translates the interface. German is the source and `i18n/en.json` maps it to English; a MutationObserver swaps text and tooltips as they appear, so no call site has to know about languages.
+- **Data on disk:** `%APPDATA%\notch-nikki` holds `state.json` (tasks, chats and settings) and `hook.json` (the local hook port and token) as plain files, readable by your Windows user and not by other accounts on the PC. Nothing leaves the PC except what the Claude Code CLI sends itself. Treat the folder like your Claude Code history and do not copy it to a shared place.
 - Pure logic lives in `lib/` and the top of each renderer module, with unit tests next to it. `e2e/` drives the real app with Playwright in a temp profile, offline and muted.
 
 ## Build
@@ -85,6 +86,8 @@ npm run e2e              # Playwright against the real app, isolated (see e2e/RE
 node e2e/screenshots.js  # the screenshots above, with demo data (add "de" for German)
 node e2e/demo.js         # the demo GIF (needs ffmpeg)
 npm run dist             # builds Nikki-Setup.exe
+npm run release          # dist + Nikki-Setup.exe.sha256 + GitHub release (needs gh)
+updater\build.cmd        # builds Updater.exe (not in git; uses the C# compiler that ships with Windows)
 ```
 
 Default hotkey: `Ctrl+Alt+Space` (fallback `Ctrl+Alt+K`), changeable in the settings.

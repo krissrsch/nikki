@@ -14,6 +14,7 @@ import { addClip, removeClip, restoreClips } from './lib/clipboard.js';
 import { withoutCursorHooks } from './lib/cursor-migration.js';
 import { avatarUrl, createDiscord, DISCORD_REDIRECT, pipePath } from './lib/discord.js';
 import { friendlyError } from './lib/errors.js';
+import { externalUrl } from './lib/external.js';
 import { coversMonitor, fullscreenScript, parseCovered, powershellArgs } from './lib/fullscreen.js';
 import { hookCommandIn, withHooks, withoutHooks } from './lib/hooks.js';
 import { editJson, readJson, writeJsonAtomic } from './lib/json-file.js';
@@ -1453,7 +1454,10 @@ async function fetchWeather() {
 ipcMain.handle('weather-get', () => (store.weather?.query === store.weatherCity ? store.weather : null));
 
 ipcMain.on('toast', (_e, text) => notify(String(text ?? '').slice(0, 200), true));
-ipcMain.on('open-external', (_e, url) => /^https?:\/\//i.test(url) && shell.openExternal(url));
+ipcMain.on('open-external', (_e, url) => {
+  const safe = externalUrl(url);
+  if (safe) shell.openExternal(safe);
+});
 ipcMain.on('stop', () => agent.stop());
 ipcMain.on('permission-answer', (_e, { id, ...answer }) => {
   pending.get(id)?.(answer);

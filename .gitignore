@@ -3,8 +3,8 @@ dist/
 win-unpacked/
 graphify-out/
 *.exe
-!Updater.exe
 *.blockmap
+*.sha256
 builder-*.yml
 latest.yml
 *.log
