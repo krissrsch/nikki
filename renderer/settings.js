@@ -89,6 +89,7 @@ function applySettings(s) {
   $('setSleep').value = s.sleepMin;
   $('setHooks').checked = s.hooks;
   $('setRelay').checked = s.relay;
+  $('setConfirmEdits').checked = s.confirmEdits;
   $('setRelay').disabled = !s.hooks;
   $('setClaudePath').textContent = s.claudePath || 'nicht gefunden';
   $('setClaudePath').title = s.claudePath || '';
@@ -114,7 +115,7 @@ function applySettings(s) {
 }
 const setSetting = async (key, value) => applySettings(await api.settingsSet(key, value));
 // one line per plain control: its element id -> the setting it changes; a switch sends checked, a list its value (numbers as numbers)
-const SWITCHES = { setAutostart: 'autostart', setAwake: 'keepAwake', setHooks: 'hooks', setRelay: 'relay', setBranch: 'showBranch', setCatJump: 'catJump', setIntro: 'intro', setGlow: 'glow', setMic: 'micSpectrum', setLyrics: 'lyrics' };
+const SWITCHES = { setAutostart: 'autostart', setAwake: 'keepAwake', setHooks: 'hooks', setRelay: 'relay', setConfirmEdits: 'confirmEdits', setBranch: 'showBranch', setCatJump: 'catJump', setIntro: 'intro', setGlow: 'glow', setMic: 'micSpectrum', setLyrics: 'lyrics' };
 const CHOICES = { setSleep: ['sleepMin', Number], setGlowLevel: ['glowLevel', String], setHoverOpen: ['hoverOpen', Number], setCity: ['weatherCity', String], setLang: ['lang', String] };
 for (const [id, key] of Object.entries(SWITCHES)) $(id).addEventListener('change', (e) => setSetting(key, e.target.checked));
 for (const [id, [key, cast]] of Object.entries(CHOICES)) $(id).addEventListener('change', (e) => setSetting(key, cast(e.target.value)));

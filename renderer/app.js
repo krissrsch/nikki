@@ -1097,7 +1097,8 @@ function setPlan(v) {
 
 // ---- permissions, questions (AskUserQuestion) and plans (ExitPlanMode) share one card
 function detail(input = {}) {
-  return String(input.command ?? input.file_path ?? input.url ?? JSON.stringify(input, null, 2)).slice(0, 800);
+  // never cut: what is approved must be seen whole (the box scrolls)
+  return String(input.command ?? input.file_path ?? input.url ?? JSON.stringify(input, null, 2));
 }
 function button(label, cls, onClick, key, shortcuts) {
   const b = document.createElement('button');
@@ -1145,10 +1146,16 @@ function renderPerm() {
   const code = document.createElement('code');
   code.className = 'detail';
   code.textContent = detail(r.input);
-  body.replaceChildren(code);
+  const rules = Array.isArray(r.alwaysRules) ? r.alwaysRules : [];
+  // label and rules in their own spans: the label is translated like any text, the rules stay as Claude wrote them
+  const always = rules.length
+    ? h('p', { className: 'alwaysRules' }, h('span', {}, '„Immer“ erlaubt künftig ohne Frage:'), ' ', h('span', { translate: 'no' }, rules.join(' · ')))
+    : null;
+  body.replaceChildren(code, ...(always ? [always] : []));
   $('permActions').replaceChildren(
     button('Erlauben', 'primary', () => answerPerm({ answer: 'allow' }), 'A', 'A Enter'),
-    ...(r.origin === 'terminal' && !r.canAlways ? [] : [button('Immer', 'soft', () => answerPerm({ answer: 'always' }), 'I')]),
+    // "Always" only with the rules it would add on screen: an approval of unknown reach is no approval
+    ...(rules.length ? [button('Immer', 'soft', () => answerPerm({ answer: 'always' }), 'I')] : []),
     button('Ablehnen', 'danger', () => answerPerm({ answer: 'deny' }), 'D'),
   );
 }

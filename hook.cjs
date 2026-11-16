@@ -10,7 +10,11 @@ const cut = (s, n) => (typeof s === 'string' ? s.slice(0, n) : undefined);
 
 // Only what the island shows, cut short: tool output and file contents never leave the terminal,
 // and the event always fits the server's size limit (M10).
-function slim(raw) {
+// A card that asks for approval shows the whole command: a harmless start with something else after the cut must
+// never be approved unseen. Longer commands are not relayed at all; the terminal shows them in full.
+const CMD_SHOWN = 200;
+const CMD_APPROVE = 8000;
+function slim(raw, { cmdMax = CMD_SHOWN } = {}) {
   const i = raw?.tool_input ?? {};
   const questions = Array.isArray(i.questions)
     ? i.questions.slice(0, 4).map((q) => ({
@@ -26,8 +30,20 @@ function slim(raw) {
     tool_name: cut(raw?.tool_name, 200),
     notification_type: cut(raw?.notification_type, 60),
     last_assistant_message: cut(raw?.last_assistant_message, 4000), // Stop: Claude's answer, shown under the session in the chat
-    tool_input: { file_path: cut(i.file_path, 1000), notebook_path: cut(i.notebook_path, 1000), path: cut(i.path, 1000), command: cut(i.command, 200), questions },
+    tool_input: { file_path: cut(i.file_path, 1000), notebook_path: cut(i.notebook_path, 1000), path: cut(i.path, 1000), command: cut(i.command, cmdMax), questions },
   };
+}
+// What "Always" would add, in words the card can show, so the user sees how far the approval reaches.
+function describeRules(suggestions) {
+  const out = [];
+  for (const s of Array.isArray(suggestions) ? suggestions : []) {
+    if (Array.isArray(s?.rules))
+      for (const r of s.rules) out.push(r?.ruleContent ? `${r.toolName}(${r.ruleContent})` : String(r?.toolName ?? '?'));
+    else if (s?.type === 'setMode') out.push(`Modus: ${s.mode}`);
+    else if (Array.isArray(s?.directories)) out.push(`Ordner: ${s.directories.join(', ')}`);
+    else out.push(String(s?.type ?? '?'));
+  }
+  return out.slice(0, 10).map((x) => cut(x, 300));
 }
 // The island's answer → Claude Code's PermissionRequest decision, or null (stay silent, the terminal decides).
 // reply: { answer: 'allow' | 'always' | 'deny', message?, picks?: string[][] (one label list per question) }
@@ -51,7 +67,7 @@ function stopDecision(reply) {
   const text = typeof reply?.message === 'string' ? reply.message.trim() : '';
   return text ? { decision: 'block', reason: `Nachricht des Nutzers aus Nikki: ${text}` } : null;
 }
-module.exports = { slim, decision, stopDecision };
+module.exports = { slim, decision, stopDecision, describeRules, CMD_APPROVE };
 
 const WAIT_MS = 110_000; // below the hook's own timeout (120 s, lib/hooks.js), so we always end cleanly first
 
@@ -106,9 +122,12 @@ if (require.main === module && !process.env.DESKTOPCOMPANION_AGENT) {
         if (d) process.stdout.write(JSON.stringify(d));
         process.exit(0);
       });
-    if (!wait) return post(cfg, '/hook', JSON.stringify(event), 1000, () => {});
-    // the island needs the suggestion count to offer "Immer"; the rules themselves stay here
-    const payload = JSON.stringify({ ...event, can_always: Array.isArray(raw.permission_suggestions) && raw.permission_suggestions.length > 0 });
+    const command = raw?.tool_input?.command;
+    // too long to show whole on the card: only observe it, so the terminal asks with the full text
+    if (!wait || (typeof command === 'string' && command.length > CMD_APPROVE))
+      return post(cfg, '/hook', JSON.stringify(event), 1000, () => process.exit(0));
+    // the island shows the rules "Immer" would add; the rules themselves stay here and go back unchanged
+    const payload = JSON.stringify({ ...slim(raw, { cmdMax: CMD_APPROVE }), always_rules: describeRules(raw.permission_suggestions) });
     post(cfg, '/hook/wait', payload, WAIT_MS, (text) => {
       let reply = null;
       try {

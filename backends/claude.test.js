@@ -140,3 +140,31 @@ test('readLimits: no prompt goes out, the CLI is released; no plan, a missing ca
   assert.equal(await readLimits('c', { query: fake({}) }), null);
   assert.equal(await readLimits('c', { query: fake({ [USAGE]: () => new Promise(() => {}) }), timeoutMs: 5 }), null);
 });
+
+test('file changes ask by default; acceptEdits only when the user switched confirming off', async () => {
+  const { agent, calls } = setup(async function* () {
+    yield init;
+    yield ok;
+  });
+  agent.start('a', 'C:/p');
+  await tick();
+  assert.equal(calls[0].options.permissionMode, 'default');
+  agent.start('b', 'C:/p', undefined, { confirmEdits: false });
+  await tick();
+  assert.equal(calls[1].options.permissionMode, 'acceptEdits');
+});
+
+test('the card learns which rules "Always" would add', async () => {
+  let asked = null;
+  const { agent } = setup(
+    async function* (ctl) {
+      yield init;
+      await ctl.options.canUseTool('Bash', { command: 'npm test' }, { signal: ctl.signal, suggestions: [{ type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'npm test:*' }] }] });
+      yield ok;
+    },
+    { askPermission: async (req) => ((asked = req), { answer: 'allow' }) },
+  );
+  agent.start('a', 'C:/p');
+  await tick();
+  assert.deepEqual(asked.alwaysRules, ['Bash(npm test:*)']);
+});

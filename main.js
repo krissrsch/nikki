@@ -454,6 +454,7 @@ const settings = async () => ({
   relay: store.relay !== false,
   claudePath: await findClaude(),
   showBranch: store.showBranch !== false,
+  confirmEdits: store.confirmEdits !== false, // in-app tasks ask before every file change unless switched off
   modules: store.modules,
   keepAwake: !!store.keepAwake,
   glow: store.glow !== false,
@@ -512,7 +513,7 @@ function openSettings(page = 'general') {
 ipcMain.on('open-settings', (_e, page) => openSettings(page));
 ipcMain.on('open-data-dir', () => shell.openPath(app.getPath('userData')));
 // settings that are a plain on/off kept in the store as they are; the rest of the keys below do more than store them
-const PLAIN_SWITCHES = ['discordJoin', 'muted', 'showBranch', 'catJump', 'intro'];
+const PLAIN_SWITCHES = ['discordJoin', 'muted', 'showBranch', 'catJump', 'intro', 'confirmEdits'];
 ipcMain.handle('settings-set', async (_e, key, value) => {
   let error = null;
   if (PLAIN_SWITCHES.includes(key)) store[key] = !!value;
@@ -650,7 +651,7 @@ ipcMain.handle('start', async (_e, { prompt, cwd, newSession, plan, model, sessi
   setModel(cwd, model);
   save();
   // only the chat's own session: no fallback to whatever ran last in this project (N9)
-  return agent.start(prompt, cwd, newSession ? undefined : sessionId || undefined, { plan, model: model ?? undefined, claudePath });
+  return agent.start(prompt, cwd, newSession ? undefined : sessionId || undefined, { plan, model: model ?? undefined, claudePath, confirmEdits: store.confirmEdits !== false });
 });
 // --- module data: userData/modules/<id>.json, written atomically; the id is checked in moduleFile (no path from the renderer)
 const modulesDir = path.join(app.getPath('userData'), 'modules');
@@ -1508,7 +1509,7 @@ function askTerminal(e, res) {
     cwd: e.cwd,
     toolName: e.tool_name,
     input: e.tool_input ?? {},
-    canAlways: !!e.can_always,
+    alwaysRules: Array.isArray(e.always_rules) ? e.always_rules.filter((x) => typeof x === 'string').slice(0, 10) : [],
   });
   userHidden = false;
   applyVisibility();

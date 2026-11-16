@@ -1,4 +1,7 @@
 // Runs one task at a time through the installed, logged-in Claude Code CLI via the Agent SDK.
+import hookModule from '../hook.cjs';
+
+const { describeRules } = hookModule;
 import { tmpdir } from 'node:os';
 import { query as sdkQuery } from '@anthropic-ai/claude-agent-sdk';
 import { toAnswers, toStatus } from '../lib/status.js';
@@ -40,7 +43,7 @@ export function createClaudeAgent({ onStatus, onSession, askPermission, query = 
   let queued = null; // a prompt sent after "done" while that CLI was still exiting (B4); it starts right after
   let warned = false;
 
-  async function go(prompt, cwd, resume, { plan = false, model, claudePath } = {}) {
+  async function go(prompt, cwd, resume, { plan = false, model, claudePath, confirmEdits = true } = {}) {
     const r = (run = { q: null, abort: new AbortController(), stopped: false, finished: false, timer: null });
     const close = (s) => {
       if (r.finished) return;
@@ -57,10 +60,11 @@ export function createClaudeAgent({ onStatus, onSession, askPermission, query = 
           pathToClaudeCodeExecutable: claudePath,
           model,
           abortController: r.abort,
-          permissionMode: plan ? 'plan' : 'acceptEdits',
+          // acceptEdits would let a prompt injection rewrite build scripts unasked; it is the user's choice in the settings
+          permissionMode: plan ? 'plan' : confirmEdits ? 'default' : 'acceptEdits',
           env: { ...process.env, DESKTOPCOMPANION_AGENT: '1' }, // hook.cjs skips our own sessions: they report through the SDK
           canUseTool: async (toolName, input, { signal, suggestions, title }) => {
-            const { answer, picks, message, interrupt } = await askPermission({ toolName, input, title }, signal);
+            const { answer, picks, message, interrupt } = await askPermission({ toolName, input, title, alwaysRules: describeRules(suggestions) }, signal);
             if (answer === 'deny') {
               // interrupt: the user's reason comes next as their own prompt (B7), so this turn ends as stopped, not as an error
               if (interrupt) r.stopped = true;
@@ -68,7 +72,7 @@ export function createClaudeAgent({ onStatus, onSession, askPermission, query = 
             }
             if (toolName === 'AskUserQuestion') return { behavior: 'allow', updatedInput: { ...input, answers: toAnswers(input.questions, picks) } };
             // an approved plan is carried out like any other task: edits allowed, the rest asks
-            if (toolName === 'ExitPlanMode') return { behavior: 'allow', updatedInput: input, updatedPermissions: [{ type: 'setMode', mode: 'acceptEdits', destination: 'session' }] };
+            if (toolName === 'ExitPlanMode') return { behavior: 'allow', updatedInput: input, updatedPermissions: [{ type: 'setMode', mode: confirmEdits ? 'default' : 'acceptEdits', destination: 'session' }] };
             return { behavior: 'allow', updatedInput: input, ...(answer === 'always' && { updatedPermissions: suggestions }) };
           },
         },
