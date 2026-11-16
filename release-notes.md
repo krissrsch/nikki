@@ -1,37 +1,27 @@
-# Nikki 1.6
+# Nikki 1.7
 
-Nikki can now answer questions about your earlier Claude Code chats: the new Paw tab asks Pawprint, a local search over all your sessions, and shows the answer with the passages it came from.
-
-## New
-
-- **Paw tab.** Ask something like "Why did we pick SQLite?" and get the answer from your past Claude Code sessions, across all projects, with clickable `[Quelle n]` markers that open the passage. It needs [Pawprint](https://github.com/krissrsch/pawprint) installed. Nikki finds it once Pawprint has indexed at least once; otherwise pick `pawprint.exe` on the tab. Nikki starts Pawprint in the background with the first question and stops it after ten minutes without a question, because its search models take a few GB of memory.
+A security release: approvals in the island now show everything you approve, and tasks started in Nikki ask again before they change files.
 
 ## Changed
 
-- In Settings › Voice the mouse buttons are called M3 (wheel), M4 (back side button) and M5 (forward side button).
+- **Confirm file changes.** Tasks you start in Nikki now ask before every change to a file, like any other tool call. Before, file edits in the project folder were allowed without asking, so a prompt injection hidden in a project (a README, an issue, a web page) could rewrite build scripts unasked. If you prefer the old behaviour, switch off Settings › Claude › **Confirm file changes**.
+- **"Always" shows what it allows.** The card now lists the rules "Always" would add from then on, for example `Bash(npm test:*)`. Without such rules there is no "Always" button.
 
 ## Fixed
 
-- Settings › Modules listed neither Notifications nor Paw, and switching any module removed both from your saved list: notifications that were on went off. All modules are listed now and none gets lost.
-- With many modules on, the cat no longer sits on the last tab.
-- Long answers in the Paw tab scroll inside the page, so the last sources stay reachable.
+- **Long terminal commands were cut on the approval card.** A command from a terminal session showed only its first 200 characters, without a hint that it was cut. A command could start harmlessly and hide something else after the cut. The card now shows the whole command (up to 8,000 characters, the box scrolls). Longer commands are not sent to Nikki at all, so the terminal asks with the full text.
 
 ---
 
 ## Deutsch
 
-Nikki beantwortet jetzt Fragen zu deinen früheren Claude-Code-Chats: Der neue Reiter Paw fragt Pawprint, eine lokale Suche über alle deine Sitzungen, und zeigt die Antwort mit den Stellen, aus denen sie stammt.
-
-### Neu
-
-- **Reiter Paw.** Frag zum Beispiel „Warum haben wir SQLite genommen?“ und bekomm die Antwort aus deinen bisherigen Claude-Code-Sitzungen, über alle Projekte, mit anklickbaren `[Quelle n]`, die die Fundstelle aufklappen. Dafür muss [Pawprint](https://github.com/krissrsch/pawprint) installiert sein. Nikki findet es, sobald Pawprint einmal indexiert hat; sonst wählst du `pawprint.exe` im Reiter aus. Nikki startet Pawprint mit der ersten Frage im Hintergrund und beendet es nach zehn Minuten ohne Frage, weil seine Suchmodelle einige GB Speicher brauchen.
+Ein Sicherheits-Update: Freigaben in der Insel zeigen jetzt alles, was du erlaubst, und Aufgaben aus Nikki fragen wieder, bevor sie Dateien ändern.
 
 ### Geändert
 
-- Unter Einstellungen › Sprache heißen die Maustasten jetzt M3 (Mausrad), M4 (hintere Seitentaste, Zurück) und M5 (vordere Seitentaste, Vor).
+- **Dateiänderungen bestätigen.** Aufgaben, die du in Nikki startest, fragen jetzt vor jeder Änderung an einer Datei, wie bei jedem anderen Werkzeug. Bisher waren Änderungen im Projektordner ohne Nachfrage erlaubt; eine in einem Projekt versteckte Prompt Injection (README, Issue, Webseite) hätte so Build-Skripte unbemerkt umschreiben können. Wer das alte Verhalten möchte, schaltet Einstellungen › Claude › **Dateiänderungen bestätigen** aus.
+- **„Immer“ zeigt, was es erlaubt.** Die Karte listet die Regeln, die „Immer“ ab dann zulassen würde, zum Beispiel `Bash(npm test:*)`. Ohne solche Regeln gibt es keinen „Immer“-Knopf.
 
 ### Behoben
 
-- Einstellungen › Module zeigte weder Mitteilungen noch Paw, und jedes Umschalten eines Moduls warf beide aus der gespeicherten Liste: eingeschaltete Mitteilungen gingen aus. Jetzt stehen alle Module in der Liste, und keins geht verloren.
-- Sind viele Module an, sitzt die Katze nicht mehr auf dem letzten Reiter.
-- Lange Antworten im Reiter Paw scrollen in der Seite, die unteren Quellen bleiben erreichbar.
+- **Lange Terminal-Befehle wurden auf der Freigabe-Karte abgeschnitten.** Ein Befehl aus einer Terminal-Session zeigte nur seine ersten 200 Zeichen, ohne Hinweis auf die Kürzung. Ein Befehl konnte harmlos beginnen und nach der Kürzung etwas anderes enthalten. Die Karte zeigt jetzt den ganzen Befehl (bis 8.000 Zeichen, das Feld scrollt). Längere Befehle schickt Nikki gar nicht erst in die Insel, dann fragt das Terminal mit dem vollen Text.
